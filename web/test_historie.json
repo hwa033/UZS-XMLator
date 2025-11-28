@@ -1,0 +1,88 @@
+{
+  "resultaten": [
+    {
+      "success": false,
+      "uitvoer": "",
+      "foutmeldingen": "[ ERROR ] Parsing 'D:\\ZW\\XML-automation-clean\\web\\testen.robot' failed: File or directory to execute does not exist.\n\nTry --help for usage information.\n",
+      "tijdstip": "2025-10-24T11:00:16.462640"
+    },
+    {
+      "success": false,
+      "uitvoer": "",
+      "foutmeldingen": "[ ERROR ] Parsing 'D:\\ZW\\XML-automation-clean\\web\\testen.robot' failed: File or directory to execute does not exist.\n\nTry --help for usage information.\n",
+      "tijdstip": "2025-10-24T11:16:24.680931"
+    },
+    {
+      "success": true,
+      "uitvoer": "==============================================================================\nXml Tests Minimal :: XML Automation Tests - Minimal Version                   \n==============================================================================\nTC001: XML Template Laden En Bewerken :: Test het laden en bewerke... | PASS |\n------------------------------------------------------------------------------\nTC002: XML Validatie En Structuur Check :: Test XML validatie en s... | PASS |\n------------------------------------------------------------------------------\nTC003: Bulk XML Generatie :: Test bulk generatie van XML bestanden    | PASS |\n------------------------------------------------------------------------------\nTC004: Template Management :: Test template beheer functionaliteiten  | PASS |\n------------------------------------------------------------------------------\nTC005: Error Handling En Edge Cases :: Test error handling en edge... | PASS |\n------------------------------------------------------------------------------\nXml Tests Minimal :: XML Automation Tests - Minimal Version           | PASS |\n5 tests, 5 passed, 0 failed\n==============================================================================\nOutput:  D:\\ZW\\XML-automation-clean\\web\\resultaten\\output.xml\nLog:     D:\\ZW\\XML-automation-clean\\web\\resultaten\\log.html\nReport:  D:\\ZW\\XML-automation-clean\\web\\resultaten\\report.html\n",
+      "foutmeldingen": "",
+      "tijdstip": "2025-10-24T11:21:10.241104"
+    },
+    {
+      "success": true,
+      "uitvoer": "==============================================================================\nTests :: XML Automation Tests - Clean & Minimal                               \n==============================================================================\nTC001: Laad En Bewerk XML Template :: Test XML template laden en b... | PASS |\n------------------------------------------------------------------------------\nTC002: XML Structuur Validatie :: Test XML parsing en validatie       | PASS |\n------------------------------------------------------------------------------\nTC003: Bulk XML Generatie :: Test meerdere XML bestanden genereren    | PASS |\n------------------------------------------------------------------------------\nTC004: Template Beschikbaarheid :: Test of templates beschikbaar zijn | PASS |\n------------------------------------------------------------------------------\nTC005: Error Handling :: Test error scenarios                         | PASS |\n------------------------------------------------------------------------------\nTests :: XML Automation Tests - Clean & Minimal                       | PASS |\n5 tests, 5 passed, 0 failed\n==============================================================================\nOutput:  D:\\ZW\\XML-automation-clean\\web\\resultaten\\output.xml\nLog:     D:\\ZW\\XML-automation-clean\\web\\resultaten\\log.html\nReport:  D:\\ZW\\XML-automation-clean\\web\\resultaten\\report.html\n",
+      "foutmeldingen": "",
+      "tijdstip": "2025-11-20T13:12:54.294502"
+    },
+    {
+      "success": true,
+      "uitvoer": "==============================================================================\nTests :: XML Automation Tests - Clean & Minimal                               \n==============================================================================\nTC001: Laad En Bewerk XML Template :: Test XML template laden en b... | PASS |\n------------------------------------------------------------------------------\nTC002: XML Structuur Validatie :: Test XML parsing en validatie       | PASS |\n------------------------------------------------------------------------------\nTC003: Bulk XML Generatie :: Test meerdere XML bestanden genereren    | PASS |\n------------------------------------------------------------------------------\nTC004: Template Beschikbaarheid :: Test of templates beschikbaar zijn | PASS |\n------------------------------------------------------------------------------\nTC005: Error Handling :: Test error scenarios                         | PASS |\n------------------------------------------------------------------------------\nTests :: XML Automation Tests - Clean & Minimal                       | PASS |\n5 tests, 5 passed, 0 failed\n==============================================================================\nOutput:  D:\\ZW\\XML-automation-clean\\web\\resultaten\\output.xml\nLog:     D:\\ZW\\XML-automation-clean\\web\\resultaten\\log.html\nReport:  D:\\ZW\\XML-automation-clean\\web\\resultaten\\report.html\n",
+      "foutmeldingen": "",
+      "tijdstip": "2025-11-20T17:02:26.783945"
+    },
+    {
+      "success": true,
+      "uitvoer": "==============================================================================\nTests :: XML Automation Tests - Clean & Minimal                               \n==============================================================================\nTC001: Laad En Bewerk XML Template :: Test XML template laden en b... | PASS |\n------------------------------------------------------------------------------\nTC002: XML Structuur Validatie :: Test XML parsing en validatie       | PASS |\n------------------------------------------------------------------------------\nTC003: Bulk XML Generatie :: Test meerdere XML bestanden genereren    | PASS |\n------------------------------------------------------------------------------\nTC004: Template Beschikbaarheid :: Test of templates beschikbaar zijn | PASS |\n------------------------------------------------------------------------------\nTC005: Error Handling :: Test error scenarios                         | PASS |\n------------------------------------------------------------------------------\nTests :: XML Automation Tests - Clean & Minimal                       | PASS |\n5 tests, 5 passed, 0 failed\n==============================================================================\nOutput:  d:\\ZW\\XML-automation-clean\\web\\resultaten\\output.xml\nLog:     d:\\ZW\\XML-automation-clean\\web\\resultaten\\log.html\nReport:  d:\\ZW\\XML-automation-clean\\web\\resultaten\\report.html\n",
+      "foutmeldingen": "",
+      "tijdstip": "2025-11-20T22:00:13.516390"
+    },
+    {
+      "success": true,
+      "uitvoer": "==============================================================================\nTests :: XML Automation Tests - Clean & Minimal                               \n==============================================================================\nTC001: Laad En Bewerk XML Template :: Test XML template laden en b... | PASS |\n------------------------------------------------------------------------------\nTC002: XML Structuur Validatie :: Test XML parsing en validatie       | PASS |\n------------------------------------------------------------------------------\nTC003: Bulk XML Generatie :: Test meerdere XML bestanden genereren    | PASS |\n------------------------------------------------------------------------------\nTC004: Template Beschikbaarheid :: Test of templates beschikbaar zijn | PASS |\n------------------------------------------------------------------------------\nTC005: Error Handling :: Test error scenarios                         | PASS |\n------------------------------------------------------------------------------\nTests :: XML Automation Tests - Clean & Minimal                       | PASS |\n5 tests, 5 passed, 0 failed\n==============================================================================\nOutput:  d:\\ZW\\XML-automation-clean\\web\\resultaten\\output.xml\nLog:     d:\\ZW\\XML-automation-clean\\web\\resultaten\\log.html\nReport:  d:\\ZW\\XML-automation-clean\\web\\resultaten\\report.html\n",
+      "foutmeldingen": "",
+      "tijdstip": "2025-11-21T00:09:23.067871"
+    },
+    {
+      "success": true,
+      "uitvoer": "==============================================================================\nTests :: XML Automation Tests - Clean & Minimal                               \n==============================================================================\nTC001: Laad En Bewerk XML Template :: Test XML template laden en b... | PASS |\n------------------------------------------------------------------------------\nTC002: XML Structuur Validatie :: Test XML parsing en validatie       | PASS |\n------------------------------------------------------------------------------\nTC003: Bulk XML Generatie :: Test meerdere XML bestanden genereren    | PASS |\n------------------------------------------------------------------------------\nTC004: Template Beschikbaarheid :: Test of templates beschikbaar zijn | PASS |\n------------------------------------------------------------------------------\nTC005: Error Handling :: Test error scenarios                         | PASS |\n------------------------------------------------------------------------------\nTests :: XML Automation Tests - Clean & Minimal                       | PASS |\n5 tests, 5 passed, 0 failed\n==============================================================================\nOutput:  d:\\ZW\\XML-automation-clean\\web\\resultaten\\output.xml\nLog:     d:\\ZW\\XML-automation-clean\\web\\resultaten\\log.html\nReport:  d:\\ZW\\XML-automation-clean\\web\\resultaten\\report.html\n",
+      "foutmeldingen": "",
+      "tijdstip": "2025-11-21T00:14:33.648425"
+    },
+    {
+      "success": true,
+      "uitvoer": "==============================================================================\nTests :: XML Automation Tests - Clean & Minimal                               \n==============================================================================\nTC001: Laad En Bewerk XML Template :: Test XML template laden en b... | PASS |\n------------------------------------------------------------------------------\nTC002: XML Structuur Validatie :: Test XML parsing en validatie       | PASS |\n------------------------------------------------------------------------------\nTC003: Bulk XML Generatie :: Test meerdere XML bestanden genereren    | PASS |\n------------------------------------------------------------------------------\nTC004: Template Beschikbaarheid :: Test of templates beschikbaar zijn | PASS |\n------------------------------------------------------------------------------\nTC005: Error Handling :: Test error scenarios                         | PASS |\n------------------------------------------------------------------------------\nTests :: XML Automation Tests - Clean & Minimal                       | PASS |\n5 tests, 5 passed, 0 failed\n==============================================================================\nOutput:  d:\\ZW\\XML-automation-clean\\web\\resultaten\\output.xml\nLog:     d:\\ZW\\XML-automation-clean\\web\\resultaten\\log.html\nReport:  d:\\ZW\\XML-automation-clean\\web\\resultaten\\report.html\n",
+      "foutmeldingen": "",
+      "tijdstip": "2025-11-21T00:14:39.089546"
+    }
+  ],
+  "grafiek_data": [
+    {
+      "datum": "2025-11-13",
+      "succes_percentage": 85
+    },
+    {
+      "datum": "2025-11-14",
+      "succes_percentage": 90
+    },
+    {
+      "datum": "2025-11-15",
+      "succes_percentage": 75
+    },
+    {
+      "datum": "2025-11-16",
+      "succes_percentage": 95
+    },
+    {
+      "datum": "2025-11-17",
+      "succes_percentage": 80
+    },
+    {
+      "datum": "2025-11-18",
+      "succes_percentage": 88
+    },
+    {
+      "datum": "2025-11-19",
+      "succes_percentage": 92
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.venv": true,
+    "**/venv": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "build": true,
+    "build/**": true,
+    "dist": true,
+    "dist/**": true,
+    "bronnen": true,
+    "bronnen/**": true,
+    "results": true,
+    "results/**": true,
+    "results_screenshots": true,
+    "results_screenshots/**": true,
+    "uzs_filedrop": true,
+    "uzs_filedrop/**": true,
+    "**/*.exe": true,
+    "**/*.pyz": true,
+    "build/UZS_XMLator": true,
+    "build/UZS_XMLator/**": true,
+    ".pytest_cache": true,
+    ".mypy_cache": true,
+    "node_modules": true
+  },
+  "search.exclude": {
+    "**/build/**": true,
+    "**/dist/**": true,
+    "**/.venv/**": true,
+    "**/bronnen/**": true,
+    "**/results/**": true,
+    "**/results_screenshots/**": true,
+    "**/uzs_filedrop/**": true,
+    "**/__pycache__/**": true
+  },
+  
+  "search.exclude": {
+    "**/build/UZS_XMLator/**": true
+  },
+  "files.watcherExclude": {
+    "**/build/**": true,
+    "**/dist/**": true,
+    "**/.venv/**": true,
+    "**/bronnen/**": true,
+    "**/results/**": true,
+    "**/results_screenshots/**": true,
+    "**/uzs_filedrop/**": true,
+    "**/node_modules/**": true,
+    "**/.git/**": true,
+    "**/*.exe": true,
+    "**/*.pyz": true
+  },
+  "search.followSymlinks": false,
+  "files.maxMemoryForLargeFilesMB": 4096
+}

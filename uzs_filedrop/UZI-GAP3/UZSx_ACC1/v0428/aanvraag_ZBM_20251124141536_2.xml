@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Aanvraag>
+  <GegevensUitwisselingsnr>GegevensUitwisselingsnr_20251124141536_2</GegevensUitwisselingsnr>
+  <BerichtReferentienr>BerichtReferentienr_20251124141536_2</BerichtReferentienr>
+  <TransactieReferentienr>TransactieReferentienr_20251124141536_2</TransactieReferentienr>
+  <Burgerservicenr>100000071</Burgerservicenr>
+  <Geboortedat>19800101</Geboortedat>
+  <Naam>Testpersoon</Naam>
+  <Loonheffingennr/>
+  <Iban/>
+  <Bic/>
+  <DatEersteAoDag>20250101</DatEersteAoDag>
+  <IndDirecteUitkering>1</IndDirecteUitkering>
+  <CdRedenAangifteAo>A1</CdRedenAangifteAo>
+  <CdRedenZiekmelding>Z1</CdRedenZiekmelding>
+  <IndWerkdagOpZaterdag>0</IndWerkdagOpZaterdag>
+  <IndWerkdagOpZondag>0</IndWerkdagOpZondag>
+</Aanvraag>

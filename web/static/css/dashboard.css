@@ -1,0 +1,747 @@
+/* Verbeterde zichtbaarheid voor Bootstrap modal preview */
+.modal-content {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25) !important;
+    border-radius: 10px !important;
+    border: none !important;
+    z-index: 2000 !important;
+}
+
+/* App-wide brand color variables: adjust to match the app's UWV-like blue aesthetic */
+:root {
+    --brand-primary: #0b66c2; /* primary blue */
+    --brand-primary-dark: #084e9a;
+    --brand-success: #9be7c2; /* softer pastel green for Genereer XML */
+    --brand-danger: #dc3545; /* red */
+    --dark-color: #0b1b28;
+    --muted-color: #6b7280;
+    --tile-text-color: #0b1b28;
+    /* Secondary accent (used for outline-secondary and subtle actions) */
+    --brand-secondary: #a8d0ff; /* pastel blue for grey/secondary buttons */
+}
+
+.modal-body {
+    background: #f8f9fa !important;
+}
+
+.modal-backdrop.show {
+    opacity: 0.5 !important;
+    z-index: 1050 !important;
+}
+/* Dashboard Styling */
+/* Theme variables are provided by `theme.css`. Use body class `theme-default` or `theme-compact`.
+    The :root fallbacks are defined in theme.css. */
+
+body {
+    font-family: 'Inter', 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+    padding-bottom: 2rem;
+    font-size: var(--base-font-size);
+}
+
+/* Ensure all buttons use a consistent font, weight and smoothing for legibility */
+.btn {
+    font-family: 'Inter', 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-weight: 700;
+    letter-spacing: 0.12px;
+    text-transform: none;
+}
+
+.navbar {
+    box-shadow: 0 2px 4px rgba(0,0,0,.1);
+}
+
+/* Custom header style to match dashboard visual design */
+.navbar-custom {
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    padding-top: 4px;
+    padding-bottom: 4px;
+    background: linear-gradient(180deg, #061726 0%, #072033 100%); /* dark navy header */
+}
+.navbar-custom .navbar-brand { display: flex; align-items: center; gap: 12px; }
+/* Make the brand area share the same gradient so logos blend seamlessly */
+.navbar-custom .navbar-brand {
+    padding: 4px 6px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #061726 0%, #072033 100%);
+}
+.avatar-lg { height:72px; width:auto; object-fit:contain; display:block; }
+.navbar-custom .nav-link { color: rgba(255,255,255,0.92); font-weight:600; margin-right:8px; }
+.navbar-custom .nav-link:hover { color: #bfe9ff; }
+/* show beheer / instellingen buttons and make them subtle on the dark header */
+.navbar-custom .btn-outline-light { display:inline-block; color: rgba(255,255,255,0.95); border-color: rgba(255,255,255,0.12); }
+.navbar-custom .btn-outline-light:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.25); }
+.navbar-custom .container { gap: 12px; display: flex; align-items: center; }
+.navbar-custom .navbar-nav { margin-left: 22px; }
+.navbar-custom .nav-link { padding: 8px 12px; }
+.navbar-custom .current-time { color: rgba(255,255,255,0.85); margin-left: 10px; font-size:0.95rem; }
+.navbar-custom .user-badge img { width:36px; height:36px; border-radius:6px; }
+
+/* Hide the chart mode select visually but keep available in DOM for future use */
+#chart-mode-select { display: none !important; }
+
+/* Ensure chart canvas uses full width with no extra right-side gap */
+.chart-wrapper, .main-panel > .card-body > div { overflow: hidden; }
+#dashboard-chart { width: 100% !important; max-width: 100% !important; }
+
+/* Chart widgets styling to match screenshot (right aligned, bold headings) */
+#chart-widgets { text-align: right; font-weight:600; color: #0b1b28; }
+#chart-widgets div { margin-bottom: 4px; }
+#chart-alerts .badge { font-weight:700; }
+
+.card {
+    border: none;
+    border-radius: calc(var(--card-radius) + 2px);
+    box-shadow: 0 6px 18px rgba(2,6,23,0.04);
+    transition: transform 0.14s, box-shadow 0.14s;
+    margin-bottom: 0.6rem;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 26px rgba(2,6,23,0.07);
+}
+
+.card-header {
+    border-radius: 8px 8px 0 0 !important;
+    font-weight: 600;
+}
+
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.btn {
+    border-radius: 10px;
+    font-weight: 600;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.12s ease;
+    padding: 8px 14px;
+    box-shadow: 0 6px 14px rgba(2,6,23,0.04);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(2,6,23,0.06);
+}
+
+/* Primary (filled) buttons use brand primary gradient */
+.btn-primary {
+    /* Make primary buttons match the visual style of the outline-primary (used for Download geselecteerd) */
+    background: transparent !important;
+    border: 1px solid var(--brand-primary) !important;
+    color: var(--brand-primary) !important;
+    box-shadow: none !important;
+}
+
+/* Stronger specificity to override external/Bootstrap rules that may set
+   a filled background for primary buttons (used when CSS load order differs). */
+.btn.btn-primary, a.btn.btn-primary, button.btn.btn-primary {
+    background: transparent !important;
+    border: 1px solid var(--brand-primary) !important;
+    color: var(--brand-primary) !important;
+    box-shadow: none !important;
+}
+
+.btn-success {
+    /* Pastel green primary action: darker text for readability */
+    background: linear-gradient(180deg, var(--brand-success), color-mix(in srgb, var(--brand-success) 85%, black 6%));
+    border: none;
+    /* Use a clear dark text color for contrast on pastel background */
+    color: #033e2a; /* dark greenish for good contrast */
+}
+
+/* Outline buttons: colored border and subtle hover fill */
+.btn-outline-primary {
+    border: 1px solid var(--brand-primary);
+    color: var(--brand-primary);
+    background: transparent;
+}
+.btn-outline-primary:hover { background: color-mix(in srgb, var(--brand-primary) 6%, white 94%); color: var(--brand-primary); }
+
+/* Force .btn-success to use the softer pastel and readable text across the app */
+.btn-success {
+    background: linear-gradient(180deg, var(--brand-success), color-mix(in srgb, var(--brand-success) 85%, black 6%)) !important;
+    border: none !important;
+    color: #033e2a !important;
+}
+
+.btn-outline-secondary {
+    border: 1px solid var(--brand-secondary);
+    color: var(--brand-secondary);
+    background: transparent;
+}
+.btn-outline-secondary:hover { background: color-mix(in srgb, var(--brand-secondary) 6%, white 94%); }
+
+/* Small buttons should stay compact */
+.btn-sm { padding: 6px 10px; }
+
+/* Focus + accessibility */
+.btn:focus-visible { outline: 3px solid rgba(37,99,235,0.12); outline-offset: 3px; }
+
+.btn-lg {
+    padding: 12px 32px;
+    font-size: 18px;
+}
+
+/* Small button consistency */
+.btn-sm {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    border-radius: 6px;
+}
+
+/* Stronger but subtle card shadow and consistent spacing */
+.card {
+    border: none;
+    border-radius: var(--card-radius);
+    box-shadow: 0 6px 18px rgba(2,6,23,0.04);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    margin-bottom: 0.9rem;
+}
+
+.card.shadow-sm {
+    box-shadow: 0 4px 14px rgba(2,6,23,0.06);
+}
+
+.progress {
+    height: 22px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.alert {
+    border-radius: 8px;
+    border: none;
+}
+
+.list-group-item {
+    border: none;
+    border-radius: 14px !important;
+    margin-bottom: 10px;
+    padding: 18px 20px;
+    background: var(--card-gradient, #ffffff);
+    box-shadow: 0 10px 30px rgba(2,6,23,0.035);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 160px;
+}
+
+.list-group-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 36px rgba(2,6,23,0.06);
+}
+
+pre {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 0.65rem;
+    font-size: 0.88rem;
+    line-height: 1.25;
+}
+
+.toast {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+}
+
+/* Make form controls slightly larger for readability */
+.form-control, .form-select {
+    padding: 8px 10px;
+    font-size: 0.92rem;
+}
+
+/* Animaties */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    animation: fadeIn 0.22s ease-out;
+}
+
+/* Status kleuren */
+.bg-success {
+    background-color: var(--success-color) !important;
+}
+
+.bg-warning {
+    background-color: var(--warning-color) !important;
+}
+
+.bg-danger {
+    background-color: var(--danger-color) !important;
+}
+
+.bg-info {
+    background-color: var(--info-color) !important;
+}
+
+/* Responsive aanpassingen */
+@media (max-width: 768px) {
+    .btn-lg {
+        padding: 10px 24px;
+        font-size: 16px;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    h1 {
+        font-size: 1.75rem;
+    }
+}
+
+/* Dashboard specific layout to match Figma-like design */
+.dashboard-wrap {
+    max-width: var(--chart-max-width);
+    margin: 0 auto;
+}
+.hero h1 { font-weight: 600; }
+.search-box { width: 220px; }
+.avatar-sm { width:36px; height:36px; border-radius:8px; object-fit:cover; }
+
+.stats-grid .stat-card {
+    display:flex;
+    gap:14px;
+    padding:16px;
+    align-items:center;
+    border-radius:14px;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.05);
+    position:relative;
+    min-height:110px;
+    /* let height grow if subtitle present */
+}
+
+/* Icon container: keep a larger pill but the icon itself uses 24x24 */
+.stat-card .stat-icon {
+    width:48px;
+    height:48px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    background:var(--icon-badge-bg, #0b1720);
+    color:#fff;
+    box-shadow: 0 6px 18px rgba(2,6,23,0.07);
+    flex-shrink:0;
+    margin-right:14px;
+}
+.stat-card .stat-icon i { font-size:24px; line-height:1; }
+.stat-card .stat-body { flex:1 }
+.stat-label { font-size:15px; color:var(--muted-color, #6c757d); margin-bottom:6px; font-weight:700 }
+.stat-value { font-size:20px; font-weight:700; color:var(--tile-text-color, #0b1b28); line-height:1.05; }
+.stat-meta { font-size:13px; color:var(--muted-color, #9aa0a6); margin-top:6px }
+
+/* timestamp/subtext under main stat value */
+.stat-sub { font-size:12px; color:#6c757d; margin-top:6px; }
+
+/* timestamp/subtext under main stat value */
+.stat-sub { font-size:0.85rem; color:#6c757d; margin-top:6px; }
+
+/* small circular menu in top-right of each stat card */
+
+/* Make columns stretch so stat-cards become equal height */
+.stats-grid .col-6, .stats-grid .col-md-4 { display:flex; }
+.stats-grid .col-6 .stat-card, .stats-grid .col-md-4 .stat-card { flex:1; }
+
+/* Mobile: slightly taller tiles and stacked layout spacing */
+@media (max-width: 575.98px) {
+    .stats-grid .stat-card { padding:14px; min-height:96px; }
+    .stat-label { font-size:14px }
+    .stat-value { font-size:18px }
+    .stat-card .stat-icon { width:40px; height:40px }
+    .stat-card .stat-icon i { font-size:20px }
+}
+
+/* Resultaten tiles wrapper: align using the shared chart-tiles styles so both pages match */
+.result-tiles { max-width: var(--chart-max-width); margin: 0 auto 1rem; padding: 0; box-sizing: border-box; }
+
+/* Tile color variants (Resultaten) - pastel palette aligned with image 3 */
+.result-tiles .uwv-blue { background: linear-gradient(180deg, #E8F2FF, #FFFFFF); color: #0b1b28; }
+.result-tiles .uws-success { background: linear-gradient(180deg, #E9FCEE, #FFFFFF); color: #0b1b28; }
+.result-tiles .uws-danger { background: linear-gradient(180deg, #FFEFF0, #FFFFFF); color: #0b1b28; }
+.result-tiles .neutral-gray { background: linear-gradient(180deg, #FFF5F7, #FFFFFF); color: #0b1b28; }
+
+/* Badges indicating source state for dataset preview */
+.badge-excel {
+    background-color: #20c997; /* brighter teal-green */
+    color: #042a22; /* dark text for contrast */
+    font-size: 0.75rem;
+    padding: 0.18rem 0.5rem;
+    border-radius: 0.45rem;
+    display: inline-block;
+}
+.badge-edited {
+    background-color: #ff6f00; /* vivid orange */
+    color: #2b1700;
+    font-size: 0.75rem;
+    padding: 0.18rem 0.5rem;
+    border-radius: 0.45rem;
+    display: inline-block;
+}
+@media (max-width: 575.98px) {
+    .result-tiles { --chart-max-width: 100%; }
+}
+
+/* Tile spinner */
+.stat-spinner {
+    width:20px; height:20px; border-radius:50%; border:2px solid rgba(11,27,40,0.12); border-top-color: rgba(11,27,40,0.6); animation: spin 0.8s linear infinite; margin-left:auto; margin-right:0; display:none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Show spinner inside stat-card when loading */
+.stat-card.loading .stat-spinner { display:inline-block }
+
+/* Use webfont (Inter) declared in base template; keep font-family simple */
+body { font-family: 'Inter', 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; }
+
+/* dropdown positioned top-right of the stat card */
+.stat-card .stat-dropdown { display:none; }
+
+/* Make the entire stat-link area show as clickable and add subtle hover */
+.stat-link { display:block; }
+.stat-link .stat-card { transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.stat-link:hover .stat-card { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(2,6,23,0.06); cursor: pointer; }
+
+/* ensure pointer cursor on clickable cards */
+.stat-link, .stat-link * { cursor: pointer; }
+
+/* keyboard focus for accessibility */
+.stat-link:focus-visible, .stat-link:focus {
+    outline: 3px solid rgba(13,110,253,0.14);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 3px rgba(13,110,253,0.06);
+}
+
+/* Reduce column gutters inside stats-grid to bring cards closer */
+.stats-grid.row.g-3 { --bs-gutter-x: 0.35rem; --bs-gutter-y: 0.3rem; }
+.stats-grid .col-6, .stats-grid .col-md-4 { padding-left: 0.2rem; padding-right: 0.2rem; }
+
+/* buttons: denser sizing */
+.btn { padding: 6px 10px; font-size: 0.92rem; border-radius:6px; }
+.btn-sm { padding: 4px 8px; font-size: 0.84rem; border-radius:5px; }
+.btn-lg { padding: 8px 18px; font-size: 1rem; border-radius:8px; }
+
+/* Accordion/tables: reduce paddings for denser layout */
+.accordion-button { padding: 0.5rem 0.75rem; font-size: 0.95rem; }
+.accordion-body { padding: 0.6rem 0.75rem; }
+
+/* Navbar: slightly reduce brand spacing */
+.navbar-custom .navbar-brand img.avatar-lg { height:48px; width:auto; }
+.navbar-custom .nav-link { padding: 6px 8px; }
+
+/* Ensure visible brand text and stable header layout even if Bootstrap utilities are partial. */
+/* (Reverted visible brand-title rules) */
+
+/* smaller hero spacing */
+.hero { padding-top: 6px; padding-bottom: 6px; }
+.hero h1 { font-size: 2.2rem; font-weight:700; color: var(--dark-color, #0b1b28); margin-bottom: 6px }
+.page-subtitle { font-size: 1rem; color: var(--muted-color, #6b7280); margin-bottom: 14px }
+
+/* Tile color presets (pastel fills) - using palette from image 3 */
+.tile-yellow { background: linear-gradient(180deg, var(--tile-yellow-start), var(--tile-yellow-end)); color: var(--tile-text-color); }
+.tile-green { background: linear-gradient(180deg, var(--tile-green-start), var(--tile-green-end)); color: var(--tile-text-color); }
+.tile-red { background: linear-gradient(180deg, var(--tile-red-start), var(--tile-red-end)); color: var(--tile-text-color); }
+
+/* UWV-style blue and neutral gray tiles for consistency across pages */
+.tile-blue { background: linear-gradient(180deg, #eef6ff, #ffffff); color: var(--tile-text-color); }
+.tile-gray { background: linear-gradient(180deg, #f6f7f9, #ffffff); color: var(--tile-text-color); }
+
+/* Chart-aligned top tiles: three equal columns matching chart width */
+:root { --chart-max-width: 1100px; }
+/* Tiles and chart area share the same max width and alignment */
+.chart-tiles-wrapper {
+    width: 100%;
+    max-width: var(--chart-max-width);
+    margin: 10px auto 0;
+    box-sizing: border-box;
+    padding: 0;
+}
+.chart-tiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    align-items: stretch;
+    width: 100%;
+    max-width: var(--chart-max-width);
+    margin: 0 auto;
+}
+.chart-tiles .chart-tile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 0 0 0;
+    background: #F5F7FA;
+    border-radius: 16px;
+    box-shadow: none;
+    min-height: 120px;
+    height: 120px;
+    box-sizing: border-box;
+    transition: box-shadow 0.14s, transform 0.14s;
+}
+.chart-tiles .stat-icon { width:28px; height:28px; min-width:28px; display:flex; align-items:center; justify-content:center; font-size:18px; margin-right:10px; }
+.chart-tiles .stat-label { font-size:15px; font-weight:700; color:var(--dark-color, #0b1b28); margin-bottom:0 }
+.chart-tiles .stat-value { font-size:20px; font-weight:700; color:var(--dark-color, #0b1b28); }
+.chart-tiles .stat-sub, .chart-tiles .stat-meta { font-size:13px; color:#6B7280 }
+
+/* Color variants for chart tiles (ensure page-specific classes override defaults) */
+.chart-tiles .uwv-blue { background: linear-gradient(180deg, #E8F2FF, #FFFFFF); color: #0b1b28; }
+.chart-tiles .uws-success { background: linear-gradient(180deg, #E9FCEE, #FFFFFF); color: #0b1b28; }
+.chart-tiles .uws-danger { background: linear-gradient(180deg, #FFEFF0, #FFFFFF); color: #0b1b28; }
+.chart-tiles .neutral-gray { background: linear-gradient(180deg, #FFF5F7, #FFFFFF); color: #0b1b28; }
+
+@media (max-width: 900px) {
+    .chart-tiles {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    .chart-tiles .chart-tile {
+        min-height: 96px;
+        padding: 14px 10px;
+    }
+}
+
+/* Chart area should use same max-width so tiles and chart align exactly */
+.chart-area { max-width: var(--chart-max-width); margin: 0 auto; background: #ffffff; padding: 10px; border-radius: 8px; box-sizing: border-box; }
+.chart-area canvas { font-family: 'Inter', 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; }
+
+/* Icon badge: dark circular background with the icon inside */
+.stat-card .stat-icon {
+    background: var(--icon-badge-bg, rgba(12,12,14,0.95));
+    color: #fff;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+}
+
+/* Remove white circular menu backgrounds if any exist */
+.stat-card .dropdown-toggle, .stat-card .three-dots, .stat-card .stat-menu {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--muted-color, #6b7280) !important;
+}
+
+/* Ensure list items can also take tile classes */
+.list-group-item.tile-yellow, .list-group-item.tile-green, .list-group-item.tile-red { background-clip: padding-box }
+
+/* Ensure summary tiles (card.tile-*) match the same height as stat-cards */
+.card.tile-yellow .card-body, .card.tile-green .card-body, .card.tile-red .card-body {
+    min-height: 180px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+}
+
+/* Make accordion headers inherit tile background and remove default white button fill */
+.accordion-item.tile-yellow .accordion-button,
+.accordion-item.tile-green .accordion-button,
+.accordion-item.tile-red .accordion-button {
+    background: transparent;
+    border: none;
+    padding: 16px 18px;
+    color: inherit;
+    min-height: 140px;
+}
+.accordion-item .accordion-button .stat-icon { margin-right: 12px; }
+
+/* tighter dashboard container */
+.dashboard-wrap { max-width: var(--chart-max-width); margin: 0 auto; padding-left:6px; padding-right:6px; }
+
+.bg-light-purple { background: linear-gradient(180deg, rgba(238,242,255,0.9), rgba(255,255,255,0.96)); }
+.bg-light-green { background: linear-gradient(180deg, rgba(233,251,233,0.9), rgba(255,255,255,0.96)); }
+.bg-light-red { background: linear-gradient(180deg, rgba(255,241,240,0.9), rgba(255,255,255,0.96)); }
+
+.main-panel { border-radius:12px; overflow:hidden }
+.sticky-card { position: sticky; top: 24px; }
+.divider { height:1px; background: #f1f3f5 }
+
+/* subtle float-in animation for hero and stat cards */
+.hero, .stats-grid .stat-card, .main-panel, .card { animation: floatIn 0.42s ease both; }
+@keyframes floatIn {
+    from { opacity:0; transform: translateY(8px); }
+    to { opacity:1; transform: translateY(0); }
+}
+
+/* smaller helpers */
+.display-6 { font-size:2.6rem; line-height:1.02 }
+
+@media (max-width: 992px) {
+    .search-box { width: 140px; }
+}
+
+/* Chart container and loading overlay */
+.main-panel { position: relative; }
+#dashboard-chart { display: block; width: 100% !important; height: 100% !important; }
+#chart-loading { display: none; align-items: center; justify-content: center; }
+#chart-loading .spinner-border { width: 3rem; height: 3rem; }
+#chart-loading { backdrop-filter: blur(3px); }
+.chart-wrapper { border-radius: 8px; overflow: hidden; position: relative; }
+
+/* Leave room on the right for Chart.js legend (prevents overlap on narrow layouts) */
+.chart-wrapper { padding-right: 140px; }
+
+/* Constrain dashboard chart to a responsive max width and give a clean white background */
+.main-panel .card-body > div[style] {
+    box-sizing: border-box;
+}
+.main-panel .card-body > div[style] #dashboard-chart {
+    font-family: 'Inter', 'Roboto', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+}
+
+/* Make the chart container appear clean and centered on larger screens */
+.main-panel .card-body > div[style] {
+    background: #ffffff;
+}
+
+/* Custom section header for resultaten: remove dark bar, use subtle border/background in card-body */
+.custom-section-header { background: transparent; border: none; padding: 12px 16px; }
+.custom-section-header .card-title { margin: 0; }
+
+/* small responsive tweaks for canvas */
+@media (max-width: 576px) {
+    #chart-loading .small { font-size: 0.8rem; }
+}
+
+/* Strong override to ensure Resultaten and Dashboard tiles match exactly.
+   These styles intentionally use higher specificity and !important to avoid
+   legacy overrides that caused inconsistent sizing across pages. */
+.result-tiles .chart-tiles {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: var(--chart-max-width) !important;
+    margin: 0 auto !important;
+}
+.result-tiles .chart-tiles .chart-tile,
+.result-tiles .chart-tiles .stat-card.chart-tile {
+    height: auto !important;
+    /* reduce vertical size to match Resultaten tiles */
+    min-height: 120px !important;
+    padding: 12px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+    border-radius: 12px !important;
+}
+.result-tiles .chart-tiles .stat-icon {
+    width:32px !important;
+    height:32px !important;
+    min-width:32px !important;
+    font-size:18px !important;
+    margin-right:12px !important;
+}
+.result-tiles .chart-tiles .stat-label { font-size:15px !important; font-weight:700 !important; }
+.result-tiles .chart-tiles .stat-value { font-size:20px !important; font-weight:700 !important; }
+.result-tiles .chart-tiles .stat-sub, .result-tiles .chart-tiles .stat-meta { font-size:13px !important; }
+
+/* Unified panel/card style used across Generator, Dashboard main panel and Resultaten */
+.app-panel {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 10px 30px rgba(2,6,23,0.06);
+    box-sizing: border-box;
+    min-height: 140px;
+}
+
+/* Ensure card children align with app-panel spacing */
+.app-panel .card-body {
+    padding: 0;
+    background: transparent;
+}
+
+/* Resultaten-specific panel tweaks: ensure a visible header and white content area
+   so the results section mirrors the dashboard chart card with title on top and
+   a white inner panel containing data. Use higher specificity to override
+   general .app-panel rules. */
+.app-panel.resultaten-body .card-body {
+    padding: 16px !important;
+    background: #ffffff !important;
+}
+.app-panel.resultaten-body .card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.app-panel.resultaten-body .text-muted.small {
+    margin-top: 2px;
+}
+
+/* Make accordion entries sit on a slightly off-white surface to match dashboard tiles */
+.app-panel.resultaten-body .accordion .accordion-item {
+    background: transparent !important;
+    border: none !important;
+}
+.app-panel.resultaten-body .accordion .accordion-body {
+    background: #ffffff;
+    padding: 12px 8px;
+}
+
+/* Generated files list styling */
+.generated-list { display: flex; flex-direction: column; gap: 8px; }
+.generated-item { padding: 12px 14px; border-radius: 10px; background: #fbfcfd; box-shadow: 0 6px 18px rgba(2,6,23,0.03); }
+.generated-item:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(2,6,23,0.05); }
+.generated-item .fw-bold { font-size: 0.98rem; }
+.generated-item.selected { outline: 2px solid rgba(13,110,253,0.12); background: linear-gradient(180deg,#ffffff,#f7fbff); }
+.generated-item .text-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.generated-item .form-check { margin: 0; }
+
+/* Make download button more compact and visual */
+.generated-item .btn-outline-primary { padding: 6px 8px; }
+.generated-item .btn-outline-secondary { padding: 6px 8px; }
+
+/* Small helper for select-all area */
+#select-all-generated { margin-right: 6px; }
+
+/* Make chart-tile, stat-card and main panels share same inner spacing when used as .app-panel */
+.app-panel .chart-tile, .app-panel .stat-card { padding: 12px 14px; min-height: 120px; align-items: center; }
+
+/* When used on the tile wrapper, center and constrain width to match chart area */
+.chart-tiles-wrapper.app-panel, .result-tiles.app-panel {
+    max-width: var(--chart-max-width);
+    margin: 0 auto 1rem;
+    padding: 12px;
+}
+
+/* Ensure chart-tiles inside app-panel have matching inner spacing */
+.chart-tiles-wrapper.app-panel .chart-tiles, .result-tiles.app-panel .chart-tiles {
+    gap: 8px;
+}
+
+/* Utility classes to replace inline styles in templates */
+.fixed-top-right { z-index: 11; }
+.bg-preview { background: #f8f9fa; }
+.pre-wrap { white-space: pre-wrap; word-break: break-word; }
+.max-chart-width { max-width: var(--chart-max-width); }
+.design-preview-wrapper { width:100%; display:flex; justify-content:center; }
+.design-preview-iframe { border: 1px solid rgba(0,0,0,0.08); border-radius:8px; }
+#chart-widgets { min-width:220px; margin-left:auto; }
+#chart-alerts { min-width:200px; text-align:right; }
+.chart-area { position: relative; height: 320px; }
+#dashboard-chart { max-height: 320px; }
+.chart-hidden { display:none; }
+.chart-pt48 { padding-top: 3rem; }
+.chart-drilldown { display:block; margin-top:12px; }
+.login-left-inner { max-width:520px; }
+.logo-small { height:44px; }
+
+/* Tighter override for Resultaten card-body that previously used inline styles */
+.app-panel.resultaten-body { border: 1px solid #E5E7EB; }

@@ -1,0 +1,25 @@
+# cleanup_deletions.patch
+# Created by GitHub Copilot assistant on 2025-11-28
+# This file records deletions performed to remove generated/large/backup files
+
+Deleted paths:
+- build/ (entire directory)
+- dist/ (entire directory)
+- results_screenshots/ (images)
+- results/ (root) - was empty
+- web/resultaten/ (generated sample outputs)
+- output.xml (root)
+- log.html (root)
+- report.html (root)
+- tools/archived_backup_20251125.zip
+- tools/archived_backup_20251125.zip
+- requirements-dev.txt.bak
+- requirements.txt.bak
+- temp_chart.js
+- temp_dashboard.js
+- changes.patch (existing file)
+- all __pycache__ directories under project
+
+NOTE: I did NOT delete `.venv` or `.venv_dev` to avoid breaking an active development environment. If you want those removed too, tell me and I will do so after confirming your virtualenv is not active.
+
+If you need me to create a git commit or actually generate a unified diff, tell me and I will run git commands to produce a proper patch file.

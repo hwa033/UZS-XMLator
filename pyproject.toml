@@ -1,0 +1,21 @@
+[tool.ruff]
+line-length = 88
+select = ["E", "F", "W", "I", "C", "UP", "A"]
+extend-ignore = ["E203", "W503"]
+exclude = [".venv", ".venv_dev", "build", "dist", ".git", "node_modules"]
+
+[tool.black]
+line-length = 88
+target-version = ['py311']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["web", "tools"]
+default_section = "THIRDPARTY"
+[tool.ruff.formatting]
+enabled = true
+
+# merged ruff settings — keep single [tool.ruff] section above
+# additional excludes
+# (tools/archived and results_screenshots were merged into the main exclude list)

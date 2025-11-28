@@ -1,0 +1,162 @@
+{% extends '_base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrap">
+    <div class="dashboard-main">
+        <section class="hero mb-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-0">Dashboard</h1>
+                <p class="page-subtitle mb-0">Overzicht van testuitvoeringen</p>
+            </div>
+                <div class="d-flex align-items-center gap-2">
+                <a href="{{ url_for('genereer_xml') }}" id="open-genereer-xml-btn" class="btn btn-sm btn-outline-primary me-2">Genereer XML</a>
+            </div>
+        </section>
+
+        <!-- Top tiles moved into the chart panel to align with chart width -->
+
+        <!-- Tiles: three equal columns matching the chart container width, placed directly below the hero -->
+        <section class="result-tiles mb-4 app-panel" aria-label="Dashboard samenvatting">
+            <div class="chart-tiles" role="group" aria-label="Snelstatistieken XML Verwerking">
+                <div class="stat-link" role="group" aria-label="Laatste generatie">
+                    <div class="stat-card uws-success chart-tile" aria-live="polite">
+                        <div class="stat-icon" aria-hidden="true"><i class="bi bi-check-circle"></i></div>
+                        <div class="stat-body">
+                            <div id="label-lastgen" class="stat-label">Laatste generatie</div>
+                            <div class="stat-value" id="last-test-status">{{ last_test_status if last_test_status is not none else '—' }}</div>
+                            <div class="stat-sub" id="last-test-time">{{ last_test_time if last_test_time is not none else '&nbsp;' }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-link" role="group" aria-label="Gegenereerd totaal">
+                    <div class="stat-card neutral-gray chart-tile" aria-live="polite">
+                        <div class="stat-icon" aria-hidden="true"><i class="bi bi-activity"></i></div>
+                        <div class="stat-body">
+                            <div id="label-total" class="stat-label">Gegenereerd totaal</div>
+                            <div class="stat-value" id="total-tests">{{ total_tests if total_tests is not none else '—' }}</div>
+                            <div class="stat-sub">Bestanden</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-link" role="group" aria-label="Succes percentage">
+                    <div class="stat-card neutral-gray chart-tile" aria-live="polite">
+                        <div class="stat-icon" aria-hidden="true"><i class="bi bi-percent"></i></div>
+                        <div class="stat-body">
+                            <div id="label-success" class="stat-label">Succes %</div>
+                            <div class="stat-value" id="success-rate">{{ success_rate if success_rate is not none else '—' }}</div>
+                            <div class="stat-sub">Van alle gegenereerde XML's</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="main-panel card mb-4 app-panel">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="card-title mb-1">XML Verwerking</h5>
+                        <div class="text-muted small">Aantal gegenereerde XML's en afleveringssucces per dag</div>
+                        <div id="chart-status" class="small text-muted d-none mt-2">&nbsp;</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 w-100">
+                        <label for="chart-range-select" class="visually-hidden">Periode</label>
+                        <select id="chart-range-select" class="form-select form-select-sm" aria-label="Periode filter voor grafiek (Laatste X dagen)" aria-controls="dashboard-chart">
+                            <option value="7">Laatste 7 dagen</option>
+                            <option value="14">Laatste 14 dagen</option>
+                            <option value="30">Laatste 30 dagen</option>
+                        </select>
+                        <!-- Mode selector hidden to simplify UI (default view shows counts + Success %). -->
+                        <select id="chart-mode-select" class="form-select form-select-sm d-none">
+                            <option value="stacked">Stacked: success vs failure</option>
+                            <option value="dual">Counts + Success %</option>
+                            <option value="throughput">Throughput (count/day)</option>
+                        </select>
+                        <!-- Manual legend removed: Chart.js built-in legend will be shown at the right. -->
+                        <button id="open-report-btn" class="btn btn-outline-secondary btn-sm ms-2">Rapport</button>
+                        <div id="chart-widgets" class="ms-3 d-none text-end small">
+                            <!-- populated by JS: total, avg success, worst day, last generated -->
+                        </div>
+                        <div id="chart-alerts" class="ms-2"></div>
+                    </div>
+                </div>
+                <div class="chart-area">
+                    <!-- chart-loading removed: no loading overlay shown -->
+                    <canvas id="dashboard-chart" role="img" aria-label="XML Verwerking grafiek: gegroepeerde balken voor geslaagd en gefaald en lijn voor succespercentage"></canvas>
+                    <div id="chart-error" class="text-center small text-muted d-none chart-pt48">
+                        Grafiek niet beschikbaar (Chart.js niet geladen). Controleer je internetverbinding of gebruik de lokale fallback.
+                    </div>
+                    <div id="chart-no-data" class="text-center small text-muted d-none chart-pt48">
+                        Geen grafiekgegevens beschikbaar.
+                    </div>
+                    <!-- Drilldown table area (populated when clicking een date) -->
+                    <div id="chart-drilldown" class="chart-drilldown">&nbsp;</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rapport modal (client-only) -->
+        <div class="modal fade" id="reportModal" tabindex="-1" aria-labelledby="reportModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="reportModalLabel">Genereer Rapport</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-2">
+                            <label for="report-days" class="form-label small">Periode</label>
+                            <select id="report-days" class="form-select form-select-sm">
+                                <option value="7">Laatste 7 dagen</option>
+                                <option value="30">Laatste 30 dagen</option>
+                                <option value="90">Laatste 90 dagen</option>
+                            </select>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" value="geslaagd" id="report-geslaagd" checked>
+                            <label class="form-check-label small" for="report-geslaagd">Inclusief Geslaagd</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" value="gefaald" id="report-gefaald" checked>
+                            <label class="form-check-label small" for="report-gefaald">Inclusief Gefaald</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="checkbox" value="totaal" id="report-totaal" checked>
+                            <label class="form-check-label small" for="report-totaal">Inclusief Totaal</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Sluiten</button>
+                        <button id="generate-report-btn" type="button" class="btn btn-outline-primary btn-sm">Genereer en download</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="mb-2">Recente Activiteit</h6>
+                        <div id="recent-activity" class="small text-muted">Nog geen recente activiteit gevonden.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="mb-2">XML Generatie</h6>
+                        <p class="small text-muted">Genereer XML's met de ingebouwde generator en testdata.</p>
+                        <div class="d-flex gap-2">
+                            <a href="{{ url_for('genereer_xml') }}" class="btn btn-outline-primary btn-sm">Generator openen</a>
+                            <button id="stop-tests-btn" class="btn btn-danger btn-sm d-none">Stop Uitvoering</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

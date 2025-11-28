@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-toolsai.jupyter",
+    "bungcip.better-toml",
+    "ms-python.black-formatter",
+    "ms-python.isort",
+    "eamodio.gitlens"
+  ],
+  "unwantedRecommendations": []
+}
