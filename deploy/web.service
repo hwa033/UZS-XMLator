@@ -1,0 +1,16 @@
+[Unit]
+Description=XML Automation Web App
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/xml-automation-clean
+Environment=FLASK_ENV=production
+Environment=SECRET_KEY=change-me
+Environment=DOWNLOADS_DIR=/opt/xml-automation-clean/web/static/downloads
+ExecStart=/opt/xml-automation-clean/.venv/bin/waitress-serve --host=127.0.0.1 --port=5000 web.app:app
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

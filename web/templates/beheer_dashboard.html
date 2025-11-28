@@ -1,0 +1,55 @@
+{% extends '_base.html' %}
+
+{% block title %}Beheer{% endblock %}
+
+{% block content %}
+<section class="hero mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h4 mb-0">Beheer</h1>
+        <p class="text-muted small mb-0">Systeembeheer en administratieve taken</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-light">Terug</a>
+        <a href="/beheer/logout" class="btn btn-outline-light">Uitloggen</a>
+    </div>
+</section>
+
+<div class="container mt-2">
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <strong>Gebruikersbeheer</strong>
+                </div>
+                <div class="card-body">
+                    <p>Beheer gebruikers, wachtwoorden en rollen (uitbreidbaar).</p>
+                    <button class="btn btn-outline-info" disabled>Beheren</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <strong>Testresultaten</strong>
+                </div>
+                <div class="card-body">
+                    <p>Bekijk en beheer testhistorie en resultaten.</p>
+                    <a href="{{ url_for('resultaten_pagina') }}" class="btn btn-outline-warning">Bekijk Resultaten</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <strong>Systeeminstellingen</strong>
+                </div>
+                <div class="card-body">
+                    <p>Beheer systeeminstellingen, logging en onderhoud.</p>
+                    <a href="{{ url_for('instellingen.index') if false else '/instellingen' }}" class="btn btn-outline-danger">Instellingen</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

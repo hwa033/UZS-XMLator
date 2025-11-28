@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+
+# Environment
+.venv/
+.env
+
+# Git
+.git/
+.gitignore
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# VSCode
+.vscode/
+
+# Logs
+*.log

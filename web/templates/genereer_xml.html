@@ -1,0 +1,56 @@
+{% extends '_base.html' %}
+
+{% block title %}Genereer XML{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h1 class="mb-3">Genereer XML (Bulk)</h1>
+            <p class="text-muted">Upload een Excel-bestand om meerdere aanvragen in één keer te genereren.</p>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form action="{{ url_for('upload_excel') }}" method="post" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="excel_file" class="form-label">Excel-bestand (.xlsx)</label>
+                            <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="aanvraag_type_bulk" class="form-label">Type aanvraag</label>
+                            <select name="aanvraag_type" id="aanvraag_type_bulk" class="form-select">
+                                <option value="ZBM">ZBM</option>
+                                <option value="VM">VM</option>
+                                <option value="Digipoort">Digipoort</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary">Upload & Genereer</button>
+                    </form>
+                </div>
+            </div>
+
+            {% if bulk_results %}
+                <div class="card">
+                    <div class="card-body">
+                        <h5>Resultaat</h5>
+                        <p>Gegenereerd: <strong>{{ bulk_results.generated|length }}</strong></p>
+                        {% if bulk_zip %}
+                            <p>Download: <a href="{{ url_for('download_generated', filename=bulk_zip) }}">{{ bulk_zip }}</a></p>
+                        {% endif %}
+                        {% if bulk_results.errors %}
+                            <div class="alert alert-warning">Er waren {{ bulk_results.errors|length }} fouten.</div>
+                            <ul>
+                                {% for e in bulk_results.errors %}
+                                    <li>{{ e }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+

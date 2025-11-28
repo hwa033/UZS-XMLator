@@ -1,0 +1,11 @@
+# Cleaned runtime requirements generated from source imports
+# These are minimal runtime packages detected as used by the app.
+Flask
+lxml
+openpyxl
+PyYAML
+waitress
+
+# Notes:
+# - This file is a suggestion. Pin versions before production deployment.
+# - If you need Robot Framework test runtime, keep `robotframework` in a separate test requirements file.

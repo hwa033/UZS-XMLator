@@ -1,0 +1,10 @@
+# Minimal runtime requirements used by the app (unpinned)
+Flask
+lxml
+openpyxl
+PyYAML
+waitress
+
+# Notes:
+# - This file intentionally lists only the minimal runtime packages detected in the source.
+# - Pin versions for production deployments (see explanation in the project docs).
