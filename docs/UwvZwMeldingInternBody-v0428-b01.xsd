@@ -1,0 +1,679 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<!-- XML Definition of message hierarchy                                              -->
+<!-- Message:             UWV ZW melding intern body v4.2.8                           -->
+<!-- Message Rev.:        10                                                          -->
+<!-- Transaction:         UQ - UZS interne werkgeversmelding                          -->
+<!-- Transaction Rev.:    11                                                          -->
+<!-- Datamodel:           UWV COGEM, version 6.0                                      -->
+<!-- Definition type:     W3C Schema (http://www.w3.org/XML/Schema)                   -->
+<!-- XML tagset used:     UwvML                                                       -->
+<!-- Modified at:         23-06-2023 11:30:00                                         -->
+<!-- Manual modified by:  Ahmet Car                                                   -->
+<!-- Organisation:        UWV (UWV)                                                   -->
+<!-- NOTE:    Additional rules/conditions regarding the definition may exist, see functional hierarchical specification -->
+<xsd:schema targetNamespace="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"
+		elementFormDefault="qualified" attributeFormDefault="unqualified" version="04.22.01"
+		xmlns:str="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"
+		xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+		xmlns:uwv4="http://schemas.uwv.nl/UwvML/UwvML-BaseTypes-v0441">
+	<xsd:import namespace="http://schemas.uwv.nl/UwvML/UwvML-BaseTypes-v0441" schemaLocation="UwvML-BaseTypes-v0441.xsd"/>
+	<xsd:element name="UwvZwMeldingInternBody">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element name="CdBerichtType">
+					<!-- CODE BERICHT TYPE: FORMAT: AN..4 (codelist subset) -->
+					<xsd:simpleType>
+						<xsd:restriction base="xsd:string">
+							<xsd:maxLength value="4"/>
+							<xsd:pattern value="[A-Z0-9]*"/>
+							<xsd:enumeration value="KCC">
+								<xsd:annotation>
+									<xsd:documentation>Klant Contact Centrum</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+							<xsd:enumeration value="OTP1">
+								<xsd:annotation>
+									<xsd:documentation>UZS: OTP plateau 1 bericht</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+							<xsd:enumeration value="OTP3">
+								<xsd:annotation>
+									<xsd:documentation>UZS: OTP plateau 3 bericht</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+							<xsd:enumeration value="RFE">
+								<xsd:annotation>
+									<xsd:documentation>UZS: Reflex bericht Edifact</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+							<xsd:enumeration value="RFV">
+								<xsd:annotation>
+									<xsd:documentation>UZS: Reflex bericht met vaste veldlengte</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+							<xsd:enumeration value="RFX">
+								<xsd:annotation>
+									<xsd:documentation>UZS: Reflex Bericht XML</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+							<xsd:enumeration value="VM">
+								<xsd:annotation>
+									<xsd:documentation>Verzuimmelder</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+							<xsd:enumeration value="ZBM">
+								<xsd:annotation>
+									<xsd:documentation>Ziek- en Betermelder</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+							<xsd:enumeration value="KAAN">
+								<xsd:annotation>
+									<xsd:documentation>KIA Aanvraag</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+							<xsd:enumeration value="ZBMA">
+								<xsd:annotation>
+									<xsd:documentation>Ziek- en Betermelder App</xsd:documentation>
+								</xsd:annotation>
+							</xsd:enumeration>
+						</xsd:restriction>
+					</xsd:simpleType>
+				</xsd:element>
+				<xsd:element name="OrigineelBronbestand" minOccurs="0" type="uwv4:StdTekstAnVar"/>
+				<xsd:element name="IndAlleenControleUzs" minOccurs="0" type="uwv4:StdIndJN"/>
+				<xsd:element name="Ketenpartij" minOccurs="0" maxOccurs="2">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="FiscaalNr" minOccurs="0" type="uwv4:StdSofinummerBsn"/>
+							<xsd:element name="Loonheffingennr" minOccurs="0" type="uwv4:StdLoonheffingennr"/>
+							<xsd:element name="Naam" minOccurs="0" type="uwv4:StdTekstAnVar256"/>
+							<xsd:element name="AansluitingsnrBv" minOccurs="0" type="uwv4:StdAansluitingsnrBV"/>
+							<xsd:element name="CdRolKetenpartij" minOccurs="0" type="str:StdCdRolKetenpartij"/>
+							<xsd:element name="CdSrtIndiener" minOccurs="0" type="str:StdCdSrtIndiener"/>
+							<xsd:element name="NaamSoftwarePakket" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="VersieSoftwarePakket" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="BerichtkenmerkIndiener" minOccurs="0" type="str:StdBerichtkenmerkAanleveraar"/>
+							<xsd:element name="VolgNr" minOccurs="0" type="str:StdVolgnrVar8"/>
+							<xsd:element name="Contactgegevens" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="NaamContactpersoonAfd" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+										<xsd:element name="TelefoonnrContactpersoonAfd" minOccurs="0" type="str:StdTelefoonnr11"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="NatuurlijkPersoon" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="Burgerservicenr" type="uwv4:StdReferentienrN9"/>
+							<xsd:element name="Geboortedat" type="uwv4:StdDatDeelsFictief"/>
+							<xsd:element name="IndOverlijden" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="Geslacht" minOccurs="0" type="uwv4:StdGeslacht"/>
+							<xsd:element name="EersteVoornaam" minOccurs="0" type="uwv4:StdEersteVoornaam"/>
+							<xsd:element name="Voorletters" minOccurs="0" type="uwv4:StdVoorletters"/>
+							<xsd:element name="Voorvoegsel" minOccurs="0" type="uwv4:StdVoorvoegsel"/>
+							<xsd:element name="SignificantDeelVanDeAchternaam" minOccurs="0" type="uwv4:StdSignificantDeelAchtern"/>
+							<xsd:element name="Telefoonnr" minOccurs="0" type="str:StdTelefoonnr11"/>
+							<xsd:element name="TelefoonnrMobiel" minOccurs="0" type="str:StdTelefoonnr11"/>
+							<xsd:element name="TelefoonnrBuitenland" minOccurs="0" type="uwv4:StdTelefoonnrBuitenland"/>
+							<xsd:element name="Bankrekening" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="Bankrekeningnr" minOccurs="0" type="uwv4:StdBankrekeningnr"/>
+										<xsd:element name="Bic" minOccurs="0" type="uwv4:StdBic"/>
+										<xsd:element name="Iban" minOccurs="0" type="uwv4:StdIban"/>
+										<xsd:element name="NaamBank" minOccurs="0" type="uwv4:StdTekstAnVar200"/>
+										<xsd:element name="WoonplaatsnaamBuitenland" minOccurs="0" type="uwv4:StdTekstAnVar80"/>
+										<xsd:element name="LandcodeIso" minOccurs="0" type="uwv4:StdLandcodeIso"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="Adres" minOccurs="0" maxOccurs="unbounded">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="CdAdresrol" type="uwv4:StdCdAdresrol"/>
+							<xsd:element name="DatB" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="DatE" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="StraatadresNederland" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="Straatnaam" minOccurs="0" type="uwv4:StdStraatnaam"/>
+										<xsd:element name="Huisnr" minOccurs="0" type="uwv4:StdHuisnr"/>
+										<xsd:element name="Huisnrtoevoeging" minOccurs="0" type="uwv4:StdTekstAnVar4"/>
+										<xsd:element name="Postcd" minOccurs="0" type="uwv4:StdPostcd"/>
+										<xsd:element name="Woonplaatsnaam" minOccurs="0" type="uwv4:StdWoonplaatsnaam"/>
+										<xsd:element name="Woonbootverwijzing" minOccurs="0" type="uwv4:StdWoonbootverwijzing"/>
+										<xsd:element name="Woonwagenverwijzing" minOccurs="0" type="uwv4:StdWoonwagenverwijzing"/>
+										<xsd:element name="Locatieoms" minOccurs="0" type="uwv4:StdTekstAnVar128"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+							<xsd:element name="StraatadresBuitenland" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="StraatnaamBuitenland" minOccurs="0" type="uwv4:StdStraatnaam"/>
+										<xsd:element name="HuisnrBuitenland" minOccurs="0" type="uwv4:StdHuisnrBuitenland"/>
+										<xsd:element name="PostcdBuitenland" minOccurs="0" type="uwv4:StdPostcdBuitenland"/>
+										<xsd:element name="WoonplaatsnaamBuitenland" minOccurs="0" type="uwv4:StdWoonplaatsnaam"/>
+										<xsd:element name="RegionaamBuitenland" minOccurs="0" type="uwv4:StdTekstAnVar32"/>
+										<xsd:element name="LocatieomsBuitenland" minOccurs="0" type="uwv4:StdTekstAnVar128"/>
+										<xsd:element name="LandcodeIso" minOccurs="0" type="uwv4:StdLandcodeIso"/>
+										<xsd:element name="Landsnaam" minOccurs="0" type="uwv4:StdLandsnaam"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="Contactgegevens" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="NaamContactpersoonAfd" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="Geslacht" minOccurs="0" type="uwv4:StdGeslacht"/>
+							<xsd:element name="TelefoonnrContactpersoonAfd" minOccurs="0" type="str:StdTelefoonnr11"/>
+							<xsd:element name="NrLokaleVestiging" minOccurs="0" type="uwv4:StdReferentienrAnVar32"/>
+							<xsd:element name="EMailAdres" minOccurs="0" type="uwv4:StdEmailAdres"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="MeldingZiekte" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="IndVerzoekTotIntrekken" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="ReferentieMelding" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="DatTijdOpstellenMelding" minOccurs="0" type="uwv4:StdDatTijd14"/>
+							<xsd:element name="DatOntvangstMeldingWerkgever" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="DatEersteAoDag" type="uwv4:StdDatIso"/>
+							<xsd:element name="ToelichtingMelding" minOccurs="0" type="str:StdTekstAnVar4096"/>
+							<xsd:element name="IndWerkverplichtingEersteAoDag" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="IndDirecteUitkering" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="CdRedenAangifteAo" minOccurs="0" type="uwv4:StdCdRedenAangifteAo"/>
+							<xsd:element name="CdRedenZiekmelding" minOccurs="0">
+								<!-- CODE REDEN ZIEKMELDING: FORMAT: N2 (codelist subset) -->
+								<xsd:simpleType>
+									<xsd:restriction base="xsd:string">
+										<xsd:length value="2"/>
+										<xsd:pattern value="\d*"/>
+										<xsd:enumeration value="01">
+											<xsd:annotation>
+												<xsd:documentation>Toeslag op loon (aanvraag)</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+										<xsd:enumeration value="02">
+											<xsd:annotation>
+												<xsd:documentation>Adoptieverlof</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+										<xsd:enumeration value="03">
+											<xsd:annotation>
+												<xsd:documentation>Pleegzorgverlof</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+										<xsd:enumeration value="04">
+											<xsd:annotation>
+												<xsd:documentation>Zwangerschaps/bevallingsverlof</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+										<xsd:enumeration value="05">
+											<xsd:annotation>
+												<xsd:documentation>Ziek tgv bevalling</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+										<xsd:enumeration value="06">
+											<xsd:annotation>
+												<xsd:documentation>Ziek/anders</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+										<xsd:enumeration value="07">
+											<xsd:annotation>
+												<xsd:documentation>Orgaandonatie</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+										<xsd:enumeration value="08">
+											<xsd:annotation>
+												<xsd:documentation>Ziek ivm zwangerschap</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+										<xsd:enumeration value="99">
+											<xsd:annotation>
+												<xsd:documentation>Overig</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+									</xsd:restriction>
+								</xsd:simpleType>
+							</xsd:element>
+							<xsd:element name="DatLaatsteGewerkteDag" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="DatEersteWerkdag" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="AantGewerkteUrenEersteAoDag" minOccurs="0" type="uwv4:StdTijdsduurEtmaal4"/>
+							<xsd:element name="AantRoosterurenEersteAoDag" minOccurs="0" type="uwv4:StdTijdsduurEtmaal4"/>
+							<xsd:element name="IndWerkdagOpZaterdag" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="IndWerkdagOpZondag" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="IndVoldoenTakenWerkmap" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="IndAkkControlevoorschriften" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="BedrSvLoonGedWerkenEersteAoDag" minOccurs="0" type="uwv4:StdBedrDec2"/>
+							<xsd:element name="BedrSvLoonPerDagGedWerkenTijdAo" minOccurs="0" type="uwv4:StdBedrDec2"/>
+							<xsd:element name="BedrWswSubsidieExclWgpremies" minOccurs="0" type="uwv4:StdBedrDec2"/>
+							<xsd:element name="CdRedenRegres" minOccurs="0" type="uwv4:StdCdRedenRegres"/>
+							<xsd:element name="OmsRedenTeLateAanvraagUitkering" minOccurs="0" type="uwv4:StdTekstAnVar256"/>
+							<xsd:element name="GemiddeldAantWerkurenPerWeek" minOccurs="0" type="uwv4:StdTijdsduur4"/>
+							<xsd:element name="CdRedenToepassenArt29bZw" minOccurs="0" type="uwv4:StdCdRedenToepassenArt29bZw"/>
+							<xsd:element name="IndEDnstvrbndCtrTijdensZiekte" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="DatVerwachtHerstel" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="IndErdMelding" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="OproepInvalZiekUitDienstMld" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="DatOpzeggenArbeidsovereenkomst" minOccurs="0" type="uwv4:StdDatIso"/>
+										<xsd:element name="CdInitiatiefnemerOntslag" minOccurs="0" type="uwv4:StdCdInitiatiefnemerOntslag"/>
+										<xsd:element name="IndOntslagOpStaandeVoet" minOccurs="0" type="uwv4:StdIndJN"/>
+										<xsd:element name="AantKerenOpgeroepenVoorArbeid" minOccurs="0" type="uwv4:StdAantNietNegatiefVar4"/>
+										<xsd:element name="IndOndAokVoldoetAanToegestanePer" minOccurs="0" type="uwv4:StdIndJN"/>
+										<xsd:element name="NrEersteAokVanOpeenvolgendeReeks" minOccurs="0" type="uwv4:StdVolgnrVar4"/>
+										<xsd:element name="IndDuurAokLangerDanToegestanePer" minOccurs="0" type="uwv4:StdIndJN"/>
+										<xsd:element name="AantArbeidsovereenkBepaaldeTijd" minOccurs="0" type="uwv4:StdAantNietNegatiefVar2"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="MeldingWazo" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="DatBevalling" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="IndVerzoekTotIntrekken" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="ReferentieMelding" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="DatTijdOpstellenMelding" minOccurs="0" type="uwv4:StdDatTijd14"/>
+							<xsd:element name="ToelichtingMelding" minOccurs="0" type="str:StdTekstAnVar4096"/>
+							<xsd:element name="IndDirecteUitkering" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="CdRedenAanvraagWazo" minOccurs="0" type="str:StdCdRedenAanvraagWazo"/>
+							<xsd:element name="IndSpecialeSituatie" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="DatGewensteAanvangWazoVerlof" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="DatVermoedelijkeBevalling" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="AantWekenAanvGeboorteverlof" minOccurs="0" type="str:StdAantNietNegatief1"/>
+							<xsd:element name="IndGeboorteverlofOpgenomen" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="CdRedenAanvraagUitkWibo" minOccurs="0" type="str:StdCdRedenAanvraagUitkWibo"/>
+							<xsd:element name="AantKinderenAanvraagUitkering" minOccurs="0" type="uwv4:StdAantNietNegatiefVar2"/>
+							<xsd:element name="DatBRedenAanvraagUitkWibo" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="IndVerzorgingKind" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="CdTypeBelanghebbende" minOccurs="0" type="str:StdCdTypeBelanghebbende"/>
+							<xsd:element name="DatBBetaalverzoek" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="AantWekenVerlof" minOccurs="0" type="uwv4:StdAantNietNegatiefVar2"/>
+							<xsd:element name="IndVerlofOpgenomen" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="GemiddeldAantWerkurenPerWeek" minOccurs="0" type="uwv4:StdTijdsduur4"/>
+							<xsd:element name="AanvraagWazoZez" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="KvkNr" minOccurs="0" type="uwv4:StdKvkNr"/>
+										<xsd:element name="WerkzaamhedenMeewerkPartner" minOccurs="0" type="uwv4:StdTekstAnVar500"/>
+										<xsd:element name="IndHeelKalenderjaarZez" minOccurs="0" type="uwv4:StdIndJN"/>
+										<xsd:element name="RedenGeenHeelKalenderjrZez" minOccurs="0" type="uwv4:StdTekstAnVar500"/>
+										<xsd:element name="BedrInkomenVoorgaandKalenderjrZez" minOccurs="0" type="uwv4:StdBedrDec2"/>
+										<xsd:element name="BedrInkomenJrVanZez" minOccurs="0" type="uwv4:StdBedrDec2"/>
+										<xsd:element name="JrInkomstenbelasting" minOccurs="0" type="uwv4:StdJaar"/>
+										<xsd:element name="IndUrencriteriumZez" minOccurs="0" type="uwv4:StdIndJN"/>
+										<xsd:element name="TypeBelanghebbendeZez" minOccurs="0" type="uwv4:StdCdTypeBelanghebbendeAanvraagWazoZez"/>
+										<xsd:element name="IndVrijwilligeVerzekeringZiektewet" minOccurs="0" type="uwv4:StdIndJN"/>
+										<xsd:element name="DatEersteWerkdagZez" minOccurs="0" type="uwv4:StdDatIso"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="MeldingBetaalverzoek" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="DatBBetaalverzoek" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="AantWekenVerlof" minOccurs="0" type="uwv4:StdAantNietNegatiefVar2"/>
+							<xsd:element name="IndVerlofOpgenomen" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="DatGewensteAanvangWazoVerlof" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="ReferentieMelding" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="DatTijdOpstellenMelding" minOccurs="0" type="uwv4:StdDatTijd14"/>
+	   					        <xsd:element name="IndVerzoekTotIntrekken" minOccurs="0" type="uwv4:StdIndJN"/>
+						        <xsd:element name="IndDirecteUitkering" minOccurs="0" type="uwv4:StdIndJN"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="MeldingWerkhervatting" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="IndVerzoekTotIntrekken" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="ReferentieMelding" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="DatTijdOpstellenMelding" minOccurs="0" type="uwv4:StdDatTijd14"/>
+							<xsd:element name="DatOntvangstMeldingWerkgever" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="DatEersteAoDag" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="WerkhervattingGedeeltelijk" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="DatGedeeltelijkeWerkhervatting" minOccurs="0" type="uwv4:StdDatIso"/>
+										<xsd:element name="BedrSvLoonPerDagGedWerkenTijdAo" minOccurs="0" type="uwv4:StdBedrDec2"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+							<xsd:element name="VolledigHersteld" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="DatHersteld" minOccurs="0" type="uwv4:StdDatIso"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="MeldingIntrekking" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="ReferentieMelding" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="DatEersteAoDag" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="CdRedenMeldingIntrekken" minOccurs="0" type="uwv4:StdCdRedenMeldingIntrekken"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="MeldingLangdurigAo" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="IndVerzoekTotIntrekken" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="ReferentieMelding" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="DatEersteAoDag" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="IndOnafgebrokenAo" minOccurs="0" type="uwv4:StdIndJN"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="MeldingHersteldLangdurigAo" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="IndVerzoekTotIntrekken" minOccurs="0" type="uwv4:StdIndJN"/>
+							<xsd:element name="ReferentieMelding" minOccurs="0" type="uwv4:StdTekstAnVar64"/>
+							<xsd:element name="DatHersteld" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="DatEersteAoDag" minOccurs="0" type="uwv4:StdDatIso"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="AoPeriode" minOccurs="0" maxOccurs="unbounded">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="DatEersteAoDag" minOccurs="0" type="uwv4:StdDatIso"/>
+							<xsd:element name="DatLaatsteAoDag" minOccurs="0" type="uwv4:StdDatIso"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="AdministratieveEenheid" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="Loonheffingennr" minOccurs="0" type="uwv4:StdLoonheffingennr"/>
+							<xsd:element name="Naam" minOccurs="0" type="uwv4:StdTekstAnVar256"/>
+							<xsd:element name="AansluitingsnrBv" minOccurs="0" type="uwv4:StdAansluitingsnrBV"/>
+							<xsd:element name="Bankrekening" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="Bankrekeningnr" minOccurs="0" type="uwv4:StdBankrekeningnr"/>
+										<xsd:element name="Bic" minOccurs="0" type="uwv4:StdBic"/>
+										<xsd:element name="Iban" minOccurs="0" type="uwv4:StdIban"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+							<xsd:element name="SectorRisicogroep" minOccurs="0" maxOccurs="unbounded">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="CdRisicopremiegroep" minOccurs="0" type="uwv4:StdCdRisicopremiegroep"/>
+										<xsd:element name="CdSectorOsv" minOccurs="0" type="uwv4:StdCdSectorOsv"/>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+							<xsd:element name="Arbeidsverhouding" minOccurs="0">
+								<xsd:complexType>
+									<xsd:sequence>
+										<xsd:element name="Volgnr" minOccurs="0" type="uwv4:StdVolgnrVar4"/>
+										<xsd:element name="IndLoonheffingskorting" minOccurs="0" type="uwv4:StdIndJN"/>
+										<xsd:element name="Personeelsnr" minOccurs="0" type="uwv4:StdPersoneelsnummer"/>
+										<xsd:element name="NaamBeroepOngecodeerd" minOccurs="0" type="uwv4:StdTekstAnVar128"/>
+										<xsd:element name="CdAardArbv" minOccurs="0" type="uwv4:StdCdAardArbeidsverhouding"/>
+										<xsd:element name="CdFaseIndelingWfz" minOccurs="0" type="uwv4:StdCdFaseIndelingWfz"/>
+										<xsd:element name="CdLbtabel" minOccurs="0" type="uwv4:StdCdLoonbelastingtabel"/>
+										<xsd:element name="DatB" minOccurs="0" type="uwv4:StdDatIso"/>
+										<xsd:element name="DatE" minOccurs="0" type="uwv4:StdDatIso"/>
+										<xsd:element name="AantLoonwachtdagen" minOccurs="0" type="uwv4:StdAantNietNegatiefVar2"/>
+										<xsd:element name="PercLoondoorbetalingTijdensAo" minOccurs="0" type="uwv4:StdPercNietNegatiefDec2"/>
+										<xsd:element name="IndArbeidsgehandicapt" minOccurs="0" type="uwv4:StdIndJN"/>
+										<xsd:element name="OproepInvalZiekUitDienstArbv" minOccurs="0">
+											<xsd:complexType>
+												<xsd:sequence>
+													<xsd:element name="CdContractOnbepaaldeTijd" minOccurs="0" type="uwv4:StdCdContractduur"/>
+													<xsd:element name="CdCao" minOccurs="0" type="uwv4:StdCdCao"/>
+													<xsd:element name="IndCaoBepalingOproeparbeid" minOccurs="0" type="uwv4:StdIndJN"/>
+													<xsd:element name="IndCaoBepTijdelijkNaarVastDvb" minOccurs="0" type="uwv4:StdIndJN"/>
+													<xsd:element name="IndVoorafOpzeggenAok" minOccurs="0" type="uwv4:StdIndJN"/>
+													<xsd:element name="IndVerschijningsplichtOproepkr" minOccurs="0" type="uwv4:StdIndJN"/>
+												</xsd:sequence>
+											</xsd:complexType>
+										</xsd:element>
+									</xsd:sequence>
+								</xsd:complexType>
+							</xsd:element>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="RelatieZonderWerkgever" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="CdTypeBasisgegeven" minOccurs="0">
+								<!-- CODE TYPE BASISGEGEVEN: FORMAT: A2 (codelist subset) -->
+								<xsd:simpleType>
+									<xsd:restriction base="xsd:string">
+										<xsd:length value="2"/>
+										<xsd:pattern value="\D*"/>
+										<xsd:enumeration value="VV">
+											<xsd:annotation>
+												<xsd:documentation>Vrijwillig verzekerd</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+										<xsd:enumeration value="WW">
+											<xsd:annotation>
+												<xsd:documentation>WW</xsd:documentation>
+											</xsd:annotation>
+										</xsd:enumeration>
+									</xsd:restriction>
+								</xsd:simpleType>
+							</xsd:element>
+							<xsd:element name="CdSectorOsv" minOccurs="0" type="uwv4:StdCdSectorOsv"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element name="Applicatiemelding" minOccurs="0">
+					<xsd:complexType>
+						<xsd:sequence>
+							<xsd:element name="CdSrt" minOccurs="0" type="str:StdCdSrtMelding_nocodes"/>
+							<xsd:element name="CdMelding" minOccurs="0" type="uwv4:StdCdApplicatiemelding"/>
+							<xsd:element name="Toel" minOccurs="0" type="uwv4:StdTekstAnVar256"/>
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<!-- AANTAL NIET NEGATIEF 1: FORMAT: N1 -->
+	<xsd:simpleType name="StdAantNietNegatief1">
+		<xsd:restriction base="xsd:integer">
+			<xsd:totalDigits value="1"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- BERICHT KENMERK AANLEVERAAR: FORMAT: AN..50 -->
+	<xsd:simpleType name="StdBerichtkenmerkAanleveraar">
+		<xsd:restriction base="xsd:string">
+			<xsd:maxLength value="50"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- CODE REDEN AANVRAAG UITKERING WIBO: FORMAT: N2 -->
+	<xsd:simpleType name="StdCdRedenAanvraagUitkWibo">
+		<xsd:restriction base="xsd:string">
+			<xsd:length value="2"/>
+			<xsd:pattern value="\d*"/>
+			<xsd:enumeration value="01">
+				<xsd:annotation>
+					<xsd:documentation>Geboorte</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="02">
+				<xsd:annotation>
+					<xsd:documentation>Adoptie</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="03">
+				<xsd:annotation>
+					<xsd:documentation>Pleegzorg</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="04">
+				<xsd:annotation>
+					<xsd:documentation>Samenwonen met kind</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- CODE REDEN AANVRAAG WAZO: FORMAT: N2 -->
+	<xsd:simpleType name="StdCdRedenAanvraagWazo">
+		<xsd:restriction base="xsd:string">
+			<xsd:length value="2"/>
+			<xsd:pattern value="[0-9]*"/>
+			<xsd:enumeration value="01">
+				<xsd:annotation>
+					<xsd:documentation>Zwangerschaps-/bevallingsverlof</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="02">
+				<xsd:annotation>
+					<xsd:documentation>Adoptieverlof</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="03">
+				<xsd:annotation>
+					<xsd:documentation>Pleegzorgverlof</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="04">
+				<xsd:annotation>
+					<xsd:documentation>Meerlingenverlof</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="05">
+				<xsd:annotation>
+					<xsd:documentation>Aanvullend geboorteverlof</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="06">
+				<xsd:annotation>
+					<xsd:documentation>Betaald ouderschapsverlof bij geboorte</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="07">
+				<xsd:annotation>
+					<xsd:documentation>Betaald ouderschapsverlof bij adoptie</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="08">
+				<xsd:annotation>
+					<xsd:documentation>Betaald ouderschapsverlof bij pleegzorg</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="09">
+				<xsd:annotation>
+					<xsd:documentation>Betaald ouderschapsverlof bij samenwonendd</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- CODE ROL KETENPARTIJ: FORMAT: N2 -->
+	<xsd:simpleType name="StdCdRolKetenpartij">
+		<xsd:restriction base="xsd:string">
+			<xsd:length value="2"/>
+			<xsd:pattern value="\d*"/>
+			<xsd:enumeration value="01">
+				<xsd:annotation>
+					<xsd:documentation>Aanspreekpunt over de inhoud van berichten</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="02">
+				<xsd:annotation>
+					<xsd:documentation>Aanspreekpunt voor elektronisch verzenden van bericht</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- CODE SOORT INDIENER: FORMAT: AN2 -->
+	<xsd:simpleType name="StdCdSrtIndiener">
+		<xsd:restriction base="xsd:string">
+			<xsd:length value="2"/>
+			<xsd:enumeration value="VZ">
+				<xsd:annotation>
+					<xsd:documentation>Verzekerde</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="WG">
+				<xsd:annotation>
+					<xsd:documentation>Werkgever of namens werkgever</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- CODE SOORT MELDING: FORMAT: A1 -->
+	<xsd:simpleType name="StdCdSrtMelding_nocodes">
+		<xsd:restriction base="xsd:string">
+			<xsd:length value="1"/>
+			<xsd:pattern value="[A-Z]*"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- CODE TYPE BELANGHEBBENDE: FORMAT: N2 -->
+	<xsd:simpleType name="StdCdTypeBelanghebbende">
+		<xsd:restriction base="xsd:string">
+			<xsd:length value="2"/>
+			<xsd:pattern value="\d*"/>
+			<xsd:enumeration value="01">
+				<xsd:annotation>
+					<xsd:documentation>Zelfstandige</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="02">
+				<xsd:annotation>
+					<xsd:documentation>Beroepsbeoefenaar</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="03">
+				<xsd:annotation>
+					<xsd:documentation>Meewerkende partner</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+			<xsd:enumeration value="04">
+				<xsd:annotation>
+					<xsd:documentation>Directeur-Grootaandeelhouder</xsd:documentation>
+				</xsd:annotation>
+			</xsd:enumeration>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- TEKST AN..4096: FORMAT: AN..4096 -->
+	<xsd:simpleType name="StdTekstAnVar4096">
+		<xsd:restriction base="xsd:string">
+			<xsd:maxLength value="4096"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- TELEFOONNUMMER N..11: FORMAT: N..11 -->
+	<xsd:simpleType name="StdTelefoonnr11">
+		<xsd:restriction base="xsd:string">
+			<xsd:maxLength value="11"/>
+			<xsd:pattern value="\d*"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+	<!-- VOLGNUMMER..8: FORMAT: N..8 -->
+	<xsd:simpleType name="StdVolgnrVar8">
+		<xsd:restriction base="xsd:nonNegativeInteger">
+			<xsd:totalDigits value="8"/>
+			<xsd:minInclusive value="0"/>
+		</xsd:restriction>
+	</xsd:simpleType>
+</xsd:schema>
