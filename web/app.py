@@ -787,7 +787,9 @@ def upload_excel():
                         except Exception:
                             pass
 
-                envelope = gen.build_envelope_with_header_and_bodies(bodies, sender=form_aanvraag_type)
+                # Get tester name from session or default
+                tester_name = session.get("user", {}).get("name", "tester")
+                envelope = gen.build_envelope_with_header_and_bodies(bodies, sender=form_aanvraag_type, tester_name=tester_name)
                 saved = gen.save_envelope(envelope, out_dir_str, "bulk")
                 try:
                     gen.append_log(log_path, f"{datetime.datetime.now().isoformat()}\t{saved}\tSUCCESS\t{len(bodies)}")
@@ -859,7 +861,9 @@ def upload_excel():
                             except Exception as ve:
                                 errors.append(f"Regel {idx}: XSD validatiefout: {ve}")
                                 continue
-                        env = gen.build_envelope_with_header_and_bodies([m], sender=form_aanvraag_type)
+                        # Get tester name from session or default
+                        tester_name = session.get("user", {}).get("name", "tester")
+                        env = gen.build_envelope_with_header_and_bodies([m], sender=form_aanvraag_type, tester_name=tester_name)
                         bsn = rec_norm.get("BSN") or f"row{idx}"
                         safe_bsn = str(bsn).replace(" ", "_")
                         saved = gen.save_envelope(env, out_dir_str, safe_bsn)

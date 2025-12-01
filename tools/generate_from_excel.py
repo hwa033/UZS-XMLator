@@ -65,7 +65,7 @@ def _namespaces():
     return NS_SOAP, NS_UWVH, NS_BODY
 
 
-def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: str = "Digipoort") -> ET.Element:
+def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: str = "Digipoort", tester_name: str = "tester") -> ET.Element:
     """Create a SOAP Envelope with header information and append provided message bodies.
 
     Header fields mimic the sample: RouteInformatie, BerichtIdentificatie and Transactie.
@@ -85,9 +85,11 @@ def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: 
     ET.SubElement(route, "GegevensUitwisselingsnr").text = f"GegUitNr-{uuid.uuid4().hex[:8]}"
     ET.SubElement(route, "RefnrGegevensUitwisselingsExtern").text = "NOCOREFLEX"
 
-    # BerichtIdentificatie
+    # BerichtIdentificatie - use tester name + timestamp (max 50 chars)
     bi = ET.SubElement(uwvh, "BerichtIdentificatie")
-    ET.SubElement(bi, "BerichtReferentienr").text = f"BerRef-{uuid.uuid4().hex[:8]}"
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    safe_name = tester_name.replace(" ", "")[:30]  # sanitize and limit name
+    ET.SubElement(bi, "BerichtReferentienr").text = f"{safe_name}_{ts}"[:50]
     bt = ET.SubElement(bi, "BerichtType")
     ET.SubElement(bt, "BerichtNaam").text = "UwvZwMeldingInternBody"
     ET.SubElement(bt, "VersieMajor").text = "04"
@@ -157,7 +159,7 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
         try:
             if isinstance(value, datetime):
                 if date_only:
-                    out = value.date().isoformat()
+                    out = value.strftime("%Y%m%d")
                 else:
                     out = value.strftime("%Y%m%d%H%M%S")
                 ET.SubElement(parent, qname(tag)).text = out
@@ -165,10 +167,10 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
             s = str(value).strip()
             if s == "":
                 return
-            # if value is compact numeric YYYYMMDD, format to ISO date for date-only
+            # if value is compact numeric YYYYMMDD, keep as-is for date-only
             if len(s) == 8 and s.isdigit():
                 if date_only:
-                    out = f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
+                    out = s  # keep YYYYMMDD format
                 else:
                     out = f"{s}000000" if len(s) == 8 else s
                 ET.SubElement(parent, qname(tag)).text = out
@@ -177,7 +179,7 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
             try:
                 dt = datetime.fromisoformat(s)
                 if date_only:
-                    out = dt.date().isoformat()
+                    out = dt.strftime("%Y%m%d")
                 else:
                     out = dt.strftime("%Y%m%d%H%M%S")
                 ET.SubElement(parent, qname(tag)).text = out
