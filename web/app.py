@@ -614,7 +614,7 @@ def upload_excel():
     # `form_aanvraag_type` preserves the raw UI selection (used for envelope sender)
     form_aanvraag_type = request.form.get("aanvraag_type") or "ZBM"
     # Map friendly form values to schema-allowed CdBerichtType codes.
-    # The UI may offer 'Digipoort' as a label; the schema expects short codes (e.g., OTP3, ZBM).
+    # ONLY Digipoort gets mapped to OTP3; all other types remain unchanged.
     aanvraag_map = {
         "Digipoort": "OTP3",
     }
@@ -623,9 +623,8 @@ def upload_excel():
     # 'ZBM'), we won't override it with the selected `aanvraag_type`.
     _KNOWN_CDBERICHT_TYPES = {"KCC", "OTP1", "OTP3", "RFE", "RFV", "RFX", "VM", "ZBM", "KAAN", "ZBMA"}
     # `cd_bericht_default` is the schema code we will use for CdBerichtType when
-    # no explicit value is present in the Excel row. We map the UI selection
-    # where appropriate (e.g., 'Digipoort' -> 'OTP3'). Keep `form_aanvraag_type`
-    # unchanged so the envelope header's ApplicatieNaam matches the UI choice.
+    # no explicit value is present in the Excel row. ONLY map Digipoort to OTP3;
+    # all other types (ZBM, VM, etc.) keep their original code.
     cd_bericht_default = aanvraag_map.get(form_aanvraag_type, form_aanvraag_type)
     # Determine whether to validate records (checkbox on form). Default: True
     validate_flag = str(request.form.get("validate", "on")).strip().lower() in ("1", "true", "on", "yes")
@@ -723,9 +722,8 @@ def upload_excel():
                             continue
 
                         msg = gen.build_message_element(rec_norm, ns_body)
-                        # Prefer an explicit CdBerichtType value from the Excel
-                        # row if present (several sheets include this column);
-                        # otherwise use the selected `aanvraag_type`.
+                        # Handle CdBerichtType: ONLY override with OTP3 if user selected Digipoort.
+                        # For all other types (ZBM, VM, etc.), keep existing valid schema codes.
                         try:
                             excel_cd_names = ['CdBerichtType', 'aanvraag_type', 'Type']
                             excel_cd = None
@@ -734,27 +732,35 @@ def upload_excel():
                                 if v is not None and str(v).strip() != '':
                                     excel_cd = str(v).strip()
                                     break
+                            
+                            # Determine desired code: if Excel has explicit value, use it (mapped if needed)
                             if excel_cd:
                                 desired = aanvraag_map.get(excel_cd, excel_cd)
                             else:
                                 desired = cd_bericht_default
-                            # Decide whether to overwrite CdBerichtType. We prefer
-                            # generator-supplied values only when they already are
-                            # valid schema codes. If the generator wrote a UI label
-                            # (e.g. 'Digipoort') or a non-known value, overwrite it
-                            # with the mapped schema code (e.g. 'OTP3'). This ensures
-                            # message bodies contain schema-allowed codes.
+                            
+                            # Get existing CdBerichtType from generated message
                             existing = msg.findall('{' + ns_body + '}CdBerichtType')
                             existing_text = None
                             if existing and len(existing) > 0:
                                 t = existing[0].text
                                 existing_text = t.strip() if t is not None else None
 
-                            keep_existing = False
-                            if existing_text and existing_text in _KNOWN_CDBERICHT_TYPES:
-                                keep_existing = True
+                            # ONLY override if:
+                            # 1. User selected Digipoort (form_aanvraag_type == "Digipoort"), OR
+                            # 2. Existing value is not a valid schema code
+                            should_override = False
+                            if form_aanvraag_type == "Digipoort":
+                                # Always set to OTP3 for Digipoort
+                                should_override = True
+                            elif existing_text and existing_text not in _KNOWN_CDBERICHT_TYPES:
+                                # Override invalid codes with the desired value
+                                should_override = True
+                            elif not existing_text:
+                                # No existing value, set the desired one
+                                should_override = True
 
-                            if not keep_existing:
+                            if should_override:
                                 if existing:
                                     for c in existing:
                                         c.text = desired
@@ -818,8 +824,8 @@ def upload_excel():
 
                         m = gen.build_message_element(rec_norm, ns_body)
                         try:
-                            # Prefer an explicit CdBerichtType value from the Excel
-                            # row if present; otherwise use the selected form value.
+                            # Handle CdBerichtType: ONLY override with OTP3 if user selected Digipoort.
+                            # For all other types (ZBM, VM, etc.), keep existing valid schema codes.
                             excel_cd_names = ['CdBerichtType', 'aanvraag_type', 'Type']
                             excel_cd = None
                             for n in excel_cd_names:
@@ -827,21 +833,32 @@ def upload_excel():
                                 if v is not None and str(v).strip() != '':
                                     excel_cd = str(v).strip()
                                     break
+                            
+                            # Determine desired code
                             if excel_cd:
                                 desired = aanvraag_map.get(excel_cd, excel_cd)
                             else:
                                 desired = cd_bericht_default
+                            
+                            # Get existing CdBerichtType
                             existing = m.findall('{' + ns_body + '}CdBerichtType')
                             existing_text = None
                             if existing and len(existing) > 0:
                                 t = existing[0].text
                                 existing_text = t.strip() if t is not None else None
 
-                            keep_existing = False
-                            if existing_text and existing_text in _KNOWN_CDBERICHT_TYPES:
-                                keep_existing = True
+                            # ONLY override if:
+                            # 1. User selected Digipoort, OR
+                            # 2. Existing value is not a valid schema code
+                            should_override = False
+                            if form_aanvraag_type == "Digipoort":
+                                should_override = True
+                            elif existing_text and existing_text not in _KNOWN_CDBERICHT_TYPES:
+                                should_override = True
+                            elif not existing_text:
+                                should_override = True
 
-                            if not keep_existing:
+                            if should_override:
                                 if existing:
                                     for c in existing:
                                         c.text = desired
