@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="72" viewBox="0 0 240 72">
+  <defs>
+    <linearGradient id="g1" x1="0" x2="1">
+      <stop offset="0" stop-color="#0a6cd6"/>
+      <stop offset="1" stop-color="#2ea6ff"/>
+    </linearGradient>
+  </defs>
+  <!-- Left emblem: blue arrow -->
+  <g transform="translate(12,12)">
+    <path d="M0 18 L18 0 L18 10 L48 10 L48 26 L18 26 L18 36 Z" fill="url(#g1)"/>
+  </g>
+  <!-- Rounded badge -->
+  <rect x="72" y="8" width="56" height="56" rx="10" ry="10" fill="#ffffff" stroke="#e6eef9" stroke-width="1"/>
+  <!-- Wordmark -->
+  <g transform="translate(140,40)">
+    <text x="0" y="-6" font-family="Segoe UI, Tahoma, Geneva, Verdana, sans-serif" font-size="20" font-weight="700" fill="#0b1b28">UZS XMLator</text>
+    <text x="0" y="16" font-family="Segoe UI, Tahoma, Geneva, Verdana, sans-serif" font-size="12" fill="#6c757d">Dashboard</text>
+  </g>
+</svg>

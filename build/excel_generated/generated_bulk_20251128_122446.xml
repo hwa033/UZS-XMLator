@@ -1,0 +1,122 @@
+<?xml version='1.0' encoding='utf-8'?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns2="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428" xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202">
+  <SOAP-ENV:Header>
+    <uwvh:UwvMLHeader>
+      <RouteInformatie>
+        <Bron>
+          <ApplicatieNaam>OTP3</ApplicatieNaam>
+          <DatTijdVersturenBericht>2025-11-28T13:24:46.541166+01:00</DatTijdVersturenBericht>
+        </Bron>
+        <Bestemming>
+          <ApplicatieNaam>UZS</ApplicatieNaam>
+        </Bestemming>
+        <GegevensUitwisselingsnr>GegUitNr-1fb250ea</GegevensUitwisselingsnr>
+        <RefnrGegevensUitwisselingsExtern>NOCOREFLEX</RefnrGegevensUitwisselingsExtern>
+      </RouteInformatie>
+      <BerichtIdentificatie>
+        <BerichtReferentienr>BerRef-106f007e</BerichtReferentienr>
+        <BerichtType>
+          <BerichtNaam>UwvZwMeldingInternBody</BerichtNaam>
+          <VersieMajor>04</VersieMajor>
+          <VersieMinor>28</VersieMinor>
+          <Buildnr>01</Buildnr>
+          <CommunicatieType>Melding</CommunicatieType>
+          <CommunicatieElement>Melding</CommunicatieElement>
+        </BerichtType>
+        <DatTijdAanmaakBericht>2025-11-28T13:24:46.541228+01:00</DatTijdAanmaakBericht>
+        <IndTestbericht>2</IndTestbericht>
+      </BerichtIdentificatie>
+      <Transactie>
+        <TransactieReferentienr>TraRef-9005b922</TransactieReferentienr>
+        <Volgordenr>1</Volgordenr>
+        <IndLaatsteBericht>1</IndLaatsteBericht>
+      </Transactie>
+    </uwvh:UwvMLHeader>
+  </SOAP-ENV:Header>
+  <SOAP-ENV:Body>
+    <ns2:UwvZwMeldingInternBody>
+      <ns2:CdBerichtType>OTP3</ns2:CdBerichtType>
+      <ns2:IndAlleenControleUzs>2</ns2:IndAlleenControleUzs>
+      <ns2:Ketenpartij>
+        <ns2:FiscaalNr>136910038</ns2:FiscaalNr>
+        <ns2:Loonheffingennr>136910038L01</ns2:Loonheffingennr>
+        <ns2:Naam />
+        <ns2:CdRolKetenpartij>01</ns2:CdRolKetenpartij>
+        <ns2:CdSrtIndiener>WG</ns2:CdSrtIndiener>
+        <ns2:NaamSoftwarePakket>Generated</ns2:NaamSoftwarePakket>
+        <ns2:VersieSoftwarePakket>1.0</ns2:VersieSoftwarePakket>
+        <ns2:BerichtkenmerkIndiener />
+        <ns2:VolgNr>1</ns2:VolgNr>
+        <ns2:Contactgegevens>
+          <ns2:NaamContactpersoonAfd />
+          <ns2:TelefoonnrContactpersoonAfd />
+        </ns2:Contactgegevens>
+      </ns2:Ketenpartij>
+      <ns2:NatuurlijkPersoon>
+        <ns2:Burgerservicenr>555501759</ns2:Burgerservicenr>
+        <ns2:Geboortedat>1980-12-05</ns2:Geboortedat>
+        <ns2:SignificantDeelVanDeAchternaam>Simeunović of Uluaĝ</ns2:SignificantDeelVanDeAchternaam>
+      </ns2:NatuurlijkPersoon>
+      <ns2:Contactgegevens />
+      <ns2:MeldingZiekte>
+        <ns2:DatEersteAoDag>2025-11-25</ns2:DatEersteAoDag>
+        <ns2:IndDirecteUitkering>N</ns2:IndDirecteUitkering>
+        <ns2:CdRedenAangifteAo>04</ns2:CdRedenAangifteAo>
+        <ns2:CdRedenZiekmelding>04</ns2:CdRedenZiekmelding>
+        <ns2:IndWerkdagOpZaterdag>N</ns2:IndWerkdagOpZaterdag>
+        <ns2:IndWerkdagOpZondag>J</ns2:IndWerkdagOpZondag>
+      </ns2:MeldingZiekte>
+      <ns2:AdministratieveEenheid>
+        <ns2:Loonheffingennr>136910038L01</ns2:Loonheffingennr>
+        <ns2:Bankrekening>
+          <ns2:Bic>RABONL2A</ns2:Bic>
+          <ns2:Iban>NL44RABO0123456789</ns2:Iban>
+        </ns2:Bankrekening>
+        <ns2:SectorRisicogroep />
+        <ns2:Arbeidsverhouding />
+      </ns2:AdministratieveEenheid>
+    </ns2:UwvZwMeldingInternBody>
+    <ns2:UwvZwMeldingInternBody>
+      <ns2:CdBerichtType>OTP3</ns2:CdBerichtType>
+      <ns2:IndAlleenControleUzs>2</ns2:IndAlleenControleUzs>
+      <ns2:Ketenpartij>
+        <ns2:FiscaalNr>136910038</ns2:FiscaalNr>
+        <ns2:Loonheffingennr>136910038L02</ns2:Loonheffingennr>
+        <ns2:Naam />
+        <ns2:CdRolKetenpartij>01</ns2:CdRolKetenpartij>
+        <ns2:CdSrtIndiener>WG</ns2:CdSrtIndiener>
+        <ns2:NaamSoftwarePakket>Generated</ns2:NaamSoftwarePakket>
+        <ns2:VersieSoftwarePakket>1.0</ns2:VersieSoftwarePakket>
+        <ns2:BerichtkenmerkIndiener />
+        <ns2:VolgNr>1</ns2:VolgNr>
+        <ns2:Contactgegevens>
+          <ns2:NaamContactpersoonAfd />
+          <ns2:TelefoonnrContactpersoonAfd />
+        </ns2:Contactgegevens>
+      </ns2:Ketenpartij>
+      <ns2:NatuurlijkPersoon>
+        <ns2:Burgerservicenr>555501760</ns2:Burgerservicenr>
+        <ns2:Geboortedat>1980-12-05</ns2:Geboortedat>
+        <ns2:SignificantDeelVanDeAchternaam>Boersma</ns2:SignificantDeelVanDeAchternaam>
+      </ns2:NatuurlijkPersoon>
+      <ns2:Contactgegevens />
+      <ns2:MeldingZiekte>
+        <ns2:DatEersteAoDag>2025-11-26</ns2:DatEersteAoDag>
+        <ns2:IndDirecteUitkering>N</ns2:IndDirecteUitkering>
+        <ns2:CdRedenAangifteAo>04</ns2:CdRedenAangifteAo>
+        <ns2:CdRedenZiekmelding>04</ns2:CdRedenZiekmelding>
+        <ns2:IndWerkdagOpZaterdag>N</ns2:IndWerkdagOpZaterdag>
+        <ns2:IndWerkdagOpZondag>J</ns2:IndWerkdagOpZondag>
+      </ns2:MeldingZiekte>
+      <ns2:AdministratieveEenheid>
+        <ns2:Loonheffingennr>136910038L02</ns2:Loonheffingennr>
+        <ns2:Bankrekening>
+          <ns2:Bic>RABONL2A</ns2:Bic>
+          <ns2:Iban>NL44RABO0123456790</ns2:Iban>
+        </ns2:Bankrekening>
+        <ns2:SectorRisicogroep />
+        <ns2:Arbeidsverhouding />
+      </ns2:AdministratieveEenheid>
+    </ns2:UwvZwMeldingInternBody>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

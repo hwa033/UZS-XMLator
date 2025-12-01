@@ -1,0 +1,105 @@
+--- C:\Users\hwa033\Downloads\generated_bulk_20251128_122458.xml
++++ build\excel_generated\generated_bulk_20251128_124349.xml
+@@ -4,17 +4,17 @@
+     <uwvh:UwvMLHeader>
+
+       <RouteInformatie>
+
+         <Bron>
+
+-          <ApplicatieNaam>VM</ApplicatieNaam>
+
+-          <DatTijdVersturenBericht>2025-11-28T13:24:58.951360+01:00</DatTijdVersturenBericht>
+
++          <ApplicatieNaam>OTP3</ApplicatieNaam>
+
++          <DatTijdVersturenBericht>2025-11-28T13:43:49.724406+01:00</DatTijdVersturenBericht>
+
+         </Bron>
+
+         <Bestemming>
+
+           <ApplicatieNaam>UZS</ApplicatieNaam>
+
+         </Bestemming>
+
+-        <GegevensUitwisselingsnr>GegUitNr-1c32e432</GegevensUitwisselingsnr>
+
++        <GegevensUitwisselingsnr>GegUitNr-663e5812</GegevensUitwisselingsnr>
+
+         <RefnrGegevensUitwisselingsExtern>NOCOREFLEX</RefnrGegevensUitwisselingsExtern>
+
+       </RouteInformatie>
+
+       <BerichtIdentificatie>
+
+-        <BerichtReferentienr>BerRef-ec63437a</BerichtReferentienr>
+
++        <BerichtReferentienr>BerRef-3130cc10</BerichtReferentienr>
+
+         <BerichtType>
+
+           <BerichtNaam>UwvZwMeldingInternBody</BerichtNaam>
+
+           <VersieMajor>04</VersieMajor>
+
+@@ -23,11 +23,11 @@
+           <CommunicatieType>Melding</CommunicatieType>
+
+           <CommunicatieElement>Melding</CommunicatieElement>
+
+         </BerichtType>
+
+-        <DatTijdAanmaakBericht>2025-11-28T13:24:58.951421+01:00</DatTijdAanmaakBericht>
+
++        <DatTijdAanmaakBericht>2025-11-28T13:43:49.724464+01:00</DatTijdAanmaakBericht>
+
+         <IndTestbericht>2</IndTestbericht>
+
+       </BerichtIdentificatie>
+
+       <Transactie>
+
+-        <TransactieReferentienr>TraRef-789b6793</TransactieReferentienr>
+
++        <TransactieReferentienr>TraRef-54e2f782</TransactieReferentienr>
+
+         <Volgordenr>1</Volgordenr>
+
+         <IndLaatsteBericht>1</IndLaatsteBericht>
+
+       </Transactie>
+
+@@ -35,7 +35,7 @@
+   </SOAP-ENV:Header>
+
+   <SOAP-ENV:Body>
+
+     <ns2:UwvZwMeldingInternBody>
+
+-      <ns2:CdBerichtType>VM</ns2:CdBerichtType>
+
++      <ns2:CdBerichtType>OTP3</ns2:CdBerichtType>
+
+       <ns2:IndAlleenControleUzs>2</ns2:IndAlleenControleUzs>
+
+       <ns2:Ketenpartij>
+
+         <ns2:FiscaalNr>136910038</ns2:FiscaalNr>
+
+@@ -77,7 +77,7 @@
+       </ns2:AdministratieveEenheid>
+
+     </ns2:UwvZwMeldingInternBody>
+
+     <ns2:UwvZwMeldingInternBody>
+
+-      <ns2:CdBerichtType>VM</ns2:CdBerichtType>
+
++      <ns2:CdBerichtType>OTP3</ns2:CdBerichtType>
+
+       <ns2:IndAlleenControleUzs>2</ns2:IndAlleenControleUzs>
+
+       <ns2:Ketenpartij>
+
+         <ns2:FiscaalNr>136910038</ns2:FiscaalNr>

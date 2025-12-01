@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202">
+  <SOAP-ENV:Header>
+    <uwvh:UwvMLHeader>
+      <RouteInformatie>
+        <Bron>
+          <ApplicatieNaam>ZBM</ApplicatieNaam>
+          <DatTijdVersturenBericht>2025-11-28T10:53:33.131915+01:00</DatTijdVersturenBericht>
+        </Bron>
+        <Bestemming>
+          <ApplicatieNaam>UZS</ApplicatieNaam>
+        </Bestemming>
+        <GegevensUitwisselingsnr>GegUitNr-d9228fc8</GegevensUitwisselingsnr>
+        <RefnrGegevensUitwisselingsExtern>NOCOREFLEX</RefnrGegevensUitwisselingsExtern>
+      </RouteInformatie>
+      <BerichtIdentificatie>
+        <BerichtReferentienr>BerRef-fcbaa8c9</BerichtReferentienr>
+        <BerichtType>
+          <BerichtNaam>UwvZwMeldingInternBody</BerichtNaam>
+          <VersieMajor>04</VersieMajor>
+          <VersieMinor>28</VersieMinor>
+          <Buildnr>01</Buildnr>
+          <CommunicatieType>Melding</CommunicatieType>
+          <CommunicatieElement>Melding</CommunicatieElement>
+        </BerichtType>
+        <DatTijdAanmaakBericht>2025-11-28T10:53:33.131975+01:00</DatTijdAanmaakBericht>
+        <IndTestbericht>2</IndTestbericht>
+      </BerichtIdentificatie>
+      <Transactie>
+        <TransactieReferentienr>TraRef-5512d926</TransactieReferentienr>
+        <Volgordenr>1</Volgordenr>
+        <IndLaatsteBericht>1</IndLaatsteBericht>
+      </Transactie>
+    </uwvh:UwvMLHeader>
+  </SOAP-ENV:Header>
+  <SOAP-ENV:Body />
+</SOAP-ENV:Envelope>
