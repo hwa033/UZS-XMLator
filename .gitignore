@@ -1,0 +1,8 @@
+﻿# Ignore build artifacts
+/build/
+/web/static/downloads/
+__pycache__/
+*.pyc
+*.log
+xml-automation.bundle
+filter-repo-work/
