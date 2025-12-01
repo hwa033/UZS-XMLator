@@ -409,10 +409,14 @@ def _is_valid_yyyymmdd(s: str) -> bool:
         return False
     try:
         ss = str(s).strip()
-        if len(ss) != 8 or not ss.isdigit():
-            return False
-        datetime.datetime.strptime(ss, "%Y%m%d")
-        return True
+        # accept either compact YYYYMMDD or ISO YYYY-MM-DD
+        if len(ss) == 8 and ss.isdigit():
+            datetime.datetime.strptime(ss, "%Y%m%d")
+            return True
+        if len(ss) == 10 and ss[4] == '-' and ss[7] == '-':
+            datetime.datetime.strptime(ss, "%Y-%m-%d")
+            return True
+        return False
     except Exception:
         return False
 

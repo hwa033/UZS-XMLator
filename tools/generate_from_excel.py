@@ -165,29 +165,31 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
         try:
             if isinstance(value, datetime):
                 if date_only:
-                    out = value.strftime("%Y%m%d")
+                    out = value.strftime("%Y-%m-%d")
                 else:
-                    out = value.strftime("%Y%m%d%H%M%S")
+                    # use ISO datettime without timezone (matches xsd:dateTime lexical form)
+                    out = value.strftime("%Y-%m-%dT%H:%M:%S")
                 ET.SubElement(parent, qname(tag)).text = out
                 return
             s = str(value).strip()
             if s == "":
                 return
-            # if value is compact numeric YYYYMMDD, keep as-is for date-only
+            # if value is compact numeric YYYYMMDD, convert to ISO YYYY-MM-DD for date-only
             if len(s) == 8 and s.isdigit():
                 if date_only:
-                    out = s  # keep YYYYMMDD format
+                    out = f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
                 else:
-                    out = f"{s}000000" if len(s) == 8 else s
+                    out = f"{s[0:4]}-{s[4:6]}-{s[6:8]}T00:00:00"
                 ET.SubElement(parent, qname(tag)).text = out
                 return
             # try ISO parse
             try:
+                # parse ISO-ish strings and emit ISO lexical forms
                 dt = datetime.fromisoformat(s)
                 if date_only:
-                    out = dt.strftime("%Y%m%d")
+                    out = dt.strftime("%Y-%m-%d")
                 else:
-                    out = dt.strftime("%Y%m%d%H%M%S")
+                    out = dt.strftime("%Y-%m-%dT%H:%M:%S")
                 ET.SubElement(parent, qname(tag)).text = out
                 return
             except Exception:

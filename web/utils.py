@@ -10,7 +10,7 @@ def _format_date_yyyymmdd(value) -> str:
     if value is None:
         return ""
     if isinstance(value, (datetime.date, datetime.datetime)):
-        return value.strftime("%Y%m%d")
+        return value.strftime("%Y-%m-%d")
     try:
         if isinstance(value, (int, float)):
             serial = float(value)
@@ -36,12 +36,13 @@ def _format_date_yyyymmdd(value) -> str:
     for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d%m%Y", "%Y/%m/%d", "%d/%m/%Y"):
         try:
             dt = datetime.datetime.strptime(s, fmt)
-            return dt.strftime("%Y%m%d")
+            return dt.strftime("%Y-%m-%d")
         except Exception:
             continue
     digits = "".join(ch for ch in s if ch.isdigit())
     if len(digits) == 8:
-        return digits
+        # convert compact YYYYMMDD to ISO YYYY-MM-DD
+        return f"{digits[0:4]}-{digits[4:6]}-{digits[6:8]}"
     return s
 
 
