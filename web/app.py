@@ -740,7 +740,8 @@ def upload_excel():
                                 desired = cd_bericht_default
                             
                             # Get existing CdBerichtType from generated message
-                            existing = msg.findall('{' + ns_body + '}CdBerichtType')
+                            # Since child elements use default namespace (no prefix), search without ns
+                            existing = msg.findall('CdBerichtType')
                             existing_text = None
                             if existing and len(existing) > 0:
                                 t = existing[0].text
@@ -765,7 +766,7 @@ def upload_excel():
                                     for c in existing:
                                         c.text = desired
                                 else:
-                                    ET.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
+                                    ET.SubElement(msg, 'CdBerichtType').text = desired
                         except Exception:
                             pass
 
@@ -841,7 +842,8 @@ def upload_excel():
                                 desired = cd_bericht_default
                             
                             # Get existing CdBerichtType
-                            existing = m.findall('{' + ns_body + '}CdBerichtType')
+                            # Since child elements use default namespace (no prefix), search without ns
+                            existing = m.findall('CdBerichtType')
                             existing_text = None
                             if existing and len(existing) > 0:
                                 t = existing[0].text
@@ -863,7 +865,7 @@ def upload_excel():
                                     for c in existing:
                                         c.text = desired
                                 else:
-                                    ET.SubElement(m, '{' + ns_body + '}CdBerichtType').text = desired
+                                    ET.SubElement(m, 'CdBerichtType').text = desired
                         except Exception:
                             pass
                         if validate_flag and schema is not None:

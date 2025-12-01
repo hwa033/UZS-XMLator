@@ -139,10 +139,16 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
     This function is intentionally minimal and maps Excel columns to
     the child elements used in the sample XML.
     """
-    msg = ET.Element("{" + ns_body + "}UwvZwMeldingInternBody")
+    # Create element without namespace prefix in the tag name
+    # The xmlns attribute will declare the default namespace
+    msg = ET.Element("UwvZwMeldingInternBody")
+    # Explicitly set the default namespace declaration on this element
+    msg.set("xmlns", ns_body)
 
     def qname(tag: str) -> str:
-        return "{" + ns_body + "}" + tag
+        # Since we set xmlns as default namespace on parent, child elements
+        # should not have namespace prefix
+        return tag
 
     def set_if(parent, tag, value):
         if value is None:
