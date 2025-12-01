@@ -744,8 +744,8 @@ def upload_excel():
                                 desired = cd_bericht_default
                             
                             # Get existing CdBerichtType from generated message
-                            # Since child elements use default namespace (no prefix), search without ns
-                            existing = msg.findall('CdBerichtType')
+                            # Child elements use default namespace, must search with namespace
+                            existing = msg.findall('{' + ns_body + '}CdBerichtType')
                             existing_text = None
                             if existing and len(existing) > 0:
                                 t = existing[0].text
@@ -756,7 +756,8 @@ def upload_excel():
                             # 2. Existing value is not a valid schema code
                             should_override = False
                             if form_aanvraag_type == "Digipoort":
-                                # Always set to OTP3 for Digipoort
+                                # Always set to OTP3 for Digipoort, regardless of Excel content
+                                desired = "OTP3"
                                 should_override = True
                             elif existing_text and existing_text not in _KNOWN_CDBERICHT_TYPES:
                                 # Override invalid codes with the desired value
@@ -770,7 +771,7 @@ def upload_excel():
                                     for c in existing:
                                         c.text = desired
                                 else:
-                                    ET.SubElement(msg, 'CdBerichtType').text = desired
+                                    ET.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
                         except Exception:
                             pass
 
@@ -846,8 +847,8 @@ def upload_excel():
                                 desired = cd_bericht_default
                             
                             # Get existing CdBerichtType
-                            # Since child elements use default namespace (no prefix), search without ns
-                            existing = m.findall('CdBerichtType')
+                            # Child elements use default namespace, must search with namespace
+                            existing = m.findall('{' + ns_body + '}CdBerichtType')
                             existing_text = None
                             if existing and len(existing) > 0:
                                 t = existing[0].text
@@ -858,6 +859,8 @@ def upload_excel():
                             # 2. Existing value is not a valid schema code
                             should_override = False
                             if form_aanvraag_type == "Digipoort":
+                                # Always set to OTP3 for Digipoort, regardless of Excel content
+                                desired = "OTP3"
                                 should_override = True
                             elif existing_text and existing_text not in _KNOWN_CDBERICHT_TYPES:
                                 should_override = True
@@ -869,7 +872,7 @@ def upload_excel():
                                     for c in existing:
                                         c.text = desired
                                 else:
-                                    ET.SubElement(m, 'CdBerichtType').text = desired
+                                    ET.SubElement(m, '{' + ns_body + '}CdBerichtType').text = desired
                         except Exception:
                             pass
                         if validate_flag and schema is not None:

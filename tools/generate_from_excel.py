@@ -18,7 +18,13 @@ import os
 from datetime import datetime, timezone
 from typing import Dict, Iterable
 import uuid
-import xml.etree.ElementTree as ET
+
+try:
+    from lxml import etree as ET
+    USING_LXML = True
+except ImportError:
+    import xml.etree.ElementTree as ET
+    USING_LXML = False
 
 try:
     import openpyxl
@@ -60,8 +66,9 @@ def _namespaces():
     NS_SOAP = "http://schemas.xmlsoap.org/soap/envelope/"
     NS_UWVH = "http://schemas.uwv.nl/UwvML/Header-v0202"
     NS_BODY = "http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"
-    ET.register_namespace('SOAP-ENV', NS_SOAP)
-    ET.register_namespace('uwvh', NS_UWVH)
+    if not USING_LXML:
+        ET.register_namespace('SOAP-ENV', NS_SOAP)
+        ET.register_namespace('uwvh', NS_UWVH)
     return NS_SOAP, NS_UWVH, NS_BODY
 
 
@@ -71,9 +78,23 @@ def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: 
     Header fields mimic the sample: RouteInformatie, BerichtIdentificatie and Transactie.
     """
     ns_soap, ns_uwvh, ns_body = _namespaces()
-    env = ET.Element("{" + ns_soap + "}Envelope")
-    header = ET.SubElement(env, "{" + ns_soap + "}Header")
-    uwvh = ET.SubElement(header, "{" + ns_uwvh + "}UwvMLHeader")
+    
+    if USING_LXML:
+        # With lxml, declare ALL namespaces at the Envelope level with desired prefixes
+        # This prevents lxml from auto-generating ns0, ns1, ns2 prefixes
+        NSMAP_ENV = {
+            'SOAP-ENV': ns_soap,
+            'uwvh': ns_uwvh,
+            None: ns_body  # default namespace for body elements
+        }
+        env = ET.Element("{" + ns_soap + "}Envelope", nsmap=NSMAP_ENV)  # type: ignore[call-arg]
+        header = ET.SubElement(env, "{" + ns_soap + "}Header")
+        uwvh = ET.SubElement(header, "{" + ns_uwvh + "}UwvMLHeader")
+    else:
+        # ElementTree fallback
+        env = ET.Element("{" + ns_soap + "}Envelope")
+        header = ET.SubElement(env, "{" + ns_soap + "}Header")
+        uwvh = ET.SubElement(header, "{" + ns_uwvh + "}UwvMLHeader")
 
     # RouteInformatie
     route = ET.SubElement(uwvh, "RouteInformatie")
@@ -118,12 +139,54 @@ def save_envelope(envelope: ET.Element, out_dir: str, basename_hint: str) -> str
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"generated_{basename_hint}_{ts}.xml"
     path = os.path.join(out_dir, filename)
-    try:
-        ET.indent(envelope)  # pretty print (Python 3.9+)
-    except Exception:
-        pass
-    tree = ET.ElementTree(envelope)
-    tree.write(path, encoding="utf-8", xml_declaration=True)
+    
+    if USING_LXML:
+        # Serialize with pretty print
+        xml_bytes = ET.tostring(envelope, pretty_print=True, xml_declaration=False, encoding='UTF-8')  # type: ignore[call-arg]
+        xml_str = xml_bytes.decode('UTF-8')
+        
+        # Move xmlns:uwvh from Envelope to UwvMLHeader (user preference for example alignment)
+        # Remove it from Envelope tag (first occurrence only)
+        xml_str = xml_str.replace(
+            ' xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202"',
+            '',
+            1
+        )
+        # Add it to UwvMLHeader tag (first occurrence only)
+        xml_str = xml_str.replace(
+            '<uwvh:UwvMLHeader>',
+            '<uwvh:UwvMLHeader xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202">',
+            1
+        )
+        
+        # Also move default namespace from Envelope to Body element (if present)
+        xml_str = xml_str.replace(
+            ' xmlns="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"',
+            '',
+            1
+        )
+        # Find the UwvZwMeldingInternBody opening tag and add xmlns there
+        # This regex handles possible existing attributes or whitespace
+        import re
+        xml_str = re.sub(
+            r'<UwvZwMeldingInternBody',
+            '<UwvZwMeldingInternBody xmlns="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"',
+            xml_str,
+            count=1
+        )
+        
+        with open(path, 'wb') as f:
+            f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
+            f.write(xml_str.encode('UTF-8'))
+    else:
+        # ElementTree fallback
+        try:
+            ET.indent(envelope)  # pretty print (Python 3.9+)
+        except Exception:
+            pass
+        tree = ET.ElementTree(envelope)
+        tree.write(path, encoding="utf-8", xml_declaration=True)
+    
     return path
 
 
@@ -133,22 +196,53 @@ def append_log(log_path: str, entry: str) -> None:
         fh.write(entry + "\n")
 
 
+def _normalize_ind_jn(value: str) -> str:
+    """Normalize IndJN values to 1 (J/Ja/Yes) or 2 (N/Nee/No)."""
+    if value is None:
+        return None
+    v = str(value).strip().upper()
+    if v in ('J', 'JA', 'YES', '1', 'TRUE'):
+        return '1'
+    elif v in ('N', 'NEE', 'NO', '2', 'FALSE'):
+        return '2'
+    return value  # Pass through if already numeric or unknown
+
+
+def _map_cd_reden_ziekmelding(code: str) -> str:
+    """Map CdRedenZiekmelding numeric code to its description comment.
+    Returns formatted string with code and description.
+    """
+    mapping = {
+        '01': 'Toeslag op loon (aanvraag)',
+        '02': 'Adoptieverlof',
+        '03': 'Pleegzorgverlof',
+        '04': 'Zwangerschaps/bevallingsverlof',
+        '05': 'Ziek tgv bevalling',
+        '06': 'Ziek/anders',
+        '07': 'Orgaandonatie',
+        '08': 'Ziek ivm zwangerschap',
+        '99': 'Overig'
+    }
+    if code in mapping:
+        return code  # Just return the code; description can be added as comment if needed
+    return code
+
+
 def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
     """Create a `UwvZwMeldingInternBody` element (without Envelope/Body wrapper).
 
     This function is intentionally minimal and maps Excel columns to
     the child elements used in the sample XML.
     """
-    # Create element without namespace prefix in the tag name
-    # The xmlns attribute will declare the default namespace
-    msg = ET.Element("UwvZwMeldingInternBody")
-    # Explicitly set the default namespace declaration on this element
-    msg.set("xmlns", ns_body)
+    # Create element with namespace in tag name to prevent parsers from adding prefixes
+    # The default namespace will be declared at the Envelope level with nsmap
+    msg = ET.Element("{" + ns_body + "}UwvZwMeldingInternBody")
 
     def qname(tag: str) -> str:
-        # Since we set xmlns as default namespace on parent, child elements
-        # should not have namespace prefix
-        return tag
+        # Always include namespace in tag to prevent auto-generated prefixes
+        # When elements have explicit namespace and default xmlns is declared,
+        # serialization will not show prefixes
+        return "{" + ns_body + "}" + tag
 
     def set_if(parent, tag, value):
         if value is None:
@@ -165,31 +259,29 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
         try:
             if isinstance(value, datetime):
                 if date_only:
-                    out = value.strftime("%Y-%m-%d")
+                    out = value.strftime("%Y%m%d")
                 else:
-                    # use ISO datettime without timezone (matches xsd:dateTime lexical form)
-                    out = value.strftime("%Y-%m-%dT%H:%M:%S")
+                    out = value.strftime("%Y%m%d%H%M%S")
                 ET.SubElement(parent, qname(tag)).text = out
                 return
             s = str(value).strip()
             if s == "":
                 return
-            # if value is compact numeric YYYYMMDD, convert to ISO YYYY-MM-DD for date-only
+            # if value is compact numeric YYYYMMDD, keep as-is for date-only
             if len(s) == 8 and s.isdigit():
                 if date_only:
-                    out = f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
+                    out = s  # keep YYYYMMDD format
                 else:
-                    out = f"{s[0:4]}-{s[4:6]}-{s[6:8]}T00:00:00"
+                    out = f"{s}000000" if len(s) == 8 else s
                 ET.SubElement(parent, qname(tag)).text = out
                 return
             # try ISO parse
             try:
-                # parse ISO-ish strings and emit ISO lexical forms
                 dt = datetime.fromisoformat(s)
                 if date_only:
-                    out = dt.strftime("%Y-%m-%d")
+                    out = dt.strftime("%Y%m%d")
                 else:
-                    out = dt.strftime("%Y-%m-%dT%H:%M:%S")
+                    out = dt.strftime("%Y%m%d%H%M%S")
                 ET.SubElement(parent, qname(tag)).text = out
                 return
             except Exception:
@@ -198,11 +290,10 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
         except Exception:
             return
 
-    # Prefer an explicit CdBerichtType provided in the Excel row (common headers
-    # include 'CdBerichtType', 'aanvraag_type' or 'Type'). If none present,
-    # default to OTP3 which is the Digipoort/OTP3 message code.
+    # CdBerichtType: REQUIRED by XSD. Must be one of the enumerated values.
+    # Only use OTP3 for Digipoort messages; for ZBM, VM, etc., use their actual code.
+    # Default to ZBM if not specified (most common use case).
     try:
-        aanvraag_map = {"Digipoort": "OTP3"}
         excel_cd_names = ['CdBerichtType', 'aanvraag_type', 'Type']
         excel_cd = None
         for n in excel_cd_names:
@@ -210,13 +301,20 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
             if v is not None and str(v).strip() != '':
                 excel_cd = str(v).strip()
                 break
+        
         if excel_cd:
-            cd_val = aanvraag_map.get(excel_cd, excel_cd)
+            # Map Digipoort to OTP3; for ZBM, VM, etc., use as-is
+            if excel_cd.upper() == "DIGIPOORT":
+                cd_val = "OTP3"
+            else:
+                cd_val = excel_cd  # ZBM stays ZBM, VM stays VM
         else:
-            cd_val = "OTP3"
+            cd_val = "ZBM"  # Default to ZBM if not specified (required by XSD)
+        
+        ET.SubElement(msg, qname("CdBerichtType")).text = cd_val
     except Exception:
-        cd_val = "OTP3"
-    ET.SubElement(msg, qname("CdBerichtType")).text = cd_val
+        # Fallback: always provide a value since it's required
+        ET.SubElement(msg, qname("CdBerichtType")).text = "ZBM"
     ET.SubElement(msg, qname("IndAlleenControleUzs")).text = record.get("IndAlleenControleUzs", "2")
 
     # Ketenpartij
@@ -274,14 +372,26 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
     d1 = record.get("DatEersteAoDag")
     set_date_if(mz, "DatEersteAoDag", d1, date_only=True)
     set_if(mz, "ToelichtingMelding", record.get("ToelichtingMelding", None))
-    set_if(mz, "IndWerkverplichtingEersteAoDag", record.get("IndWerkverplichtingEersteAoDag", None))
-    set_if(mz, "IndDirecteUitkering", record.get("IndDirecteUitkering", None))
+    # Normalize IndJN fields to 1/2 format
+    ind_werk = record.get("IndWerkverplichtingEersteAoDag", None)
+    if ind_werk:
+        set_if(mz, "IndWerkverplichtingEersteAoDag", _normalize_ind_jn(ind_werk))
+    ind_direct = record.get("IndDirecteUitkering", None)
+    if ind_direct:
+        set_if(mz, "IndDirecteUitkering", _normalize_ind_jn(ind_direct))
     set_if(mz, "CdRedenAangifteAo", record.get("CdRedenAangifteAo", None))
-    set_if(mz, "CdRedenZiekmelding", record.get("CdRedenZiekmelding", None))
+    # Map CdRedenZiekmelding if present
+    cd_reden = record.get("CdRedenZiekmelding", None)
+    if cd_reden:
+        set_if(mz, "CdRedenZiekmelding", _map_cd_reden_ziekmelding(str(cd_reden).strip()))
     set_if(mz, "AantGewerkteUrenEersteAoDag", record.get("AantGewerkteUrenEersteAoDag", None))
     set_if(mz, "AantRoosterurenEersteAoDag", record.get("AantRoosterurenEersteAoDag", None))
-    set_if(mz, "IndWerkdagOpZaterdag", record.get("IndWerkdagOpZaterdag", None))
-    set_if(mz, "IndWerkdagOpZondag", record.get("IndWerkdagOpZondag", None))
+    ind_zat = record.get("IndWerkdagOpZaterdag", None)
+    if ind_zat:
+        set_if(mz, "IndWerkdagOpZaterdag", _normalize_ind_jn(ind_zat))
+    ind_zon = record.get("IndWerkdagOpZondag", None)
+    if ind_zon:
+        set_if(mz, "IndWerkdagOpZondag", _normalize_ind_jn(ind_zon))
     set_if(mz, "BedrSvLoonGedWerkenEersteAoDag", record.get("BedrSvLoonGedWerkenEersteAoDag", None))
     set_if(mz, "CdRedenRegres", record.get("CdRedenRegres", None))
     set_if(mz, "OmsRedenTeLateAanvraagUitkering", record.get("OmsRedenTeLateAanvraagUitkering", None))
