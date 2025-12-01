@@ -19,7 +19,9 @@ from flask import (
 import tempfile
 from zipfile import ZIP_DEFLATED, ZipFile
 from lxml import etree
+import xml.etree.ElementTree as ET
 from werkzeug.utils import secure_filename
+import importlib.util
 
 try:
     import openpyxl
@@ -287,6 +289,243 @@ def _maybe_run_cleanup():
     _CLEANUP_RUN = True
 
 
+def _load_generator_module():
+    """Dynamically load `tools/generate_from_excel.py` as a module if present.
+
+    Returns the loaded module or None on error.
+    """
+    try:
+        gen_path = Path(__file__).parent.parent / "tools" / "generate_from_excel.py"
+        if not gen_path.exists():
+            return None
+        spec = importlib.util.spec_from_file_location("tools_generate_from_excel", str(gen_path))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception:
+        return None
+
+
+def _normalize_record_for_generator(rec: dict) -> dict:
+    """Normalize a row dict (header->value) to the canonical keys expected by the generator.
+
+    The input `rec` comes from `read_excel_rows()` and uses the original header
+    strings as keys. This function produces a new dict with keys like 'BSN',
+    'Naam', 'Geboortedatum', 'Loonheffingennummer' etc. populated from common
+    header aliases.
+    """
+    import re
+
+    def tok(s: str) -> str:
+        if s is None:
+            return ""
+        t = str(s).strip().lower()
+        # remove non-alphanumeric
+        t = re.sub(r"[^0-9a-z]+", "", t)
+        return t
+
+    key_map = {tok(k): k for k in rec.keys()}
+
+    def pick(*candidates):
+        for c in candidates:
+            v = key_map.get(c)
+            if v is not None:
+                return rec.get(v)
+        return None
+
+    out = {}
+    # common mappings
+    out["BSN"] = pick("bsn", "burgerservicenr", "burgerservicenummer")
+    out["Naam"] = pick("naam", "volledigenaam", "volledige naam", "voornaamachternaam")
+    out["Achternaam"] = pick("achternaam", "surname", "lastname")
+    out["EersteVoornaam"] = pick("voornaam", "eerstevoornaam", "firstname")
+    out["Geboortedatum"] = pick("geboortedatum", "geboortedat", "gebdatum", "geb_datum")
+    out["DatEersteAoDag"] = pick("dateersteaodag", "dateersteaodag", "dat_eerste_aodag")
+    out["IndDirecteUitkering"] = pick("inddirecteuitkering", "inddirecteuitkering")
+    out["CdRedenAangifteAo"] = pick("cdredenaangifteao", "cdredenaangifteao")
+    out["CdRedenZiekmelding"] = pick("cdredenziekmelding", "cdredenziekmelding")
+    out["IndWerkdagOpZaterdag"] = pick("indwerkdagopzaterdag", "indwerkdagopzaterdag")
+    out["IndWerkdagOpZondag"] = pick("indwerkdagopzondag", "indwerkdagopzondag")
+    out["Loonheffingennummer"] = pick("loonheffingennummer", "loonheffingennr", "loonheffingennr")
+    out["IBAN"] = pick("iban", "rekeningnummeriban", "rekeningnummer")
+    out["BIC"] = pick("bic", "bic")
+    out["Personeelsnr"] = pick("personeelsnr", "personeelsnummer")
+
+    # copy any other keys through (sanitize to generator-friendly keys)
+    for k, v in rec.items():
+        if v is None:
+            continue
+        if isinstance(k, str) and tok(k) in ("bsn", "naam", "achternaam", "voornaam", "geboortedatum"):
+            continue
+        # keep original header name as-is for wider generator compatibility
+        out.setdefault(k, v)
+
+    # If 'Naam' is missing, try to build it from available name parts
+    try:
+        if not out.get("Naam") or str(out.get("Naam")).strip() == "":
+            parts = []
+            # prefer EersteVoornaam + Achternaam
+            if out.get("EersteVoornaam"):
+                parts.append(str(out.get("EersteVoornaam")).strip())
+            # try also common alternatives from original row if present
+            alt_last = None
+            for candidate in ("Achternaam", "SignificantDeelVanDeAchternaam", "lastname", "surname"):
+                if out.get(candidate):
+                    alt_last = out.get(candidate)
+                    break
+            if alt_last:
+                parts.append(str(alt_last).strip())
+            # If we still have no parts but Achternaam exists and is a plausible string, use it as the name
+            if not parts and out.get("Achternaam"):
+                try:
+                    al = out.get("Achternaam")
+                    if not (isinstance(al, (int, float)) and float(al) == 0):
+                        s_al = str(al).strip()
+                        if s_al and s_al not in ("0", "None"):
+                            parts.append(s_al)
+                except Exception:
+                    pass
+            # fallback: look for fields in the original headers that look like 'voorletters' or 'initialen'
+            if not parts:
+                for h in ("voorletters", "initialen", "initials", "voornaam"):
+                    # check original record keys (case-insensitive)
+                    for k, v in rec.items():
+                        if k is None:
+                            continue
+                        kk = tok(k)
+                        if kk == h and v:
+                            parts.append(str(v).strip())
+            if parts:
+                out["Naam"] = " ".join(parts)
+    except Exception:
+        pass
+
+    return out
+
+
+def _is_valid_yyyymmdd(s: str) -> bool:
+    """Return True if s matches YYYYMMDD and is a real date."""
+    if not s:
+        return False
+    try:
+        ss = str(s).strip()
+        if len(ss) != 8 or not ss.isdigit():
+            return False
+        datetime.datetime.strptime(ss, "%Y%m%d")
+        return True
+    except Exception:
+        return False
+
+
+_CACHED_XSD_SCHEMA = None
+_LAST_XSD_ERROR = None
+
+
+def _load_message_xsd():
+    """Load and cache the `UwvZwMeldingInternBody` XMLSchema if available.
+
+    Returns an lxml.etree.XMLSchema object or None if not loadable.
+    """
+    global _CACHED_XSD_SCHEMA
+    if _CACHED_XSD_SCHEMA is not None:
+        return _CACHED_XSD_SCHEMA
+    xsd_path = Path(__file__).parent.parent / "docs" / "UwvZwMeldingInternBody-v0428-b01.xsd"
+    if not xsd_path.exists():
+        return None
+
+    # Try a "safe" parse that avoids network fetches and external entity resolution
+    try:
+        safe_parser = etree.XMLParser(load_dtd=False, no_network=True, resolve_entities=False)
+        doc = etree.parse(str(xsd_path), safe_parser)
+        try:
+            schema = etree.XMLSchema(doc)
+            _CACHED_XSD_SCHEMA = schema
+            return schema
+        except Exception as se:
+            app.logger.warning("XSD compile failed (safe parse): %s", se)
+            # Fall through to a more permissive parse below
+    except Exception as e:
+        app.logger.debug("Safe XSD parse failed, will attempt permissive parse: %s", e)
+
+    # Attempt a permissive parse that allows external resources, but catch failures
+    try:
+        permissive_parser = etree.XMLParser(load_dtd=True, no_network=False)
+        doc2 = etree.parse(str(xsd_path), permissive_parser)
+        schema2 = etree.XMLSchema(doc2)
+        _CACHED_XSD_SCHEMA = schema2
+        return schema2
+    except Exception as ex:
+        app.logger.warning("Full XSD load/compile failed: %s", ex)
+        # Record the error for the request/response so the UI can show an inline warning.
+        global _LAST_XSD_ERROR
+        try:
+            _LAST_XSD_ERROR = str(ex)
+        except Exception:
+            _LAST_XSD_ERROR = "XSD load/compile failed"
+        _CACHED_XSD_SCHEMA = None
+        return None
+
+
+def _validate_generator_record(rec: dict) -> list:
+    """Validate a normalized record (keys like 'BSN','Naam','DatEersteAoDag').
+
+    Returns a list of error messages (empty if valid).
+    """
+    errs = []
+    # BSN required
+    bsn = rec.get("BSN") or rec.get("Burgerservicenr")
+    if not bsn or str(bsn).strip() == "":
+        errs.append("ontbrekende BSN")
+    # Naam required (either 'Naam' or first+last)
+    naam = rec.get("Naam")
+    if not naam or str(naam).strip() == "":
+        first = rec.get("EersteVoornaam") or rec.get("Voornaam") or rec.get("Voorletters")
+        last = rec.get("Achternaam") or rec.get("SignificantDeelVanDeAchternaam")
+        if not (first or last):
+            errs.append("ontbrekende Naam")
+    # DatEersteAoDag required and must be YYYYMMDD
+    dae = rec.get("DatEersteAoDag") or rec.get("DatEersteAoDag")
+    if dae:
+        s = str(dae).strip()
+        # allow Excel serial numbers (digits less than 6?) we'll only validate YYYYMMDD here
+        if len(s) == 8 and s.isdigit():
+            if not _is_valid_yyyymmdd(s):
+                errs.append(f"ongeldige DatEersteAoDag: {s}")
+        else:
+            # try to parse common date formats
+            try:
+                # leverage existing helper to format; if it raises or returns empty, flag
+                formatted = _format_date_yyyymmdd(dae)
+                if not formatted or not _is_valid_yyyymmdd(formatted):
+                    errs.append(f"ongeldige DatEersteAoDag: {dae}")
+            except Exception:
+                errs.append(f"ongeldige DatEersteAoDag: {dae}")
+    else:
+        errs.append("ontbrekende DatEersteAoDag")
+    return errs
+
+
+def _is_blank_normalized_record(rec: dict) -> bool:
+    """Return True if the normalized record appears to be an empty/placeholder row.
+
+    We consider a row blank if it contains no meaningful identifying values
+    (no BSN, no Naam/Achternaam, no Loonheffingennummer, no IBAN).
+    """
+    try:
+        def is_empty(v):
+            if v is None:
+                return True
+            s = str(v).strip()
+            if s == "" or s in ("0", "None"):
+                return True
+            return False
+
+        keys = [rec.get('BSN'), rec.get('Naam'), rec.get('Achternaam'), rec.get('Loonheffingennummer'), rec.get('IBAN'), rec.get('Rekeningnummer (IBAN)')]
+        return all(is_empty(k) for k in keys)
+    except Exception:
+        return False
+
+
 @app.route("/favicon.ico")
 def favicon():
     # Serve a favicon from static if present, otherwise return 204
@@ -353,23 +592,358 @@ def upload_excel():
         return redirect(url_for("genereer_xml"))
 
     # Read workbook from uploaded file (file storage provides file-like object)
+    # Read bytes once so we can both parse in-memory and save a temp file
+    content = f.read()
     try:
-        wb = openpyxl.load_workbook(
-            filename=io.BytesIO(f.read()), read_only=True, data_only=True
-        )
+        wb = openpyxl.load_workbook(filename=io.BytesIO(content), read_only=True, data_only=True)
     except Exception as e:
         flash("Kon Excel-bestand niet lezen: " + str(e), "danger")
         return redirect(url_for("genereer_xml"))
 
     sheet = wb.active
 
-    # Read headers from first row
+    # Read headers from first row for legacy in-process parsing
     rows = sheet.iter_rows(values_only=True)
     try:
         headers = [h if h is not None else "" for h in next(rows)]
     except StopIteration:
         flash("Leeg Excel-bestand", "danger")
         return redirect(url_for("genereer_xml"))
+
+    # Determine aanvraag type (used by generator output mapping)
+    # `form_aanvraag_type` preserves the raw UI selection (used for envelope sender)
+    form_aanvraag_type = request.form.get("aanvraag_type") or "ZBM"
+    # Map friendly form values to schema-allowed CdBerichtType codes.
+    # The UI may offer 'Digipoort' as a label; the schema expects short codes (e.g., OTP3, ZBM).
+    aanvraag_map = {
+        "Digipoort": "OTP3",
+    }
+    # Known schema codes which we should accept as-is if present in the generated
+    # message. If the generator wrote one of these codes already (e.g. 'VM' or
+    # 'ZBM'), we won't override it with the selected `aanvraag_type`.
+    _KNOWN_CDBERICHT_TYPES = {"KCC", "OTP1", "OTP3", "RFE", "RFV", "RFX", "VM", "ZBM", "KAAN", "ZBMA"}
+    # `cd_bericht_default` is the schema code we will use for CdBerichtType when
+    # no explicit value is present in the Excel row. We map the UI selection
+    # where appropriate (e.g., 'Digipoort' -> 'OTP3'). Keep `form_aanvraag_type`
+    # unchanged so the envelope header's ApplicatieNaam matches the UI choice.
+    cd_bericht_default = aanvraag_map.get(form_aanvraag_type, form_aanvraag_type)
+    # Determine whether to validate records (checkbox on form). Default: True
+    validate_flag = str(request.form.get("validate", "on")).strip().lower() in ("1", "true", "on", "yes")
+
+    # Attempt to use the in-process Excel->XML generator (tools/generate_from_excel.py)
+    gen = _load_generator_module()
+    if gen is None:
+        # Help the user debug: if the generator isn't loadable we fall back to legacy parsing
+        flash(
+            "In-process generator niet gevonden of niet laadb... Gebruik legacy parser.",
+            "warning",
+        )
+    else:
+        # generator will be used; avoid noisy per-request flashes in the UI
+        pass
+    temp_file_path = None
+    if gen is not None:
+        try:
+            # save uploaded bytes to a tmp file for the generator
+            tf = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+            try:
+                tf.write(content)
+                tf.flush()
+            finally:
+                tf.close()
+            temp_file_path = tf.name
+
+            # read rows using the generator's helper (use cached values when available)
+            # data_only=True prefers stored/calculated values instead of formulas, which
+            # avoids sanitizing useful display values to empty strings.
+            rows_list, formula_count = gen.read_excel_rows(temp_file_path, data_only=True)
+            ns_soap, ns_uwvh, ns_body = gen._namespaces()
+
+            generated = []
+            errors = []
+            # Capture any XSD load error for UI; reset before per-request use
+            global _LAST_XSD_ERROR
+            _LAST_XSD_ERROR = None
+
+            # choose output directory: map to OUTPUT_MAP if possible, otherwise generator default
+            out_dir = OUTPUT_MAP.get(form_aanvraag_type) or (Path(__file__).parent.parent / "build" / "excel_generated")
+            out_dir_str = str(out_dir)
+            os.makedirs(out_dir_str, exist_ok=True)
+
+            log_path = str(Path(__file__).parent.parent / "build" / "logs" / "generator_excel.log")
+
+            # Use bulk when there are multiple records; otherwise create one file per row
+            # Only load XSD/schema if validation is enabled
+            schema = _load_message_xsd() if validate_flag else None
+            # Determine which fields the uploaded Excel provides so we can validate
+            # only against those. `rows_list` is a list of dicts keyed by header
+            # names returned by the in-process generator.
+            excel_headers = []
+            if rows_list:
+                # first row's keys represent the headers (generator normalizes them)
+                excel_headers = list(rows_list[0].keys())
+
+            # Helper to check for presence among synonyms
+            def _record_has_any(rec, names):
+                for n in names:
+                    v = rec.get(n)
+                    if v is not None and str(v).strip() != "":
+                        return True
+                return False
+
+            # Known important fields and common header synonyms
+            important_field_synonyms = {
+                'BSN': ['BSN', 'Burgerservicenr', 'Burgerservicenr'],
+                'Naam': ['Achternaam', 'SignificantDeelVanDeAchternaam', 'Naam', 'IndienerNaam'],
+                'DatEersteAoDag': ['DatEersteAoDag', 'DatEersteAoDag'],
+                'Loonheffingennummer': ['Loonheffingennummer', 'Loonheffingennr', 'Loonheffingennr'],
+            }
+            if len(rows_list) > 1:
+                bodies = []
+                for idx, rec in enumerate(rows_list, start=2):
+                    try:
+                        rec_norm = _normalize_record_for_generator(rec)
+                        # Skip blank/placeholder rows without reporting errors
+                        if _is_blank_normalized_record(rec_norm):
+                            continue
+                        # Dynamic validation: only enforce important fields that are
+                        # present in the uploaded Excel headers. This makes the
+                        # validation adapt to the sheet the user uploaded.
+                        for imp, syns in important_field_synonyms.items():
+                            if any(h in excel_headers for h in syns):
+                                if not _record_has_any(rec, syns):
+                                    errors.append(f"Regel {idx}: {imp} ontbreekt of is ongeldig")
+                                    # skip this record
+                                    continue
+
+                        # record-level validation (BSN, Naam, DatEersteAoDag) if enabled
+                        rec_errs = _validate_generator_record(rec_norm) if validate_flag else []
+                        if rec_errs:
+                            errors.append(f"Regel {idx}: " + "; ".join(rec_errs))
+                            continue
+
+                        msg = gen.build_message_element(rec_norm, ns_body)
+                        # Prefer an explicit CdBerichtType value from the Excel
+                        # row if present (several sheets include this column);
+                        # otherwise use the selected `aanvraag_type`.
+                        try:
+                            excel_cd_names = ['CdBerichtType', 'aanvraag_type', 'Type']
+                            excel_cd = None
+                            for n in excel_cd_names:
+                                v = rec_norm.get(n)
+                                if v is not None and str(v).strip() != '':
+                                    excel_cd = str(v).strip()
+                                    break
+                            if excel_cd:
+                                desired = aanvraag_map.get(excel_cd, excel_cd)
+                            else:
+                                desired = cd_bericht_default
+                            # Decide whether to overwrite CdBerichtType. We prefer
+                            # generator-supplied values only when they already are
+                            # valid schema codes. If the generator wrote a UI label
+                            # (e.g. 'Digipoort') or a non-known value, overwrite it
+                            # with the mapped schema code (e.g. 'OTP3'). This ensures
+                            # message bodies contain schema-allowed codes.
+                            existing = msg.findall('{' + ns_body + '}CdBerichtType')
+                            existing_text = None
+                            if existing and len(existing) > 0:
+                                t = existing[0].text
+                                existing_text = t.strip() if t is not None else None
+
+                            keep_existing = False
+                            if existing_text and existing_text in _KNOWN_CDBERICHT_TYPES:
+                                keep_existing = True
+
+                            if not keep_existing:
+                                if existing:
+                                    for c in existing:
+                                        c.text = desired
+                                else:
+                                    ET.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
+                        except Exception:
+                            pass
+
+                        # XSD validation per message if validation is enabled and schema available
+                        if validate_flag and schema is not None:
+                            try:
+                                xml_bytes = ET.tostring(msg, encoding="utf-8")
+                                lmsg = etree.fromstring(xml_bytes)
+                                if not schema.validate(lmsg):
+                                    # collect schema errors
+                                    le = schema.error_log
+                                    msgs = []
+                                    for e in le:
+                                        msgs.append(str(e.message))
+                                    errors.append(f"Regel {idx}: XSD fouten: {'; '.join(msgs)}")
+                                    continue
+                            except Exception as ve:
+                                errors.append(f"Regel {idx}: XSD validatiefout: {ve}")
+                                continue
+
+                        bodies.append(msg)
+                    except Exception as exc:
+                        try:
+                            gen.append_log(log_path, f"{datetime.datetime.now().isoformat()}\tERROR_BUILD_MSG\t{exc}")
+                        except Exception:
+                            pass
+
+                envelope = gen.build_envelope_with_header_and_bodies(bodies, sender=form_aanvraag_type)
+                saved = gen.save_envelope(envelope, out_dir_str, "bulk")
+                try:
+                    gen.append_log(log_path, f"{datetime.datetime.now().isoformat()}\t{saved}\tSUCCESS\t{len(bodies)}")
+                except Exception:
+                    pass
+                generated = [Path(saved).name]
+            else:
+                gen_files = []
+                schema = _load_message_xsd() if validate_flag else None
+                for idx, rec in enumerate(rows_list, start=2):
+                    try:
+                        rec_norm = _normalize_record_for_generator(rec)
+
+                        # Dynamic validation based on the provided headers
+                        for imp, syns in important_field_synonyms.items():
+                            if any(h in excel_headers for h in syns):
+                                if not _record_has_any(rec, syns):
+                                    errors.append(f"Regel {idx}: {imp} ontbreekt of is ongeldig")
+                                    # skip this record
+                                    continue
+
+                        rec_errs = _validate_generator_record(rec_norm) if validate_flag else []
+                        if rec_errs:
+                            errors.append(f"Regel {idx}: " + "; ".join(rec_errs))
+                            continue
+
+                        m = gen.build_message_element(rec_norm, ns_body)
+                        try:
+                            # Prefer an explicit CdBerichtType value from the Excel
+                            # row if present; otherwise use the selected form value.
+                            excel_cd_names = ['CdBerichtType', 'aanvraag_type', 'Type']
+                            excel_cd = None
+                            for n in excel_cd_names:
+                                v = rec_norm.get(n)
+                                if v is not None and str(v).strip() != '':
+                                    excel_cd = str(v).strip()
+                                    break
+                            if excel_cd:
+                                desired = aanvraag_map.get(excel_cd, excel_cd)
+                            else:
+                                desired = cd_bericht_default
+                            existing = m.findall('{' + ns_body + '}CdBerichtType')
+                            existing_text = None
+                            if existing and len(existing) > 0:
+                                t = existing[0].text
+                                existing_text = t.strip() if t is not None else None
+
+                            keep_existing = False
+                            if existing_text and existing_text in _KNOWN_CDBERICHT_TYPES:
+                                keep_existing = True
+
+                            if not keep_existing:
+                                if existing:
+                                    for c in existing:
+                                        c.text = desired
+                                else:
+                                    ET.SubElement(m, '{' + ns_body + '}CdBerichtType').text = desired
+                        except Exception:
+                            pass
+                        if validate_flag and schema is not None:
+                            try:
+                                xml_bytes = ET.tostring(m, encoding="utf-8")
+                                lmsg = etree.fromstring(xml_bytes)
+                                if not schema.validate(lmsg):
+                                    le = schema.error_log
+                                    msgs = [str(e.message) for e in le]
+                                    errors.append(f"Regel {idx}: XSD fouten: {'; '.join(msgs)}")
+                                    continue
+                            except Exception as ve:
+                                errors.append(f"Regel {idx}: XSD validatiefout: {ve}")
+                                continue
+                        env = gen.build_envelope_with_header_and_bodies([m], sender=form_aanvraag_type)
+                        bsn = rec_norm.get("BSN") or f"row{idx}"
+                        safe_bsn = str(bsn).replace(" ", "_")
+                        saved = gen.save_envelope(env, out_dir_str, safe_bsn)
+                        try:
+                            gen.append_log(log_path, f"{datetime.datetime.now().isoformat()}\t{saved}\tSUCCESS")
+                        except Exception:
+                            pass
+                        gen_files.append(Path(saved).name)
+                    except Exception as exc:
+                        try:
+                            gen.append_log(log_path, f"{datetime.datetime.now().isoformat()}\tERROR_SAVE\t{exc}")
+                        except Exception:
+                            pass
+                generated = gen_files
+
+                # (XSD loader error already reset earlier for the request)
+
+            # Attempt to remove temp file
+            try:
+                if temp_file_path:
+                    os.unlink(temp_file_path)
+            except Exception:
+                pass
+
+            # If generator produced files, create a ZIP like the original flow and render results
+            bulk_zip_name = None
+            if generated:
+                try:
+                    ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+                    bulk_zip_name = f"bulk_{form_aanvraag_type}_{ts}.zip"
+                    DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+                    zip_path = DOWNLOADS_DIR / bulk_zip_name
+                    from zipfile import ZIP_DEFLATED as _ZIP_DEF, ZipFile as _ZipFile
+                    with _ZipFile(str(zip_path), "w", _ZIP_DEF) as zf:
+                        for fn in generated:
+                            found = None
+                            # search priority: the out_dir where generator saved the file,
+                            # then configured OUTPUT_MAP folders, then the build/excel_generated fallback
+                            candidates = []
+                            try:
+                                candidates.append(Path(out_dir_str))
+                            except Exception:
+                                pass
+                            candidates.extend(list(OUTPUT_MAP.values()))
+                            candidates.append(Path(__file__).parent.parent / "build" / "excel_generated")
+                            for folder in candidates:
+                                p = Path(folder) / fn
+                                if p.exists():
+                                    found = p
+                                    break
+                            if found:
+                                zf.write(str(found), arcname=fn)
+                except Exception:
+                    bulk_zip_name = None
+
+            yaml_candidate = Path(__file__).parent.parent / "docs" / "excel_datasets.yml"
+            datasets = load_datasets_yaml(yaml_candidate)
+            success_rate = None
+            total_tests = 0
+            last_status = None
+            last_time = None
+            bulk_results = {"generated": generated, "errors": errors}
+            # Pass any XSD loader error message to the template so we can show an inline warning
+            xsd_error = _LAST_XSD_ERROR
+            return render_template(
+                "genereer_xml.html",
+                xml_path=None,
+                excel_records=datasets,
+                total_tests=total_tests,
+                last_test_status=last_status,
+                last_test_time=last_time,
+                success_rate=success_rate,
+                bulk_results=bulk_results,
+                bulk_zip=bulk_zip_name,
+                xsd_error=xsd_error,
+            )
+        except Exception:
+            # fall through to original in-Python mapping fallback
+            try:
+                if temp_file_path:
+                    os.unlink(temp_file_path)
+            except Exception:
+                pass
+            pass
 
     # By default, we map normalized header names -> indices
 
@@ -436,10 +1010,25 @@ def upload_excel():
 
         # map to required keys
         data = {}
-        data["BSN"] = str(r.get("bsn", "")).strip() if r.get("bsn") is not None else ""
-        data["Naam"] = (
-            str(r.get("naam", "")).strip() if r.get("naam") is not None else ""
-        )
+        # Accept several aliases for BSN
+        bsn_val = None
+        for candidate in ("bsn", "burgerservicenr", "burgerservicenummer", "burgerservicenr"):
+            if r.get(candidate) is not None:
+                bsn_val = r.get(candidate)
+                break
+        data["BSN"] = str(bsn_val).strip() if bsn_val is not None else ""
+
+        # Name: accept direct 'naam' or compose from first name + last name
+        naam_val = None
+        if r.get("naam") is not None:
+            naam_val = r.get("naam")
+        else:
+            first = r.get("voornaam") or r.get("eerstevoornaam") or r.get("voorletters") or ""
+            last = r.get("achternaam") or r.get("significantdeelvandeachternaam") or ""
+            combined = f"{first} {last}".strip()
+            if combined:
+                naam_val = combined
+        data["Naam"] = str(naam_val).strip() if naam_val is not None else ""
 
         gebo_val = r.get("geboortedatum")
         if gebo_val is None:
@@ -482,8 +1071,24 @@ def upload_excel():
         unique_suffix = (
             datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{row_index}"
         )
+        data["CdBerichtType"] = aanvraag_type
+        data["BronApplicatie"] = aanvraag_type
         tree = fill_xml_template(None, data, unique_suffix)
         root = tree.getroot()
+        # XSD validation for legacy flow
+        schema = _load_message_xsd()
+        if schema is not None:
+            try:
+                xml_bytes = ET.tostring(root, encoding="utf-8")
+                lroot = etree.fromstring(xml_bytes)
+                if not schema.validate(lroot):
+                    le = schema.error_log
+                    msgs = [str(e.message) for e in le]
+                    errors.append(f"Regel {row_index}: XSD fouten: {'; '.join(msgs)}")
+                    continue
+            except Exception as ve:
+                errors.append(f"Regel {row_index}: XSD validatiefout: {ve}")
+                continue
 
         def add_or_set(tag, val):
             if val is None or val == "":
@@ -526,10 +1131,12 @@ def upload_excel():
             zip_path = DOWNLOADS_DIR / bulk_zip_name
             with ZipFile(str(zip_path), "w", ZIP_DEFLATED) as zf:
                 for fn in generated:
-                    # find the actual file in the known OUTPUT_MAP locations
+                    # search OUTPUT_MAP locations and fallback to build/excel_generated
                     found = None
-                    for folder in OUTPUT_MAP.values():
-                        p = folder / fn
+                    candidates = list(OUTPUT_MAP.values())
+                    candidates.append(Path(__file__).parent.parent / "build" / "excel_generated")
+                    for folder in candidates:
+                        p = Path(folder) / fn
                         if p.exists():
                             found = p
                             break

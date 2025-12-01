@@ -1,0 +1,208 @@
+<?xml version='1.0' encoding='utf-8'?>
+<SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ns2="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428" xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202">
+  <SOAP-ENV:Header>
+    <uwvh:UwvMLHeader>
+      <RouteInformatie>
+        <Bron>
+          <ApplicatieNaam>Digipoort</ApplicatieNaam>
+          <DatTijdVersturenBericht>2025-11-28T11:40:27.926813+01:00</DatTijdVersturenBericht>
+        </Bron>
+        <Bestemming>
+          <ApplicatieNaam>UZS</ApplicatieNaam>
+        </Bestemming>
+        <GegevensUitwisselingsnr>GegUitNr-d8c403d9</GegevensUitwisselingsnr>
+        <RefnrGegevensUitwisselingsExtern>NOCOREFLEX</RefnrGegevensUitwisselingsExtern>
+      </RouteInformatie>
+      <BerichtIdentificatie>
+        <BerichtReferentienr>BerRef-4625b461</BerichtReferentienr>
+        <BerichtType>
+          <BerichtNaam>UwvZwMeldingInternBody</BerichtNaam>
+          <VersieMajor>04</VersieMajor>
+          <VersieMinor>28</VersieMinor>
+          <Buildnr>01</Buildnr>
+          <CommunicatieType>Melding</CommunicatieType>
+          <CommunicatieElement>Melding</CommunicatieElement>
+        </BerichtType>
+        <DatTijdAanmaakBericht>2025-11-28T11:40:27.926876+01:00</DatTijdAanmaakBericht>
+        <IndTestbericht>2</IndTestbericht>
+      </BerichtIdentificatie>
+      <Transactie>
+        <TransactieReferentienr>TraRef-24b61070</TransactieReferentienr>
+        <Volgordenr>1</Volgordenr>
+        <IndLaatsteBericht>1</IndLaatsteBericht>
+      </Transactie>
+    </uwvh:UwvMLHeader>
+  </SOAP-ENV:Header>
+  <SOAP-ENV:Body>
+    <ns2:UwvZwMeldingInternBody>
+      <CdBerichtType>Digipoort</CdBerichtType>
+      <IndAlleenControleUzs>2</IndAlleenControleUzs>
+      <Ketenpartij>
+        <FiscaalNr>136910038</FiscaalNr>
+        <Loonheffingennr>136910038L01</Loonheffingennr>
+        <Naam />
+        <CdRolKetenpartij>01</CdRolKetenpartij>
+        <CdSrtIndiener>WG</CdSrtIndiener>
+        <NaamSoftwarePakket>Generated</NaamSoftwarePakket>
+        <VersieSoftwarePakket>1.0</VersieSoftwarePakket>
+        <BerichtkenmerkIndiener />
+        <VolgNr>1</VolgNr>
+        <Contactgegevens>
+          <NaamContactpersoonAfd />
+          <TelefoonnrContactpersoonAfd />
+        </Contactgegevens>
+      </Ketenpartij>
+      <NatuurlijkPersoon>
+        <Burgerservicenr>555501759</Burgerservicenr>
+        <Geboortedat>1980-12-05 23:16:22.745000</Geboortedat>
+        <IndOverlijden>2</IndOverlijden>
+        <Geslacht />
+        <EersteVoornaam />
+        <Voorletters />
+        <Voorvoegsel />
+        <SignificantDeelVanDeAchternaam>Simeunović of Uluaĝ</SignificantDeelVanDeAchternaam>
+        <Telefoonnr />
+        <TelefoonnrMobiel />
+        <TelefoonnrBuitenland />
+      </NatuurlijkPersoon>
+      <Contactgegevens>
+        <NaamContactpersoonAfd />
+        <Geslacht />
+        <TelefoonnrContactpersoonAfd />
+        <NrLokaleVestiging />
+        <EMailAdres />
+      </Contactgegevens>
+      <MeldingZiekte>
+        <IndVerzoekTotIntrekken>2</IndVerzoekTotIntrekken>
+        <ReferentieMelding>ReferentieMelding - MeldingZiekte</ReferentieMelding>
+        <DatTijdOpstellenMelding />
+        <DatOntvangstMeldingWerkgever />
+        <DatEersteAoDag>20251125</DatEersteAoDag>
+        <ToelichtingMelding />
+        <IndWerkverplichtingEersteAoDag>1</IndWerkverplichtingEersteAoDag>
+        <IndDirecteUitkering>N</IndDirecteUitkering>
+        <CdRedenAangifteAo>04</CdRedenAangifteAo>
+        <CdRedenZiekmelding>04</CdRedenZiekmelding>
+        <AantGewerkteUrenEersteAoDag />
+        <AantRoosterurenEersteAoDag />
+        <IndWerkdagOpZaterdag>N</IndWerkdagOpZaterdag>
+        <IndWerkdagOpZondag>J</IndWerkdagOpZondag>
+        <BedrSvLoonGedWerkenEersteAoDag />
+        <CdRedenRegres />
+        <OmsRedenTeLateAanvraagUitkering />
+        <GemiddeldAantWerkurenPerWeek />
+        <IndEDnstvrbndCtrTijdensZiekte />
+      </MeldingZiekte>
+      <AdministratieveEenheid>
+        <Loonheffingennr>136910038L01</Loonheffingennr>
+        <Naam />
+        <Bankrekening>
+          <Bankrekeningnr />
+          <Bic>RABONL2A</Bic>
+          <Iban>NL44RABO0123456789</Iban>
+        </Bankrekening>
+        <SectorRisicogroep>
+          <CdRisicopremiegroep />
+          <CdSectorOsv />
+        </SectorRisicogroep>
+        <Arbeidsverhouding>
+          <Volgnr>1</Volgnr>
+          <IndLoonheffingskorting>1</IndLoonheffingskorting>
+          <Personeelsnr />
+          <NaamBeroepOngecodeerd />
+          <CdAardArbv />
+          <CdLbtabel />
+          <DatB />
+          <AantLoonwachtdagen />
+          <PercLoondoorbetalingTijdensAo />
+          <IndArbeidsgehandicapt />
+        </Arbeidsverhouding>
+      </AdministratieveEenheid>
+    </ns2:UwvZwMeldingInternBody>
+    <ns2:UwvZwMeldingInternBody>
+      <CdBerichtType>Digipoort</CdBerichtType>
+      <IndAlleenControleUzs>2</IndAlleenControleUzs>
+      <Ketenpartij>
+        <FiscaalNr>136910038</FiscaalNr>
+        <Loonheffingennr>136910038L02</Loonheffingennr>
+        <Naam />
+        <CdRolKetenpartij>01</CdRolKetenpartij>
+        <CdSrtIndiener>WG</CdSrtIndiener>
+        <NaamSoftwarePakket>Generated</NaamSoftwarePakket>
+        <VersieSoftwarePakket>1.0</VersieSoftwarePakket>
+        <BerichtkenmerkIndiener />
+        <VolgNr>1</VolgNr>
+        <Contactgegevens>
+          <NaamContactpersoonAfd />
+          <TelefoonnrContactpersoonAfd />
+        </Contactgegevens>
+      </Ketenpartij>
+      <NatuurlijkPersoon>
+        <Burgerservicenr>555501760</Burgerservicenr>
+        <Geboortedat>1980-12-05 23:16:22.745000</Geboortedat>
+        <IndOverlijden>2</IndOverlijden>
+        <Geslacht />
+        <EersteVoornaam />
+        <Voorletters />
+        <Voorvoegsel />
+        <SignificantDeelVanDeAchternaam>Boersma</SignificantDeelVanDeAchternaam>
+        <Telefoonnr />
+        <TelefoonnrMobiel />
+        <TelefoonnrBuitenland />
+      </NatuurlijkPersoon>
+      <Contactgegevens>
+        <NaamContactpersoonAfd />
+        <Geslacht />
+        <TelefoonnrContactpersoonAfd />
+        <NrLokaleVestiging />
+        <EMailAdres />
+      </Contactgegevens>
+      <MeldingZiekte>
+        <IndVerzoekTotIntrekken>2</IndVerzoekTotIntrekken>
+        <ReferentieMelding>ReferentieMelding - MeldingZiekte</ReferentieMelding>
+        <DatTijdOpstellenMelding />
+        <DatOntvangstMeldingWerkgever />
+        <DatEersteAoDag>20251126</DatEersteAoDag>
+        <ToelichtingMelding />
+        <IndWerkverplichtingEersteAoDag>1</IndWerkverplichtingEersteAoDag>
+        <IndDirecteUitkering>N</IndDirecteUitkering>
+        <CdRedenAangifteAo>04</CdRedenAangifteAo>
+        <CdRedenZiekmelding>04</CdRedenZiekmelding>
+        <AantGewerkteUrenEersteAoDag />
+        <AantRoosterurenEersteAoDag />
+        <IndWerkdagOpZaterdag>N</IndWerkdagOpZaterdag>
+        <IndWerkdagOpZondag>J</IndWerkdagOpZondag>
+        <BedrSvLoonGedWerkenEersteAoDag />
+        <CdRedenRegres />
+        <OmsRedenTeLateAanvraagUitkering />
+        <GemiddeldAantWerkurenPerWeek />
+        <IndEDnstvrbndCtrTijdensZiekte />
+      </MeldingZiekte>
+      <AdministratieveEenheid>
+        <Loonheffingennr>136910038L02</Loonheffingennr>
+        <Naam />
+        <Bankrekening>
+          <Bankrekeningnr />
+          <Bic>RABONL2A</Bic>
+          <Iban>NL44RABO0123456790</Iban>
+        </Bankrekening>
+        <SectorRisicogroep>
+          <CdRisicopremiegroep />
+          <CdSectorOsv />
+        </SectorRisicogroep>
+        <Arbeidsverhouding>
+          <Volgnr>1</Volgnr>
+          <IndLoonheffingskorting>1</IndLoonheffingskorting>
+          <Personeelsnr />
+          <NaamBeroepOngecodeerd />
+          <CdAardArbv />
+          <CdLbtabel />
+          <DatB />
+          <AantLoonwachtdagen />
+          <PercLoondoorbetalingTijdensAo />
+          <IndArbeidsgehandicapt />
+        </Arbeidsverhouding>
+      </AdministratieveEenheid>
+    </ns2:UwvZwMeldingInternBody>
+  </SOAP-ENV:Body>
+</SOAP-ENV:Envelope>

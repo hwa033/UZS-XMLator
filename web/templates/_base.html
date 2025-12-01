@@ -52,21 +52,31 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Flash Messages -->
+    <!-- Flash Messages: render as auto-hiding Bootstrap toasts (5s) -->
     {% with messages = get_flashed_messages() %}
         {% if messages %}
-            <div class="position-fixed top-0 end-0 p-3 fixed-top-right">
+            <div id="flashToastContainer" class="position-fixed top-0 end-0 p-3" style="z-index:1080;">
                 {% for message in messages %}
-                    <div class="toast show" role="alert">
+                    <div class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000">
                         <div class="toast-header">
                             <i class="bi bi-info-circle text-primary me-2"></i>
                             <strong class="me-auto">Melding</strong>
-                            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
                         </div>
                         <div class="toast-body">{{ message }}</div>
                     </div>
                 {% endfor %}
             </div>
+            <script>
+            document.addEventListener('DOMContentLoaded', function(){
+                var container = document.getElementById('flashToastContainer');
+                if (!container) return;
+                var toasts = container.querySelectorAll('.toast');
+                toasts.forEach(function(t){
+                    try { new bootstrap.Toast(t).show(); } catch(e){ console.debug('Toast init failed', e); }
+                });
+            });
+            </script>
         {% endif %}
     {% endwith %}
 

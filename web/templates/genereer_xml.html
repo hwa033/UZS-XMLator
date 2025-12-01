@@ -24,6 +24,12 @@
                                 <option value="Digipoort">Digipoort</option>
                             </select>
                         </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" value="on" id="validate_check" name="validate" checked>
+                            <label class="form-check-label" for="validate_check">
+                                Valideer gegevens (BSN / Naam / DatEersteAoDag en XSD-validatie)
+                            </label>
+                        </div>
                         <button type="submit" class="btn btn-outline-primary">Upload & Genereer</button>
                     </form>
                 </div>
@@ -32,19 +38,101 @@
             {% if bulk_results %}
                 <div class="card">
                     <div class="card-body">
-                        <h5>Resultaat</h5>
-                        <p>Gegenereerd: <strong>{{ bulk_results.generated|length }}</strong></p>
-                        {% if bulk_zip %}
-                            <p>Download: <a href="{{ url_for('download_generated', filename=bulk_zip) }}">{{ bulk_zip }}</a></p>
+                        <h3 class="mb-3">Resultaat</h3>
+                        {% if xsd_error %}
+                            <div class="alert alert-warning" role="alert">
+                                <strong>Schema waarschuwing:</strong> Er was een probleem met het laden van het XSD-schema. XSD-validatie is uitgeschakeld voor deze aanvraag.<br>
+                                <small class="text-muted">{{ xsd_error }}</small>
+                            </div>
                         {% endif %}
-                        {% if bulk_results.errors %}
-                            <div class="alert alert-warning">Er waren {{ bulk_results.errors|length }} fouten.</div>
-                            <ul>
-                                {% for e in bulk_results.errors %}
-                                    <li>{{ e }}</li>
-                                {% endfor %}
-                            </ul>
+                        <div class="row align-items-center mb-3">
+                            <div class="col-auto">
+                                <span class="badge bg-primary text-white rounded-pill px-3 py-2 shadow-sm" style="font-size:1.05rem;">Gegenereerd: <strong>{{ bulk_results.generated|length }}</strong></span>
+                            </div>
+                            <div class="col">
+                                {% if bulk_zip %}
+                                    <a href="{{ url_for('download_generated', filename=bulk_zip) }}" class="btn btn-outline-success me-2">Download ZIP</a>
+                                {% endif %}
+                                <a href="{{ url_for('resultaten_pagina') }}" class="btn btn-outline-primary btn-sm shadow-sm">Bekijk alle gegenereerde bestanden</a>
+                            </div>
+                        </div>
+
+                        {% if bulk_results.generated and bulk_results.generated|length > 0 %}
+                            <div class="mb-3">
+                                <div class="row gy-2">
+                                    {% for fn in bulk_results.generated %}
+                                        <div class="col-12">
+                                            <div class="card shadow-sm">
+                                                <div class="card-body d-flex justify-content-between align-items-center">
+                                                    <div class="text-truncate me-3" style="max-width:70%"><i class="bi bi-file-earmark-code me-2"></i>{{ fn }}</div>
+                                                    <div>
+                                                        <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('download_generated', filename=fn) }}">Download</a>
+                                                        <button class="btn btn-sm btn-outline-secondary" onclick="previewGenerated('{{ fn }}');">Preview</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-light">Er zijn geen individuele bestanden gevonden in de gegenereerde lijst. Klik op "Bekijk alle gegenereerde bestanden" om de server-output-map te bekijken.</div>
                         {% endif %}
+
+                        {% if bulk_results.errors and bulk_results.errors|length > 0 %}
+                            <div class="alert alert-warning">
+                                <strong>Er waren {{ bulk_results.errors|length }} fouten.</strong>
+                                <button class="btn btn-sm btn-outline-secondary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#errorsCollapse" aria-expanded="false">Toon / verberg details</button>
+                                <div class="collapse mt-3" id="errorsCollapse">
+                                    <ul class="mb-0">
+                                        {% for e in bulk_results.errors %}
+                                            <li><code>{{ e }}</code></li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div id="previewModalPlaceholder"></div>
+
+                        <script>
+                        async function previewGenerated(filename) {
+                                try {
+                                        const resp = await fetch('/resultaten/preview/' + encodeURIComponent(filename));
+                                        if (!resp.ok) {
+                                                alert('Kon preview niet ophalen');
+                                                return;
+                                        }
+                                        const data = await resp.json();
+                                        const modalHtml = `
+                                                <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Preview: ${data.filename}</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <p><strong>Grootte:</strong> ${data.size} bytes — <strong>Tijdstip:</strong> ${data.tijdstip}</p>
+                                                                <pre style="white-space:pre-wrap; max-height:60vh; overflow:auto;">${data.preview || ''}</pre>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <a class="btn btn-primary" href="/resultaten/download/${encodeURIComponent(data.filename)}">Download</a>
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Sluiten</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>`;
+                                        document.getElementById('previewModalPlaceholder').innerHTML = modalHtml;
+                                        var modalEl = document.getElementById('previewModal');
+                                        var modal = new bootstrap.Modal(modalEl);
+                                        modal.show();
+                                } catch (e) {
+                                        console.error(e);
+                                        alert('Fout bij ophalen preview');
+                                }
+                        }
+                        </script>
                     </div>
                 </div>
             {% endif %}

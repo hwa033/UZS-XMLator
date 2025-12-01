@@ -1,0 +1,994 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.3.2 (Python 3.13.5 on win32)" generated="2025-11-28T10:50:09.269649" rpa="false" schemaversion="5">
+<suite id="s1" name="XML-automation-clean" source="D:\ZW\XML-automation-clean">
+<suite id="s1-s1" name="Api Testen" source="D:\ZW\XML-automation-clean\api_testen.robot">
+<test id="s1-s1-t1" name="Test API Bereikbaarheid" line="15">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:09.759760" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:50:09.759173" elapsed="0.002911"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:50:09.762299" elapsed="0.000234"/>
+</return>
+<msg time="2025-11-28T10:50:09.762772" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:50:09.755910" elapsed="0.007428"/>
+</kw>
+<kw name="Verstuur GET Verzoek" owner="api_functies">
+<kw name="GET On Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:13.902044" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FBFAA50&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:18.165592" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FBC3250&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:22.628133" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FBC34D0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:26.692436" level="FAIL">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC368B0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</msg>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>${endpoint}</arg>
+<arg>expected_status=${verwachte_status}</arg>
+<doc>Sends a GET request on a previously created HTTP Session.</doc>
+<status status="FAIL" start="2025-11-28T10:50:09.767583" elapsed="17.187344">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC368B0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Response Status: ${response.status_code}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:26.955222" elapsed="0.000200"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Response Body: ${response.text}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:26.955590" elapsed="0.000136"/>
+</kw>
+<return>
+<value>${response}</value>
+<status status="NOT RUN" start="2025-11-28T10:50:26.955821" elapsed="0.000123"/>
+</return>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>/api/health</arg>
+<arg>200</arg>
+<doc>Verstuur GET request en valideer response</doc>
+<status status="FAIL" start="2025-11-28T10:50:09.766981" elapsed="17.189131">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC368B0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Controleer Response Status" owner="api_functies">
+<arg>${response}</arg>
+<arg>200</arg>
+<doc>Valideer HTTP status code</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:26.956564" elapsed="0.000197"/>
+</kw>
+<kw name="Controleer Response Bevat Tekst" owner="api_functies">
+<arg>${response}</arg>
+<arg>"status":"ok"</arg>
+<doc>Controleer of response body tekst bevat</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:26.957098" elapsed="0.000164"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:26.958518" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:50:26.958279" elapsed="0.000605"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:50:26.959446" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:50:26.959044" elapsed="0.000853"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:50:26.957686" elapsed="0.002334"/>
+</kw>
+<doc>Controleer of XML validatie API bereikbaar is</doc>
+<tag>api</tag>
+<tag>basis</tag>
+<status status="FAIL" start="2025-11-28T10:50:09.746377" elapsed="17.217473">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC368B0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</test>
+<test id="s1-s1-t2" name="Test XML Validatie Endpoint Met Geldig XML" line="24">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:28.151013" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:50:28.150643" elapsed="0.001218"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:50:28.154338" elapsed="0.000207"/>
+</return>
+<msg time="2025-11-28T10:50:28.155203" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:50:28.149979" elapsed="0.005553"/>
+</kw>
+<kw name="Get File" owner="OperatingSystem">
+<msg time="2025-11-28T10:50:28.157029" level="INFO" html="true">Getting file '&lt;a href="file://D:\ZW\sjablonen\loonheffing.xml"&gt;D:\ZW\sjablonen\loonheffing.xml&lt;/a&gt;'.</msg>
+<msg time="2025-11-28T10:50:28.157838" level="FAIL">FileNotFoundError: [Errno 2] No such file or directory: 'D:\\ZW\\sjablonen\\loonheffing.xml'</msg>
+<var>${xml_data}</var>
+<arg>D:\\ZW\\XML-automation-clean/../sjablonen/loonheffing.xml</arg>
+<doc>Returns the contents of a specified file.</doc>
+<status status="FAIL" start="2025-11-28T10:50:28.156485" elapsed="0.005859">FileNotFoundError: [Errno 2] No such file or directory: 'D:\\ZW\\sjablonen\\loonheffing.xml'</status>
+</kw>
+<kw name="Verstuur POST Verzoek Met XML" owner="api_functies">
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>${XML_ENDPOINT}</arg>
+<arg>${xml_data}</arg>
+<arg>200</arg>
+<doc>Verstuur POST request met XML body</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:28.165304" elapsed="0.000246"/>
+</kw>
+<kw name="Controleer Response Status" owner="api_functies">
+<arg>${response}</arg>
+<arg>200</arg>
+<doc>Valideer HTTP status code</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:28.165916" elapsed="0.000174"/>
+</kw>
+<kw name="Controleer Response Header" owner="api_functies">
+<arg>${response}</arg>
+<arg>Content-Type</arg>
+<arg>application/json</arg>
+<doc>Valideer specifieke response header</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:28.166361" elapsed="0.000149"/>
+</kw>
+<kw name="Controleer JSON Waarde" owner="api_functies">
+<arg>${response}</arg>
+<arg>geldig</arg>
+<arg>${True}</arg>
+<doc>Valideer specifieke waarde in JSON response</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:28.167426" elapsed="0.000159"/>
+</kw>
+<kw name="Controleer Response Tijd" owner="api_functies">
+<arg>${response}</arg>
+<arg>3.0</arg>
+<doc>Valideer dat response tijd onder limiet ligt</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:28.167888" elapsed="0.000296"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:28.169639" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:50:28.169413" elapsed="0.000648"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:50:28.170728" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:50:28.170266" elapsed="0.001019"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:50:28.168903" elapsed="0.002577"/>
+</kw>
+<doc>Verstuur geldig XML naar validatie endpoint</doc>
+<tag>api</tag>
+<tag>validatie</tag>
+<status status="FAIL" start="2025-11-28T10:50:28.140374" elapsed="0.031390">FileNotFoundError: [Errno 2] No such file or directory: 'D:\\ZW\\sjablonen\\loonheffing.xml'</status>
+</test>
+<test id="s1-s1-t3" name="Test XML Validatie Endpoint Met Ongeldig XML" line="36">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:28.202909" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:50:28.202388" elapsed="0.001066"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:50:28.203640" elapsed="0.000304"/>
+</return>
+<msg time="2025-11-28T10:50:28.204466" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:50:28.201090" elapsed="0.003959"/>
+</kw>
+<kw name="Set Variable" owner="BuiltIn">
+<msg time="2025-11-28T10:50:28.205882" level="INFO">${ongeldig_xml} = &lt;root&gt;&lt;niet-gesloten&gt;</msg>
+<var>${ongeldig_xml}</var>
+<arg>&lt;root&gt;&lt;niet-gesloten&gt;</arg>
+<doc>Returns the given values which can then be assigned to a variables.</doc>
+<status status="PASS" start="2025-11-28T10:50:28.205348" elapsed="0.001026"/>
+</kw>
+<kw name="Verstuur POST Verzoek Met XML" owner="api_functies">
+<kw name="Create Dictionary" owner="BuiltIn">
+<msg time="2025-11-28T10:50:28.218283" level="INFO">${headers} = {'Content-Type': 'application/xml'}</msg>
+<var>${headers}</var>
+<arg>Content-Type=application/xml</arg>
+<doc>Creates and returns a dictionary based on the given ``items``.</doc>
+<status status="PASS" start="2025-11-28T10:50:28.217817" elapsed="0.002197"/>
+</kw>
+<kw name="POST On Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:32.260964" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC375C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/valideer</msg>
+<msg time="2025-11-28T10:50:36.533245" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC3D370&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/valideer</msg>
+<msg time="2025-11-28T10:50:41.003139" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00050&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/valideer</msg>
+<msg time="2025-11-28T10:50:45.073336" level="FAIL">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/xml/valideer (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00270&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</msg>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>${endpoint}</arg>
+<arg>data=${xml_data}</arg>
+<arg>headers=${headers}</arg>
+<arg>expected_status=${verwachte_status}</arg>
+<doc>Sends a POST request on a previously created HTTP Session.</doc>
+<status status="FAIL" start="2025-11-28T10:50:28.220271" elapsed="16.862975">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/xml/valideer (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00270&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Response Status: ${response.status_code}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.083523" elapsed="0.000237"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Response Body: ${response.text}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.083992" elapsed="0.000215"/>
+</kw>
+<return>
+<value>${response}</value>
+<status status="NOT RUN" start="2025-11-28T10:50:45.084313" elapsed="0.000121"/>
+</return>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>${XML_ENDPOINT}</arg>
+<arg>${ongeldig_xml}</arg>
+<arg>400</arg>
+<doc>Verstuur POST request met XML body</doc>
+<status status="FAIL" start="2025-11-28T10:50:28.217070" elapsed="16.867503">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/xml/valideer (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00270&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Controleer Response Status" owner="api_functies">
+<arg>${response}</arg>
+<arg>400</arg>
+<doc>Valideer HTTP status code</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.087123" elapsed="0.000337"/>
+</kw>
+<kw name="Controleer JSON Waarde" owner="api_functies">
+<arg>${response}</arg>
+<arg>geldig</arg>
+<arg>${False}</arg>
+<doc>Valideer specifieke waarde in JSON response</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.088496" elapsed="0.000318"/>
+</kw>
+<kw name="Controleer Response Bevat Tekst" owner="api_functies">
+<arg>${response}</arg>
+<arg>fout</arg>
+<doc>Controleer of response body tekst bevat</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.089144" elapsed="0.000197"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:45.090509" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:50:45.090282" elapsed="0.000475"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:50:45.091270" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:50:45.090906" elapsed="0.000750"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:50:45.089796" elapsed="0.001980"/>
+</kw>
+<doc>Verstuur ongeldig XML en verwacht foutmelding</doc>
+<tag>api</tag>
+<tag>fout</tag>
+<tag>validatie</tag>
+<status status="FAIL" start="2025-11-28T10:50:28.188246" elapsed="16.903731">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/xml/valideer (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00270&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</test>
+<test id="s1-s1-t4" name="Test XML Upload Endpoint" line="47">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:45.113838" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:50:45.113310" elapsed="0.001711"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:50:45.115331" elapsed="0.000271"/>
+</return>
+<msg time="2025-11-28T10:50:45.115808" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:50:45.112427" elapsed="0.003566"/>
+</kw>
+<kw name="Get File" owner="OperatingSystem">
+<msg time="2025-11-28T10:50:45.121164" level="INFO" html="true">Getting file '&lt;a href="file://D:\ZW\sjablonen\loonheffing.xml"&gt;D:\ZW\sjablonen\loonheffing.xml&lt;/a&gt;'.</msg>
+<msg time="2025-11-28T10:50:45.121996" level="FAIL">FileNotFoundError: [Errno 2] No such file or directory: 'D:\\ZW\\sjablonen\\loonheffing.xml'</msg>
+<var>${xml_inhoud}</var>
+<arg>D:\\ZW\\XML-automation-clean/../sjablonen/loonheffing.xml</arg>
+<doc>Returns the contents of a specified file.</doc>
+<status status="FAIL" start="2025-11-28T10:50:45.116491" elapsed="0.011475">FileNotFoundError: [Errno 2] No such file or directory: 'D:\\ZW\\sjablonen\\loonheffing.xml'</status>
+</kw>
+<kw name="Create Dictionary" owner="BuiltIn">
+<var>${files}</var>
+<arg>bestand=${xml_inhoud}</arg>
+<doc>Creates and returns a dictionary based on the given ``items``.</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.129001" elapsed="0.000295"/>
+</kw>
+<kw name="POST On Session" owner="RequestsLibrary">
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>${UPLOAD_ENDPOINT}</arg>
+<arg>files=${files}</arg>
+<arg>expected_status=201</arg>
+<doc>Sends a POST request on a previously created HTTP Session.</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.129634" elapsed="0.000184"/>
+</kw>
+<kw name="Controleer Response Status" owner="api_functies">
+<arg>${response}</arg>
+<arg>201</arg>
+<doc>Valideer HTTP status code</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.130163" elapsed="0.000195"/>
+</kw>
+<kw name="Controleer Response Bevat Tekst" owner="api_functies">
+<arg>${response}</arg>
+<arg>bestand_id</arg>
+<doc>Controleer of response body tekst bevat</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.130709" elapsed="0.000620"/>
+</kw>
+<kw name="Haal JSON Waarde Op" owner="api_functies">
+<var>${bestand_id}</var>
+<arg>${response}</arg>
+<arg>bestand_id</arg>
+<doc>Haal waarde op uit JSON response via JSONPath</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.134285" elapsed="0.003064"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Bestand geupload met ID: ${bestand_id}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:50:45.137945" elapsed="0.000232"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:45.142336" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:50:45.141844" elapsed="0.001777"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:50:45.144117" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:50:45.143815" elapsed="0.002126"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:50:45.140813" elapsed="0.005274"/>
+</kw>
+<doc>Upload XML bestand via multipart/form-data</doc>
+<tag>api</tag>
+<tag>upload</tag>
+<status status="FAIL" start="2025-11-28T10:50:45.102654" elapsed="0.052238">FileNotFoundError: [Errno 2] No such file or directory: 'D:\\ZW\\sjablonen\\loonheffing.xml'</status>
+</test>
+<test id="s1-s1-t5" name="Test API Response Headers" line="61">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:45.185618" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:50:45.184997" elapsed="0.002551"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:50:45.187700" elapsed="0.000229"/>
+</return>
+<msg time="2025-11-28T10:50:45.188159" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:50:45.178846" elapsed="0.009951"/>
+</kw>
+<kw name="Verstuur GET Verzoek" owner="api_functies">
+<kw name="GET On Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:50:49.240261" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1E9C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:53.493867" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D8C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:57.945532" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1ECF0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:51:02.014739" level="FAIL">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1DD00&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</msg>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>${endpoint}</arg>
+<arg>expected_status=${verwachte_status}</arg>
+<doc>Sends a GET request on a previously created HTTP Session.</doc>
+<status status="FAIL" start="2025-11-28T10:50:45.192564" elapsed="16.834664">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1DD00&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Response Status: ${response.status_code}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:02.027553" elapsed="0.000273"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Response Body: ${response.text}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:02.028015" elapsed="0.000155"/>
+</kw>
+<return>
+<value>${response}</value>
+<status status="NOT RUN" start="2025-11-28T10:51:02.028307" elapsed="0.000173"/>
+</return>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>/api/health</arg>
+<arg>200</arg>
+<doc>Verstuur GET request en valideer response</doc>
+<status status="FAIL" start="2025-11-28T10:50:45.191940" elapsed="16.836704">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1DD00&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Controleer Response Header" owner="api_functies">
+<arg>${response}</arg>
+<arg>Content-Type</arg>
+<arg>application/json</arg>
+<doc>Valideer specifieke response header</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:02.029134" elapsed="0.000186"/>
+</kw>
+<kw name="Controleer Response Header" owner="api_functies">
+<arg>${response}</arg>
+<arg>X-Content-Type-Options</arg>
+<arg>nosniff</arg>
+<doc>Valideer specifieke response header</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:02.033107" elapsed="0.000275"/>
+</kw>
+<kw name="Controleer Response Header" owner="api_functies">
+<arg>${response}</arg>
+<arg>X-Frame-Options</arg>
+<arg>DENY</arg>
+<doc>Valideer specifieke response header</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:02.033790" elapsed="0.000226"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:02.035162" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:51:02.034907" elapsed="0.000696"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:51:02.036109" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:51:02.035775" elapsed="0.001304"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:51:02.034435" elapsed="0.002782"/>
+</kw>
+<doc>Valideer verplichte security en CORS headers</doc>
+<tag>api</tag>
+<tag>security</tag>
+<status status="FAIL" start="2025-11-28T10:50:45.173226" elapsed="16.865613">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1DD00&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</test>
+<test id="s1-s1-t6" name="Test API Rate Limiting" line="71">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:02.058379" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:51:02.057816" elapsed="0.001394"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:51:02.059346" elapsed="0.000181"/>
+</return>
+<msg time="2025-11-28T10:51:02.059710" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:51:02.056798" elapsed="0.003446"/>
+</kw>
+<for flavor="IN RANGE">
+<iter>
+<kw name="GET On Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:06.121669" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D6A0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:51:10.381333" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D480&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:51:14.849465" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D260&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:51:18.911305" level="FAIL">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D040&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</msg>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>/api/health</arg>
+<arg>expected_status=any</arg>
+<doc>Sends a GET request on a previously created HTTP Session.</doc>
+<status status="FAIL" start="2025-11-28T10:51:02.066243" elapsed="16.860754">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D040&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Exit For Loop If" owner="BuiltIn">
+<arg>${response.status_code} == 429</arg>
+<doc>Stops executing the enclosing FOR loop if the ``condition`` is true.</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:18.927511" elapsed="0.000274"/>
+</kw>
+<var name="${i}">0</var>
+<status status="FAIL" start="2025-11-28T10:51:02.065970" elapsed="16.861985">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D040&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</iter>
+<var>${i}</var>
+<value>100</value>
+<status status="FAIL" start="2025-11-28T10:51:02.065473" elapsed="16.862624">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D040&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</for>
+<kw name="Should Be Equal As Integers" owner="BuiltIn">
+<arg>${response.status_code}</arg>
+<arg>429</arg>
+<doc>Fails if objects are unequal after converting them to integers.</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:18.929409" elapsed="0.000202"/>
+</kw>
+<kw name="Controleer Response Bevat Tekst" owner="api_functies">
+<arg>${response}</arg>
+<arg>rate limit</arg>
+<doc>Controleer of response body tekst bevat</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:18.929929" elapsed="0.000309"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:18.931378" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:51:18.931151" elapsed="0.000517"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:51:18.932207" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:51:18.931866" elapsed="0.000932"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:51:18.930642" elapsed="0.002416"/>
+</kw>
+<doc>Test of rate limiting correct werkt</doc>
+<tag>api</tag>
+<tag>rate-limit</tag>
+<tag>security</tag>
+<status status="FAIL" start="2025-11-28T10:51:02.049034" elapsed="16.884582">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/health (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D040&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</test>
+<test id="s1-s1-t7" name="Test API Authenticatie Vereist" line="87">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:18.957478" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:51:18.957103" elapsed="0.001617"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:51:18.958913" elapsed="0.000185"/>
+</return>
+<msg time="2025-11-28T10:51:18.959310" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:51:18.956279" elapsed="0.005330"/>
+</kw>
+<kw name="GET On Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:23.010471" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00E20&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/admin/gebruikers</msg>
+<msg time="2025-11-28T10:51:27.261933" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD01040&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/admin/gebruikers</msg>
+<msg time="2025-11-28T10:51:32.502986" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD01260&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/admin/gebruikers</msg>
+<msg time="2025-11-28T10:51:36.578279" level="FAIL">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/admin/gebruikers (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1C9E0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</msg>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>/api/admin/gebruikers</arg>
+<arg>expected_status=401</arg>
+<doc>Sends a GET request on a previously created HTTP Session.</doc>
+<status status="FAIL" start="2025-11-28T10:51:18.963027" elapsed="17.626835">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/admin/gebruikers (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1C9E0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Controleer Response Status" owner="api_functies">
+<arg>${response}</arg>
+<arg>401</arg>
+<doc>Valideer HTTP status code</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:36.590524" elapsed="0.000309"/>
+</kw>
+<kw name="Controleer Response Bevat Tekst" owner="api_functies">
+<arg>${response}</arg>
+<arg>unauthorized</arg>
+<doc>Controleer of response body tekst bevat</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:36.591402" elapsed="0.000213"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:36.593115" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:51:36.592852" elapsed="0.000670"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:51:36.593951" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:51:36.593681" elapsed="0.000429"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:51:36.592126" elapsed="0.002095"/>
+</kw>
+<doc>Test dat endpoints authenticatie vereisen</doc>
+<tag>api</tag>
+<tag>auth</tag>
+<tag>security</tag>
+<status status="FAIL" start="2025-11-28T10:51:18.943047" elapsed="17.652064">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/admin/gebruikers (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1C9E0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</test>
+<test id="s1-s1-t8" name="Test API Authenticatie Met Token" line="96">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:36.624825" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:51:36.624252" elapsed="0.001116"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:51:36.625516" elapsed="0.001600"/>
+</return>
+<msg time="2025-11-28T10:51:36.627375" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:51:36.622475" elapsed="0.005974"/>
+</kw>
+<kw name="Set Variable" owner="BuiltIn">
+<msg time="2025-11-28T10:51:36.630198" level="INFO">${test_token} = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test</msg>
+<var>${test_token}</var>
+<arg>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test</arg>
+<doc>Returns the given values which can then be assigned to a variables.</doc>
+<status status="PASS" start="2025-11-28T10:51:36.629795" elapsed="0.000564"/>
+</kw>
+<kw name="Authenticeer Met Bearer Token" owner="api_functies">
+<kw name="Create Dictionary" owner="BuiltIn">
+<msg time="2025-11-28T10:51:36.635576" level="INFO">${headers} = {'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test'}</msg>
+<var>${headers}</var>
+<arg>Authorization=Bearer ${token}</arg>
+<doc>Creates and returns a dictionary based on the given ``items``.</doc>
+<status status="PASS" start="2025-11-28T10:51:36.635033" elapsed="0.001462"/>
+</kw>
+<kw name="Set To Dictionary" owner="Collections">
+<msg time="2025-11-28T10:51:36.638416" level="FAIL">Resolving variable '${sessie.headers}' failed: AttributeError: 'str' object has no attribute 'headers'</msg>
+<arg>${sessie.headers}</arg>
+<arg>Authorization=Bearer ${token}</arg>
+<doc>Adds the given ``key_value_pairs`` and/or ``items`` to the ``dictionary``.</doc>
+<status status="FAIL" start="2025-11-28T10:51:36.636708" elapsed="0.006703">Resolving variable '${sessie.headers}' failed: AttributeError: 'str' object has no attribute 'headers'</status>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Bearer token toegevoegd aan sessie</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:36.643709" elapsed="0.000793"/>
+</kw>
+<arg>${sessie}</arg>
+<arg>${test_token}</arg>
+<doc>Voeg Bearer token toe aan sessie headers</doc>
+<status status="FAIL" start="2025-11-28T10:51:36.630839" elapsed="0.013891">Resolving variable '${sessie.headers}' failed: AttributeError: 'str' object has no attribute 'headers'</status>
+</kw>
+<kw name="GET On Session" owner="RequestsLibrary">
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>/api/admin/gebruikers</arg>
+<arg>expected_status=any</arg>
+<doc>Sends a GET request on a previously created HTTP Session.</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:36.645049" elapsed="0.000211"/>
+</kw>
+<kw name="Should Not Be Equal As Integers" owner="BuiltIn">
+<arg>${response.status_code}</arg>
+<arg>401</arg>
+<doc>Fails if objects are equal after converting them to integers.</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:36.645535" elapsed="0.000178"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:36.650633" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:51:36.650288" elapsed="0.002269"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:51:36.653127" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:51:36.652787" elapsed="0.002510"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:51:36.646113" elapsed="0.009330"/>
+</kw>
+<doc>Test authenticatie met Bearer token</doc>
+<tag>api</tag>
+<tag>auth</tag>
+<status status="FAIL" start="2025-11-28T10:51:36.612815" elapsed="0.043892">Resolving variable '${sessie.headers}' failed: AttributeError: 'str' object has no attribute 'headers'</status>
+</test>
+<test id="s1-s1-t9" name="Test Bulk XML Validatie" line="107">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:36.700615" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:51:36.700052" elapsed="0.001682"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:51:36.702215" elapsed="0.000230"/>
+</return>
+<msg time="2025-11-28T10:51:36.702732" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:51:36.693849" elapsed="0.009554"/>
+</kw>
+<kw name="Set Variable" owner="BuiltIn">
+<msg time="2025-11-28T10:51:36.708752" level="INFO">${xml1} = &lt;root&gt;&lt;element&gt;Test 1&lt;/element&gt;&lt;/root&gt;</msg>
+<var>${xml1}</var>
+<arg>&lt;root&gt;&lt;element&gt;Test 1&lt;/element&gt;&lt;/root&gt;</arg>
+<doc>Returns the given values which can then be assigned to a variables.</doc>
+<status status="PASS" start="2025-11-28T10:51:36.708058" elapsed="0.001124"/>
+</kw>
+<kw name="Set Variable" owner="BuiltIn">
+<msg time="2025-11-28T10:51:36.712754" level="INFO">${xml2} = &lt;root&gt;&lt;element&gt;Test 2&lt;/element&gt;&lt;/root&gt;</msg>
+<var>${xml2}</var>
+<arg>&lt;root&gt;&lt;element&gt;Test 2&lt;/element&gt;&lt;/root&gt;</arg>
+<doc>Returns the given values which can then be assigned to a variables.</doc>
+<status status="PASS" start="2025-11-28T10:51:36.709963" elapsed="0.006636"/>
+</kw>
+<kw name="Set Variable" owner="BuiltIn">
+<msg time="2025-11-28T10:51:36.720868" level="INFO">${xml3} = &lt;root&gt;&lt;element&gt;Test 3&lt;/element&gt;&lt;/root&gt;</msg>
+<var>${xml3}</var>
+<arg>&lt;root&gt;&lt;element&gt;Test 3&lt;/element&gt;&lt;/root&gt;</arg>
+<doc>Returns the given values which can then be assigned to a variables.</doc>
+<status status="PASS" start="2025-11-28T10:51:36.717066" elapsed="0.004185"/>
+</kw>
+<kw name="Catenate" owner="BuiltIn">
+<msg time="2025-11-28T10:51:36.722618" level="INFO">${bulk_data} = &lt;root&gt;&lt;element&gt;Test 1&lt;/element&gt;&lt;/root&gt;
+---
+&lt;root&gt;&lt;element&gt;Test 2&lt;/element&gt;&lt;/root&gt;
+---
+&lt;root&gt;&lt;element&gt;Test 3&lt;/element&gt;&lt;/root&gt;</msg>
+<var>${bulk_data}</var>
+<arg>SEPARATOR=\n---\n</arg>
+<arg>${xml1}</arg>
+<arg>${xml2}</arg>
+<arg>${xml3}</arg>
+<doc>Catenates the given items together and returns the resulted string.</doc>
+<status status="PASS" start="2025-11-28T10:51:36.721721" elapsed="0.001648"/>
+</kw>
+<kw name="Verstuur POST Verzoek Met XML" owner="api_functies">
+<kw name="Create Dictionary" owner="BuiltIn">
+<msg time="2025-11-28T10:51:36.725087" level="INFO">${headers} = {'Content-Type': 'application/xml'}</msg>
+<var>${headers}</var>
+<arg>Content-Type=application/xml</arg>
+<doc>Creates and returns a dictionary based on the given ``items``.</doc>
+<status status="PASS" start="2025-11-28T10:51:36.724723" elapsed="0.000680"/>
+</kw>
+<kw name="POST On Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:40.776261" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1DAE0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/bulk-valideer</msg>
+<msg time="2025-11-28T10:51:45.039165" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1E030&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/bulk-valideer</msg>
+<msg time="2025-11-28T10:51:49.502344" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1DE10&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/bulk-valideer</msg>
+<msg time="2025-11-28T10:51:53.551238" level="FAIL">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/xml/bulk-valideer (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D8C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</msg>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>${endpoint}</arg>
+<arg>data=${xml_data}</arg>
+<arg>headers=${headers}</arg>
+<arg>expected_status=${verwachte_status}</arg>
+<doc>Sends a POST request on a previously created HTTP Session.</doc>
+<status status="FAIL" start="2025-11-28T10:51:36.725689" elapsed="16.837973">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/xml/bulk-valideer (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D8C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Response Status: ${response.status_code}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:53.563931" elapsed="0.000178"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<arg>Response Body: ${response.text}</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:53.564275" elapsed="0.000165"/>
+</kw>
+<return>
+<value>${response}</value>
+<status status="NOT RUN" start="2025-11-28T10:51:53.564552" elapsed="0.000113"/>
+</return>
+<var>${response}</var>
+<arg>${sessie}</arg>
+<arg>/api/xml/bulk-valideer</arg>
+<arg>${bulk_data}</arg>
+<arg>200</arg>
+<doc>Verstuur POST request met XML body</doc>
+<status status="FAIL" start="2025-11-28T10:51:36.723932" elapsed="16.841071">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/xml/bulk-valideer (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D8C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</kw>
+<kw name="Controleer Response Status" owner="api_functies">
+<arg>${response}</arg>
+<arg>200</arg>
+<doc>Valideer HTTP status code</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:53.565785" elapsed="0.000196"/>
+</kw>
+<kw name="Controleer JSON Waarde" owner="api_functies">
+<arg>${response}</arg>
+<arg>totaal</arg>
+<arg>3</arg>
+<doc>Valideer specifieke waarde in JSON response</doc>
+<status status="NOT RUN" start="2025-11-28T10:51:53.566318" elapsed="0.001165"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:53.569799" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:51:53.569552" elapsed="0.001033"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:51:53.571300" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:51:53.570746" elapsed="0.000785"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:51:53.568014" elapsed="0.003633"/>
+</kw>
+<doc>Valideer meerdere XML bestanden in één request</doc>
+<tag>api</tag>
+<tag>bulk</tag>
+<status status="FAIL" start="2025-11-28T10:51:36.687597" elapsed="16.884377">ConnectionError: HTTPConnectionPool(host='localhost', port=5000): Max retries exceeded with url: /api/xml/bulk-valideer (Caused by NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D8C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))</status>
+</test>
+<test id="s1-s1-t10" name="Test API Error Handling" line="124">
+<kw name="Maak API Sessie" owner="api_functies">
+<kw name="Create Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:53.589240" level="INFO">Creating Session using : alias=xml_api, url=http://localhost:5000, headers={},                     cookies={}, auth=None, timeout=None, proxies=None, verify=True,                     debug=0 </msg>
+<arg>${alias}</arg>
+<arg>${basis_url}</arg>
+<arg>verify=${True}</arg>
+<doc>Create Session: create a HTTP session to a server</doc>
+<status status="PASS" start="2025-11-28T10:51:53.588860" elapsed="0.001509"/>
+</kw>
+<return>
+<value>${alias}</value>
+<status status="PASS" start="2025-11-28T10:51:53.590560" elapsed="0.000181"/>
+</return>
+<msg time="2025-11-28T10:51:53.590919" level="INFO">${sessie} = xml_api</msg>
+<var>${sessie}</var>
+<arg>${API_BASIS_URL}</arg>
+<arg>${SESSIE_ALIAS}</arg>
+<doc>Creëer een nieuwe API sessie voor requests</doc>
+<status status="PASS" start="2025-11-28T10:51:53.588209" elapsed="0.003295"/>
+</kw>
+<kw name="GET On Session" owner="RequestsLibrary">
+<msg time="2025-11-28T10:51:57.649353" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1F130&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/niet-bestaand</msg>
+<msg time="2025-11-28T10:52:01.909096" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD01480&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/niet-bestaand</msg>
+<msg time="2025-11-28T10:52:06.390995" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00AF0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/niet-bestaand</msg>
+<var>${response1}</var>
+<arg>${sessie}</arg>
+<arg>/api/niet-bestaand</arg>
+<arg>expected_status=404</arg>
+<doc>Sends a GET request on a previously created HTTP Session.</doc>
+<status status="FAIL" start="2025-11-28T10:51:53.595954" elapsed="16.863789">Execution terminated by signal</status>
+</kw>
+<kw name="Controleer Response Status" owner="api_functies">
+<arg>${response1}</arg>
+<arg>404</arg>
+<doc>Valideer HTTP status code</doc>
+<status status="NOT RUN" start="2025-11-28T10:52:10.460385" elapsed="0.000331"/>
+</kw>
+<kw name="DELETE On Session" owner="RequestsLibrary">
+<var>${response2}</var>
+<arg>${sessie}</arg>
+<arg>/api/health</arg>
+<arg>expected_status=405</arg>
+<doc>Sends a DELETE request on a previously created HTTP Session.</doc>
+<status status="NOT RUN" start="2025-11-28T10:52:10.461139" elapsed="0.000191"/>
+</kw>
+<kw name="Controleer Response Status" owner="api_functies">
+<arg>${response2}</arg>
+<arg>405</arg>
+<doc>Valideer HTTP status code</doc>
+<status status="NOT RUN" start="2025-11-28T10:52:10.461697" elapsed="0.000203"/>
+</kw>
+<kw name="POST On Session" owner="RequestsLibrary">
+<var>${response3}</var>
+<arg>${sessie}</arg>
+<arg>${XML_ENDPOINT}</arg>
+<arg>data=</arg>
+<arg>expected_status=400</arg>
+<doc>Sends a POST request on a previously created HTTP Session.</doc>
+<status status="NOT RUN" start="2025-11-28T10:52:10.462157" elapsed="0.000158"/>
+</kw>
+<kw name="Controleer Response Status" owner="api_functies">
+<arg>${response3}</arg>
+<arg>400</arg>
+<doc>Valideer HTTP status code</doc>
+<status status="NOT RUN" start="2025-11-28T10:52:10.462606" elapsed="0.000235"/>
+</kw>
+<kw name="Sluit API Sessie" owner="api_functies" type="TEARDOWN">
+<kw name="Delete All Sessions" owner="RequestsLibrary">
+<msg time="2025-11-28T10:52:10.464027" level="INFO">Deleting All Sessions</msg>
+<doc>Removes all the session objects</doc>
+<status status="PASS" start="2025-11-28T10:52:10.463771" elapsed="0.001087"/>
+</kw>
+<kw name="Log" owner="BuiltIn">
+<msg time="2025-11-28T10:52:10.465395" level="INFO">Alle API sessies gesloten</msg>
+<arg>Alle API sessies gesloten</arg>
+<doc>Logs the given message with the given level.</doc>
+<status status="PASS" start="2025-11-28T10:52:10.465118" elapsed="0.001311"/>
+</kw>
+<arg>${sessie}</arg>
+<doc>Sluit API sessie en ruim resources op</doc>
+<status status="PASS" start="2025-11-28T10:52:10.463249" elapsed="0.003302"/>
+</kw>
+<doc>Test diverse error scenario's</doc>
+<tag>api</tag>
+<tag>errors</tag>
+<status status="FAIL" start="2025-11-28T10:51:53.578870" elapsed="16.888549">Execution terminated by signal</status>
+</test>
+<test id="s1-s1-t11" name="Test Response Compressie" line="143">
+<doc>Test of API gzip compressie ondersteunt</doc>
+<tag>api</tag>
+<tag>performance</tag>
+<tag>robot:exit</tag>
+<status status="FAIL" start="2025-11-28T10:52:10.474820" elapsed="0.004334">Test execution stopped due to a fatal error.</status>
+</test>
+<doc>API integratie tests voor XML validatie endpoints</doc>
+<status status="FAIL" start="2025-11-28T10:50:09.395899" elapsed="121.091952"/>
+</suite>
+<status status="FAIL" start="2025-11-28T10:50:09.322039" elapsed="121.173647"/>
+</suite>
+<statistics>
+<total>
+<stat pass="0" fail="11" skip="0">All Tests</stat>
+</total>
+<tag>
+<stat info="combined" combined="NOT robot:exit" pass="0" fail="10" skip="0">NOT robot:exit</stat>
+<stat pass="0" fail="11" skip="0">api</stat>
+<stat pass="0" fail="2" skip="0">auth</stat>
+<stat pass="0" fail="1" skip="0">basis</stat>
+<stat pass="0" fail="1" skip="0">bulk</stat>
+<stat pass="0" fail="1" skip="0">errors</stat>
+<stat pass="0" fail="1" skip="0">fout</stat>
+<stat pass="0" fail="1" skip="0">performance</stat>
+<stat pass="0" fail="1" skip="0">rate-limit</stat>
+<stat pass="0" fail="3" skip="0">security</stat>
+<stat pass="0" fail="1" skip="0">upload</stat>
+<stat pass="0" fail="2" skip="0">validatie</stat>
+</tag>
+<suite>
+<stat name="XML-automation-clean" id="s1" pass="0" fail="11" skip="0">XML-automation-clean</stat>
+<stat name="Api Testen" id="s1-s1" pass="0" fail="11" skip="0">XML-automation-clean.Api Testen</stat>
+</suite>
+</statistics>
+<errors>
+<msg time="2025-11-28T10:50:09.404411" level="ERROR">Error in file 'D:\ZW\XML-automation-clean\api_testen.robot' on line 3: Resource file '..\bronnen\xml_functies.resource' does not exist.</msg>
+<msg time="2025-11-28T10:50:13.902044" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FBFAA50&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:18.165592" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FBC3250&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:22.628133" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FBC34D0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:32.260964" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC375C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/valideer</msg>
+<msg time="2025-11-28T10:50:36.533245" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC3D370&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/valideer</msg>
+<msg time="2025-11-28T10:50:41.003139" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00050&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/valideer</msg>
+<msg time="2025-11-28T10:50:49.240261" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1E9C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:53.493867" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D8C0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:50:57.945532" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1ECF0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:51:06.121669" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D6A0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:51:10.381333" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D480&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:51:14.849465" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1D260&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/health</msg>
+<msg time="2025-11-28T10:51:23.010471" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00E20&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/admin/gebruikers</msg>
+<msg time="2025-11-28T10:51:27.261933" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD01040&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/admin/gebruikers</msg>
+<msg time="2025-11-28T10:51:32.502986" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD01260&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/admin/gebruikers</msg>
+<msg time="2025-11-28T10:51:40.776261" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1DAE0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/bulk-valideer</msg>
+<msg time="2025-11-28T10:51:45.039165" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1E030&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/bulk-valideer</msg>
+<msg time="2025-11-28T10:51:49.502344" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1DE10&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/xml/bulk-valideer</msg>
+<msg time="2025-11-28T10:51:57.649353" level="WARN">Retrying (RetryAdapter(total=2, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FC1F130&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/niet-bestaand</msg>
+<msg time="2025-11-28T10:52:01.909096" level="WARN">Retrying (RetryAdapter(total=1, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD01480&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/niet-bestaand</msg>
+<msg time="2025-11-28T10:52:06.390995" level="WARN">Retrying (RetryAdapter(total=0, connect=None, read=None, redirect=None, status=None)) after connection broken by 'NewConnectionError('&lt;urllib3.connection.HTTPConnection object at 0x000001AB9FD00AF0&gt;: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it')': /api/niet-bestaand</msg>
+</errors>
+</robot>

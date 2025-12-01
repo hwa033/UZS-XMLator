@@ -138,105 +138,168 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
     the child elements used in the sample XML.
     """
     msg = ET.Element("{" + ns_body + "}UwvZwMeldingInternBody")
-    ET.SubElement(msg, "CdBerichtType").text = "OTP3"
-    ET.SubElement(msg, "IndAlleenControleUzs").text = record.get("IndAlleenControleUzs", "2")
+
+    def qname(tag: str) -> str:
+        return "{" + ns_body + "}" + tag
+
+    def set_if(parent, tag, value):
+        if value is None:
+            return
+        s = str(value).strip()
+        if s == "":
+            return
+        ET.SubElement(parent, qname(tag)).text = s
+
+    def set_date_if(parent, tag, value, date_only=True):
+        if value is None:
+            return
+        # normalize common date/datetime representations to ISO
+        try:
+            if isinstance(value, datetime):
+                if date_only:
+                    out = value.date().isoformat()
+                else:
+                    out = value.strftime("%Y%m%d%H%M%S")
+                ET.SubElement(parent, qname(tag)).text = out
+                return
+            s = str(value).strip()
+            if s == "":
+                return
+            # if value is compact numeric YYYYMMDD, format to ISO date for date-only
+            if len(s) == 8 and s.isdigit():
+                if date_only:
+                    out = f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
+                else:
+                    out = f"{s}000000" if len(s) == 8 else s
+                ET.SubElement(parent, qname(tag)).text = out
+                return
+            # try ISO parse
+            try:
+                dt = datetime.fromisoformat(s)
+                if date_only:
+                    out = dt.date().isoformat()
+                else:
+                    out = dt.strftime("%Y%m%d%H%M%S")
+                ET.SubElement(parent, qname(tag)).text = out
+                return
+            except Exception:
+                # fallback: do not write if unclear
+                return
+        except Exception:
+            return
+
+    # Prefer an explicit CdBerichtType provided in the Excel row (common headers
+    # include 'CdBerichtType', 'aanvraag_type' or 'Type'). If none present,
+    # default to OTP3 which is the Digipoort/OTP3 message code.
+    try:
+        aanvraag_map = {"Digipoort": "OTP3"}
+        excel_cd_names = ['CdBerichtType', 'aanvraag_type', 'Type']
+        excel_cd = None
+        for n in excel_cd_names:
+            v = record.get(n)
+            if v is not None and str(v).strip() != '':
+                excel_cd = str(v).strip()
+                break
+        if excel_cd:
+            cd_val = aanvraag_map.get(excel_cd, excel_cd)
+        else:
+            cd_val = "OTP3"
+    except Exception:
+        cd_val = "OTP3"
+    ET.SubElement(msg, qname("CdBerichtType")).text = cd_val
+    ET.SubElement(msg, qname("IndAlleenControleUzs")).text = record.get("IndAlleenControleUzs", "2")
 
     # Ketenpartij
-    kp = ET.SubElement(msg, "Ketenpartij")
-    lhn = record.get("Loonheffingennummer")
+    kp = ET.SubElement(msg, qname("Ketenpartij"))
+    lhn = record.get("Loonheffingennummer") or record.get("Loonheffingennr") or record.get("Loonheffingennr")
     if lhn:
-        ET.SubElement(kp, "FiscaalNr").text = lhn[:9]
-        ET.SubElement(kp, "Loonheffingennr").text = str(lhn)
-    else:
-        ET.SubElement(kp, "FiscaalNr").text = ""
-        ET.SubElement(kp, "Loonheffingennr").text = ""
-    ET.SubElement(kp, "Naam").text = record.get("IndienerNaam", "")
-    ET.SubElement(kp, "CdRolKetenpartij").text = record.get("CdRolKetenpartij", "01")
-    ET.SubElement(kp, "CdSrtIndiener").text = record.get("CdSrtIndiener", "WG")
-    ET.SubElement(kp, "NaamSoftwarePakket").text = record.get("NaamSoftwarePakket", "Generated")
-    ET.SubElement(kp, "VersieSoftwarePakket").text = record.get("VersieSoftwarePakket", "1.0")
-    ET.SubElement(kp, "BerichtkenmerkIndiener").text = record.get("BerichtkenmerkIndiener", "")
-    ET.SubElement(kp, "VolgNr").text = record.get("VolgNr", "1")
-    kp_c = ET.SubElement(kp, "Contactgegevens")
-    ET.SubElement(kp_c, "NaamContactpersoonAfd").text = record.get("Kp_NaamContactpersoon", "")
-    ET.SubElement(kp_c, "TelefoonnrContactpersoonAfd").text = record.get("Kp_TelefoonnrContactpersoonAfd", "")
+        set_if(kp, "FiscaalNr", str(lhn)[:9])
+        set_if(kp, "Loonheffingennr", str(lhn))
+    set_if(kp, "Naam", record.get("IndienerNaam", None))
+    ET.SubElement(kp, qname("CdRolKetenpartij")).text = record.get("CdRolKetenpartij", "01")
+    ET.SubElement(kp, qname("CdSrtIndiener")).text = record.get("CdSrtIndiener", "WG")
+    ET.SubElement(kp, qname("NaamSoftwarePakket")).text = record.get("NaamSoftwarePakket", "Generated")
+    ET.SubElement(kp, qname("VersieSoftwarePakket")).text = record.get("VersieSoftwarePakket", "1.0")
+    ET.SubElement(kp, qname("BerichtkenmerkIndiener")).text = record.get("BerichtkenmerkIndiener", "")
+    ET.SubElement(kp, qname("VolgNr")).text = record.get("VolgNr", "1")
+    kp_c = ET.SubElement(kp, qname("Contactgegevens"))
+    ET.SubElement(kp_c, qname("NaamContactpersoonAfd")).text = record.get("Kp_NaamContactpersoon", "")
+    ET.SubElement(kp_c, qname("TelefoonnrContactpersoonAfd")).text = record.get("Kp_TelefoonnrContactpersoonAfd", "")
 
     # NatuurlijkPersoon
-    np = ET.SubElement(msg, "NatuurlijkPersoon")
+    np = ET.SubElement(msg, qname("NatuurlijkPersoon"))
     bsn = record.get("BSN")
     if bsn is not None:
-        ET.SubElement(np, "Burgerservicenr").text = str(bsn)
+        set_if(np, "Burgerservicenr", bsn)
     geb = record.get("Geboortedatum")
-    if geb is not None:
-        ET.SubElement(np, "Geboortedat").text = str(geb)
-    ET.SubElement(np, "IndOverlijden").text = record.get("IndOverlijden", "2")
-    ET.SubElement(np, "Geslacht").text = record.get("Geslacht", "")
-    ET.SubElement(np, "EersteVoornaam").text = record.get("EersteVoornaam", "")
-    ET.SubElement(np, "Voorletters").text = record.get("Voorletters", "")
-    ET.SubElement(np, "Voorvoegsel").text = record.get("Voorvoegsel", "")
+    set_date_if(np, "Geboortedat", geb, date_only=True)
+    # optional flags
+    set_if(np, "IndOverlijden", record.get("IndOverlijden", None))
+    set_if(np, "Geslacht", record.get("Geslacht", None))
+    set_if(np, "EersteVoornaam", record.get("EersteVoornaam", None))
+    set_if(np, "Voorletters", record.get("Voorletters", None))
+    set_if(np, "Voorvoegsel", record.get("Voorvoegsel", None))
     ach = record.get("Achternaam")
     if ach is not None:
-        ET.SubElement(np, "SignificantDeelVanDeAchternaam").text = str(ach)
-    ET.SubElement(np, "Telefoonnr").text = record.get("Telefoonnr", "")
-    ET.SubElement(np, "TelefoonnrMobiel").text = record.get("TelefoonnrMobiel", "")
-    ET.SubElement(np, "TelefoonnrBuitenland").text = record.get("TelefoonnrBuitenland", "")
+        set_if(np, "SignificantDeelVanDeAchternaam", ach)
+    set_if(np, "Telefoonnr", record.get("Telefoonnr", None))
+    set_if(np, "TelefoonnrMobiel", record.get("TelefoonnrMobiel", None))
+    set_if(np, "TelefoonnrBuitenland", record.get("TelefoonnrBuitenland", None))
 
     # Contactgegevens (top-level)
-    contact = ET.SubElement(msg, "Contactgegevens")
-    ET.SubElement(contact, "NaamContactpersoonAfd").text = record.get("Contact_NaamContactpersoonAfd", "")
-    ET.SubElement(contact, "Geslacht").text = record.get("Contact_Geslacht", "")
-    ET.SubElement(contact, "TelefoonnrContactpersoonAfd").text = record.get("Contact_TelefoonnrContactpersoonAfd", "")
-    ET.SubElement(contact, "NrLokaleVestiging").text = record.get("Contact_NrLokaleVestiging", "")
-    ET.SubElement(contact, "EMailAdres").text = record.get("Contact_EMailAdres", "")
+    contact = ET.SubElement(msg, qname("Contactgegevens"))
+    set_if(contact, "NaamContactpersoonAfd", record.get("Contact_NaamContactpersoonAfd", None))
+    set_if(contact, "Geslacht", record.get("Contact_Geslacht", None))
+    set_if(contact, "TelefoonnrContactpersoonAfd", record.get("Contact_TelefoonnrContactpersoonAfd", None))
+    set_if(contact, "NrLokaleVestiging", record.get("Contact_NrLokaleVestiging", None))
+    set_if(contact, "EMailAdres", record.get("Contact_EMailAdres", None))
 
     # MeldingZiekte
-    mz = ET.SubElement(msg, "MeldingZiekte")
-    ET.SubElement(mz, "IndVerzoekTotIntrekken").text = record.get("IndVerzoekTotIntrekken", "2")
-    ET.SubElement(mz, "ReferentieMelding").text = record.get("ReferentieMelding", "ReferentieMelding - MeldingZiekte")
-    ET.SubElement(mz, "DatTijdOpstellenMelding").text = record.get("DatTijdOpstellenMelding", "")
-    ET.SubElement(mz, "DatOntvangstMeldingWerkgever").text = record.get("DatOntvangstMeldingWerkgever", "")
+    mz = ET.SubElement(msg, qname("MeldingZiekte"))
+    set_if(mz, "IndVerzoekTotIntrekken", record.get("IndVerzoekTotIntrekken", None))
+    set_if(mz, "ReferentieMelding", record.get("ReferentieMelding", None))
+    # DatTijdOpstellenMelding expects a datetime-like value
+    set_date_if(mz, "DatTijdOpstellenMelding", record.get("DatTijdOpstellenMelding", None), date_only=False)
+    set_date_if(mz, "DatOntvangstMeldingWerkgever", record.get("DatOntvangstMeldingWerkgever", None), date_only=True)
     d1 = record.get("DatEersteAoDag")
-    if d1 is not None:
-        ET.SubElement(mz, "DatEersteAoDag").text = str(d1)
-    ET.SubElement(mz, "ToelichtingMelding").text = record.get("ToelichtingMelding", "")
-    ET.SubElement(mz, "IndWerkverplichtingEersteAoDag").text = record.get("IndWerkverplichtingEersteAoDag", "1")
-    idd = record.get("IndDirecteUitkering")
-    if idd is not None:
-        ET.SubElement(mz, "IndDirecteUitkering").text = str(idd)
-    ET.SubElement(mz, "CdRedenAangifteAo").text = record.get("CdRedenAangifteAo", "")
-    ET.SubElement(mz, "CdRedenZiekmelding").text = record.get("CdRedenZiekmelding", "")
-    ET.SubElement(mz, "AantGewerkteUrenEersteAoDag").text = record.get("AantGewerkteUrenEersteAoDag", "")
-    ET.SubElement(mz, "AantRoosterurenEersteAoDag").text = record.get("AantRoosterurenEersteAoDag", "")
-    ET.SubElement(mz, "IndWerkdagOpZaterdag").text = record.get("IndWerkdagOpZaterdag", "2")
-    ET.SubElement(mz, "IndWerkdagOpZondag").text = record.get("IndWerkdagOpZondag", "2")
-    ET.SubElement(mz, "BedrSvLoonGedWerkenEersteAoDag").text = record.get("BedrSvLoonGedWerkenEersteAoDag", "")
-    ET.SubElement(mz, "CdRedenRegres").text = record.get("CdRedenRegres", "")
-    ET.SubElement(mz, "OmsRedenTeLateAanvraagUitkering").text = record.get("OmsRedenTeLateAanvraagUitkering", "")
-    ET.SubElement(mz, "GemiddeldAantWerkurenPerWeek").text = record.get("GemiddeldAantWerkurenPerWeek", "")
-    ET.SubElement(mz, "IndEDnstvrbndCtrTijdensZiekte").text = record.get("IndEDnstvrbndCtrTijdensZiekte", "")
+    set_date_if(mz, "DatEersteAoDag", d1, date_only=True)
+    set_if(mz, "ToelichtingMelding", record.get("ToelichtingMelding", None))
+    set_if(mz, "IndWerkverplichtingEersteAoDag", record.get("IndWerkverplichtingEersteAoDag", None))
+    set_if(mz, "IndDirecteUitkering", record.get("IndDirecteUitkering", None))
+    set_if(mz, "CdRedenAangifteAo", record.get("CdRedenAangifteAo", None))
+    set_if(mz, "CdRedenZiekmelding", record.get("CdRedenZiekmelding", None))
+    set_if(mz, "AantGewerkteUrenEersteAoDag", record.get("AantGewerkteUrenEersteAoDag", None))
+    set_if(mz, "AantRoosterurenEersteAoDag", record.get("AantRoosterurenEersteAoDag", None))
+    set_if(mz, "IndWerkdagOpZaterdag", record.get("IndWerkdagOpZaterdag", None))
+    set_if(mz, "IndWerkdagOpZondag", record.get("IndWerkdagOpZondag", None))
+    set_if(mz, "BedrSvLoonGedWerkenEersteAoDag", record.get("BedrSvLoonGedWerkenEersteAoDag", None))
+    set_if(mz, "CdRedenRegres", record.get("CdRedenRegres", None))
+    set_if(mz, "OmsRedenTeLateAanvraagUitkering", record.get("OmsRedenTeLateAanvraagUitkering", None))
+    set_if(mz, "GemiddeldAantWerkurenPerWeek", record.get("GemiddeldAantWerkurenPerWeek", None))
+    set_if(mz, "IndEDnstvrbndCtrTijdensZiekte", record.get("IndEDnstvrbndCtrTijdensZiekte", None))
 
     # AdministratieveEenheid
-    ae = ET.SubElement(msg, "AdministratieveEenheid")
-    ET.SubElement(ae, "Loonheffingennr").text = record.get("Loonheffingennummer", "")
-    ET.SubElement(ae, "Naam").text = record.get("AE_Naam", "")
-    bank = ET.SubElement(ae, "Bankrekening")
-    ET.SubElement(bank, "Bankrekeningnr").text = record.get("Bankrekeningnr", "")
-    ET.SubElement(bank, "Bic").text = record.get("BIC", record.get("Bic", ""))
-    ET.SubElement(bank, "Iban").text = record.get("Rekeningnummer (IBAN)", record.get("IBAN", ""))
-    sr = ET.SubElement(ae, "SectorRisicogroep")
-    ET.SubElement(sr, "CdRisicopremiegroep").text = record.get("CdRisicopremiegroep", "")
-    ET.SubElement(sr, "CdSectorOsv").text = record.get("CdSectorOsv", "")
-    arb = ET.SubElement(ae, "Arbeidsverhouding")
-    ET.SubElement(arb, "Volgnr").text = record.get("Volgnr", "1")
-    ET.SubElement(arb, "IndLoonheffingskorting").text = record.get("IndLoonheffingskorting", "1")
-    ET.SubElement(arb, "Personeelsnr").text = record.get("Personeelsnr", "")
-    ET.SubElement(arb, "NaamBeroepOngecodeerd").text = record.get("NaamBeroepOngecodeerd", "")
-    ET.SubElement(arb, "CdAardArbv").text = record.get("CdAardArbv", "")
-    ET.SubElement(arb, "CdLbtabel").text = record.get("CdLbtabel", "")
-    ET.SubElement(arb, "DatB").text = record.get("DatB", "")
-    ET.SubElement(arb, "AantLoonwachtdagen").text = record.get("AantLoonwachtdagen", "")
-    ET.SubElement(arb, "PercLoondoorbetalingTijdensAo").text = record.get("PercLoondoorbetalingTijdensAo", "")
-    ET.SubElement(arb, "IndArbeidsgehandicapt").text = record.get("IndArbeidsgehandicapt", "")
+    ae = ET.SubElement(msg, qname("AdministratieveEenheid"))
+    set_if(ae, "Loonheffingennr", record.get("Loonheffingennummer", None))
+    set_if(ae, "Naam", record.get("AE_Naam", None))
+    bank = ET.SubElement(ae, qname("Bankrekening"))
+    set_if(bank, "Bankrekeningnr", record.get("Bankrekeningnr", None))
+    set_if(bank, "Bic", record.get("BIC", record.get("Bic", None)))
+    set_if(bank, "Iban", record.get("Rekeningnummer (IBAN)", record.get("IBAN", None)))
+    sr = ET.SubElement(ae, qname("SectorRisicogroep"))
+    set_if(sr, "CdRisicopremiegroep", record.get("CdRisicopremiegroep", None))
+    set_if(sr, "CdSectorOsv", record.get("CdSectorOsv", None))
+    arb = ET.SubElement(ae, qname("Arbeidsverhouding"))
+    set_if(arb, "Volgnr", record.get("Volgnr", None))
+    set_if(arb, "IndLoonheffingskorting", record.get("IndLoonheffingskorting", None))
+    set_if(arb, "Personeelsnr", record.get("Personeelsnr", None))
+    set_if(arb, "NaamBeroepOngecodeerd", record.get("NaamBeroepOngecodeerd", None))
+    set_if(arb, "CdAardArbv", record.get("CdAardArbv", None))
+    set_if(arb, "CdLbtabel", record.get("CdLbtabel", None))
+    set_date_if(arb, "DatB", record.get("DatB", None), date_only=True)
+    set_if(arb, "AantLoonwachtdagen", record.get("AantLoonwachtdagen", None))
+    set_if(arb, "PercLoondoorbetalingTijdensAo", record.get("PercLoondoorbetalingTijdensAo", None))
+    set_if(arb, "IndArbeidsgehandicapt", record.get("IndArbeidsgehandicapt", None))
 
     return msg
     # Add any remaining columns from the Excel that were not explicitly

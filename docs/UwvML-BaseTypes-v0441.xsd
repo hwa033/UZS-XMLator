@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            targetNamespace="http://schemas.uwv.nl/UwvML/UwvML-BaseTypes-v0441"
+            xmlns="http://schemas.uwv.nl/UwvML/UwvML-BaseTypes-v0441"
+            elementFormDefault="qualified" attributeFormDefault="unqualified">
+
+  <!-- Permissive shim for UWV base types (approximate, maps to simple XSD primitives).
+       This is intentionally permissive: it enables local schema compilation and basic
+       structural validation but does not enforce the full UWV type constraints.
+       Replace with the authoritative `UwvML-BaseTypes-v0441.xsd` for strict validation. -->
+
+  <xsd:simpleType name="StdTekstAnVar">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTekstAnVar4">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTekstAnVar64">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTekstAnVar128">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTekstAnVar32">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTekstAnVar80">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTekstAnVar500">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTekstAnVar200">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTekstAnVar256">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdVolgnrVar8">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdBerichtkenmerkAanleveraar">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdSofinummerBsn">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdLoonheffingennr">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdIndJN">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdGeslacht">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdEersteVoornaam">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdVoorletters">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdVoorvoegsel">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdSignificantDeelAchtern">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdBankrekeningnr">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdBic">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdIban">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTelefoonnr11">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdTelefoonnrBuitenland">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdPostcd">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdWoonplaatsnaam">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdStraatnaam">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdHuisnr">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdLandcodeIso">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdLandsnaam">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdEmailAdres">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <!-- Date/time approximations -->
+  <xsd:simpleType name="StdDatIso">
+    <xsd:restriction base="xsd:date"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdDatTijd14">
+    <xsd:restriction base="xsd:dateTime"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdDatDeelsFictief">
+    <xsd:restriction base="xsd:date"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdReferentienrN9">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <!-- Additional permissive base types referenced by the body XSD -->
+  <xsd:simpleType name="StdAansluitingsnrBV"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdAantNietNegatiefVar2"><xsd:restriction base="xsd:integer"/></xsd:simpleType>
+  <xsd:simpleType name="StdAantNietNegatiefVar4"><xsd:restriction base="xsd:integer"/></xsd:simpleType>
+  <xsd:simpleType name="StdBedrDec2"><xsd:restriction base="xsd:decimal"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdAardArbeidsverhouding"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdApplicatiemelding"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdCao"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdContractduur"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdFaseIndelingWfz"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdInitiatiefnemerOntslag"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdLoonbelastingtabel"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdRedenMeldingIntrekken"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdRedenRegres"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdRedenToepassenArt29bZw"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdRisicopremiegroep"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdSectorOsv"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdCdTypeBelanghebbendeAanvraagWazoZez"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdJaar"><xsd:restriction base="xsd:gYear"/></xsd:simpleType>
+  <xsd:simpleType name="StdKvkNr"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdPercNietNegatiefDec2"><xsd:restriction base="xsd:decimal"/></xsd:simpleType>
+  <xsd:simpleType name="StdPersoneelsnummer"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdPostcdBuitenland"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdTijdsduur4"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdTijdsduurEtmaal4"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdVolgnrVar4"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+
+
+  <xsd:simpleType name="StdCdAdresrol">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdCdRedenAangifteAo">
+    <xsd:restriction base="xsd:string"/>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="StdHuisnrBuitenland"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdReferentienrAnVar32"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdWoonbootverwijzing"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+  <xsd:simpleType name="StdWoonwagenverwijzing"><xsd:restriction base="xsd:string"/></xsd:simpleType>
+
+  <!-- Generic placeholder for anything else -->
+  <xsd:complexType name="AnyTypePlaceholder">
+    <xsd:sequence>
+      <xsd:any minOccurs="0" maxOccurs="unbounded" processContents="lax"/>
+    </xsd:sequence>
+    <xsd:anyAttribute processContents="lax"/>
+  </xsd:complexType>
+
+</xsd:schema>
