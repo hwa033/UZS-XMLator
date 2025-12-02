@@ -98,17 +98,22 @@ def datasets():
     docs_path = Path(__file__).parent.parent / "docs"
     excel_files = []
     if docs_path.exists():
+        import datetime
         for f in docs_path.glob("*.xlsx"):
+            mtime = f.stat().st_mtime
             excel_files.append({
                 "name": f.name,
                 "size": f.stat().st_size,
-                "modified": f.stat().st_mtime
+                "modified": mtime,
+                "modified_str": datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
             })
         for f in docs_path.glob("*.xls"):
+            mtime = f.stat().st_mtime
             excel_files.append({
                 "name": f.name,
                 "size": f.stat().st_size,
-                "modified": f.stat().st_mtime
+                "modified": mtime,
+                "modified_str": datetime.datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M:%S")
             })
     
     excel_files.sort(key=lambda x: x["modified"], reverse=True)

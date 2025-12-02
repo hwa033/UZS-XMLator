@@ -53,7 +53,7 @@
                         <tr>
                             <td>{{ file.name }}</td>
                             <td>{{ "%.2f"|format(file.size / 1024) }} KB</td>
-                            <td>{{ file.modified | int | timestamp_to_datetime }}</td>
+                            <td>{{ file.modified_str }}</td>
                             <td>
                                 <form method="POST" style="display: inline;" onsubmit="return confirm('Weet je zeker dat je dit bestand wilt verwijderen?');">
                                     <input type="hidden" name="action" value="delete">
