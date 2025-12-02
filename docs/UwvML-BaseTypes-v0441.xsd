@@ -134,16 +134,44 @@
   </xsd:simpleType>
 
   <!-- Date/time approximations -->
+  <!-- Accept both ISO lexical forms and compact numeric forms without hyphens -->
   <xsd:simpleType name="StdDatIso">
-    <xsd:restriction base="xsd:date"/>
+    <xsd:union>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:string">
+          <xsd:pattern value="\d{8}"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:date"/>
+      </xsd:simpleType>
+    </xsd:union>
   </xsd:simpleType>
 
   <xsd:simpleType name="StdDatTijd14">
-    <xsd:restriction base="xsd:dateTime"/>
+    <xsd:union>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:string">
+          <xsd:pattern value="\d{14}"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:dateTime"/>
+      </xsd:simpleType>
+    </xsd:union>
   </xsd:simpleType>
 
   <xsd:simpleType name="StdDatDeelsFictief">
-    <xsd:restriction base="xsd:date"/>
+    <xsd:union>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:string">
+          <xsd:pattern value="\d{8}"/>
+        </xsd:restriction>
+      </xsd:simpleType>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:date"/>
+      </xsd:simpleType>
+    </xsd:union>
   </xsd:simpleType>
 
   <xsd:simpleType name="StdReferentienrN9">
