@@ -105,8 +105,8 @@
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
                                     <div class="text-muted small me-2">{{ (file.size or 0) }} B</div>
-                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_generated', filename=file.filename) }}"><i class="bi bi-download"></i></a>
-                                    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('index') }}">Open</a>
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_generated', filename=file.filename) }}" title="Download volledig (met SOAP envelope)"><i class="bi bi-download"></i> Volledig</a>
+                                    <a class="btn btn-sm btn-outline-success" href="{{ url_for('download_body_only', filename=file.filename) }}" title="Download alleen body (zonder SOAP envelope)"><i class="bi bi-file-earmark-code"></i> Body Only</a>
                                 </div>
                             </div>
                             {% endfor %}

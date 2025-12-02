@@ -1260,6 +1260,76 @@ def download_generated(filename):
     return redirect(url_for("resultaten_pagina"))
 
 
+@app.route("/resultaten/download-body/<filename>")
+def download_body_only(filename):
+    """Extract and download just the UwvZwMeldingInternBody (without SOAP envelope)."""
+    fn = secure_filename(filename)
+    found = None
+    
+    # Search for the file in known locations
+    for folder in OUTPUT_MAP.values():
+        p = folder / fn
+        if p.exists() and p.is_file():
+            found = p
+            break
+    
+    if not found:
+        dl = DOWNLOADS_DIR / fn
+        if dl.exists() and dl.is_file():
+            found = dl
+    
+    if not found:
+        flash("Bestand niet gevonden", "danger")
+        return redirect(url_for("resultaten_pagina"))
+    
+    try:
+        # Parse the SOAP XML
+        tree = etree.parse(str(found))
+        root = tree.getroot()
+        
+        # Find the SOAP Body element
+        ns = {'soap': 'http://schemas.xmlsoap.org/soap/envelope/'}
+        body = root.find('.//soap:Body', ns)
+        
+        if body is None:
+            flash("Geen SOAP Body gevonden in XML", "danger")
+            return redirect(url_for("resultaten_pagina"))
+        
+        # Get the first child of Body (should be UwvZwMeldingInternBody)
+        body_content = None
+        for child in body:
+            body_content = child
+            break
+        
+        if body_content is None:
+            flash("Geen content gevonden in SOAP Body", "danger")
+            return redirect(url_for("resultaten_pagina"))
+        
+        # Create output filename
+        body_filename = fn.replace('.xml', '_body.xml')
+        
+        # Write body content to a temporary file in downloads dir
+        output_path = DOWNLOADS_DIR / body_filename
+        output_tree = etree.ElementTree(body_content)
+        output_tree.write(
+            str(output_path),
+            pretty_print=True,
+            xml_declaration=True,
+            encoding='UTF-8'
+        )
+        
+        # Send the file
+        return send_file(
+            str(output_path),
+            as_attachment=True,
+            download_name=body_filename
+        )
+        
+    except Exception as e:
+        flash(f"Fout bij extraheren body: {e}", "danger")
+        return redirect(url_for("resultaten_pagina"))
+
+
 @app.route('/resultaten/download-zip', methods=['POST'])
 def download_generated_zip():
     """Create a ZIP archive of requested generated files and return it.
