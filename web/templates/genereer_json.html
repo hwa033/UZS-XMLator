@@ -1,0 +1,100 @@
+{% extends '_base.html' %}
+
+{% block title %}JSON naar XML{% endblock %}
+
+{% block content %}
+<section class="hero mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h4 mb-0">JSON naar XML Conversie</h1>
+        <p class="text-muted small mb-0">Upload een JSON-bestand om XML-berichten te genereren</p>
+    </div>
+</section>
+
+<div class="container mt-2">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <strong>JSON Bestand Uploaden</strong>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('genereer_xml_json') }}" enctype="multipart/form-data">
+                        <!-- Aanvraagtype -->
+                        <div class="mb-3">
+                            <label for="aanvraag_type" class="form-label">Aanvraagtype</label>
+                            <select class="form-select" id="aanvraag_type" name="aanvraag_type" required>
+                                <option value="ZBM">ZBM - Ziekmelding</option>
+                                <option value="VM">VM - Voortzetting Melding</option>
+                                <option value="Digipoort">Digipoort (OTP3)</option>
+                            </select>
+                            <div class="form-text">Selecteer het type aanvraag voor de XML-generatie</div>
+                        </div>
+
+                        <!-- JSON Bestand Upload -->
+                        <div class="mb-3">
+                            <label for="json_file" class="form-label">JSON Bestand</label>
+                            <input type="file" class="form-control" id="json_file" name="json_file" accept=".json" required>
+                            <div class="form-text">Upload een JSON-bestand met medewerkergegevens</div>
+                        </div>
+
+                        <!-- Validatie Optie -->
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="validate" name="validate" checked>
+                            <label class="form-check-label" for="validate">
+                                XSD-validatie uitvoeren
+                            </label>
+                            <div class="form-text">Valideer de gegenereerde XML tegen het XSD-schema</div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-file-earmark-code"></i> Genereer XML uit JSON
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <strong><i class="bi bi-info-circle"></i> JSON Formaat Voorbeelden</strong>
+                </div>
+                <div class="card-body">
+                    <h6>Enkele record (object):</h6>
+                    <pre class="bg-light p-2"><code>{
+  "BSN": "123456789",
+  "Naam": "Jan Jansen",
+  "Geboortedatum": "19900101",
+  "Loonheffingennr": "136910038L01",
+  ...
+}</code></pre>
+
+                    <h6 class="mt-3">Meerdere records (array):</h6>
+                    <pre class="bg-light p-2"><code>[
+  {
+    "BSN": "123456789",
+    "Naam": "Jan Jansen",
+    "Geboortedatum": "19900101"
+  },
+  {
+    "BSN": "987654321",
+    "Naam": "Piet Pietersen",
+    "Geboortedatum": "19850515"
+  }
+]</code></pre>
+
+                    <div class="alert alert-info mt-3 mb-0">
+                        <small>
+                            <strong>Tip:</strong> De JSON-sleutels moeten overeenkomen met de verwachte veldnamen 
+                            (BSN, Naam, Geboortedatum, Loonheffingennr, etc.). De tool herkent automatisch 
+                            veel varianten van veldnamen.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

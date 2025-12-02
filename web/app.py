@@ -575,6 +575,143 @@ def genereer_xml():
     )
 
 
+@app.route("/genereer_xml_json")
+def genereer_xml_json():
+    """Render JSON to XML generation page"""
+    return render_template("genereer_json.html")
+
+
+@app.route("/genereer_xml_json/upload_json", methods=["POST"])
+def upload_json():
+    """Process uploaded JSON file and generate XML"""
+    if "json_file" not in request.files:
+        flash("Geen bestand geüpload", "danger")
+        return redirect(url_for("genereer_xml_json"))
+
+    f = request.files["json_file"]
+    if f.filename == "":
+        flash("Geen bestand geselecteerd", "danger")
+        return redirect(url_for("genereer_xml_json"))
+
+    # Lees JSON content
+    try:
+        content = f.read()
+        json_data = json.loads(content.decode('utf-8'))
+    except Exception as e:
+        flash(f"Ongeldig JSON-bestand: {e}", "danger")
+        return redirect(url_for("genereer_xml_json"))
+
+    # Converteer naar lijst van records
+    if isinstance(json_data, dict):
+        rows_list = [json_data]
+    elif isinstance(json_data, list):
+        rows_list = json_data
+    else:
+        flash("JSON moet een object of array zijn", "danger")
+        return redirect(url_for("genereer_xml_json"))
+
+    # Bepaal aanvraagtype
+    form_aanvraag_type = request.form.get("aanvraag_type") or "ZBM"
+    aanvraag_map = {"Digipoort": "OTP3"}
+    _KNOWN_CDBERICHT_TYPES = {"KCC", "OTP1", "OTP3", "RFE", "RFV", "RFX", "VM", "ZBM", "KAAN", "ZBMA"}
+    cd_bericht_default = aanvraag_map.get(form_aanvraag_type, form_aanvraag_type)
+    validate_flag = str(request.form.get("validate", "on")).strip().lower() in ("1", "true", "on", "yes")
+
+    gen = _load_generator_module()
+    if gen is None:
+        flash("Generator module niet beschikbaar", "warning")
+        return redirect(url_for("genereer_xml_json"))
+
+    try:
+        ns_soap, ns_uwvh, ns_body = gen._namespaces()
+        generated = []
+        errors = []
+        
+        out_dir = get_output_directory()
+        out_dir_str = str(out_dir)
+        os.makedirs(out_dir_str, exist_ok=True)
+        
+        log_path = str(Path(__file__).parent.parent / "build" / "logs" / "generator_json.log")
+        schema = _load_message_xsd() if validate_flag else None
+        bodies = []
+        
+        for idx, rec in enumerate(rows_list, start=1):
+            try:
+                rec_norm = _normalize_record_for_generator(rec)
+                msg, msg_aanvraag_type = gen.build_message_element(rec_norm, ns_body)
+                
+                # CdBerichtType override
+                excel_cd = rec_norm.get('CdBerichtType') or rec_norm.get('aanvraag_type') or rec_norm.get('Type')
+                desired = aanvraag_map.get(excel_cd, excel_cd) if excel_cd else cd_bericht_default
+                
+                existing = msg.findall('{' + ns_body + '}CdBerichtType')
+                existing_text = existing[0].text.strip() if existing and existing[0].text else None
+                
+                should_override = (form_aanvraag_type == "Digipoort" or not existing_text or 
+                                   (existing_text and existing_text not in _KNOWN_CDBERICHT_TYPES) or 
+                                   existing_text != desired)
+                
+                if should_override:
+                    if form_aanvraag_type == "Digipoort":
+                        desired = "OTP3"
+                    if existing:
+                        existing[0].text = desired
+                    else:
+                        ET.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
+                    msg_aanvraag_type = desired
+                
+                final_existing = msg.findall('{' + ns_body + '}CdBerichtType')
+                if final_existing and final_existing[0].text:
+                    msg_aanvraag_type = final_existing[0].text.strip()
+                
+                # XSD validatie
+                if validate_flag and schema:
+                    xml_bytes = ET.tostring(msg, encoding="utf-8")
+                    lmsg = etree.fromstring(xml_bytes)
+                    if not schema.validate(lmsg):
+                        msgs = [str(e.message) for e in schema.error_log]
+                        errors.append(f"Record {idx}: {'; '.join(msgs)}")
+                        continue
+                
+                bodies.append(msg)
+                if len(bodies) == 1:
+                    bulk_aanvraag_type = msg_aanvraag_type
+            except Exception as exc:
+                errors.append(f"Record {idx}: {exc}")
+        
+        if bodies:
+            tester_name = session.get("user", {}).get("name", "tester")
+            envelope = gen.build_envelope_with_header_and_bodies(bodies, sender=form_aanvraag_type, tester_name=tester_name)
+            bulk_type = bulk_aanvraag_type if 'bulk_aanvraag_type' in locals() else form_aanvraag_type
+            saved = gen.save_envelope(envelope, out_dir_str, "json_bulk", bulk_type)
+            generated.append(Path(saved).name)
+            
+            gen.append_log(log_path, f"{datetime.datetime.now().isoformat()}\t{saved}\tSUCCESS\t{len(bodies)}")
+        
+        bulk_zip_name = None
+        if generated:
+            ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+            bulk_zip_name = f"bulk_json_{form_aanvraag_type}_{ts}.zip"
+            bulk_zip_path = DOWNLOADS_DIR / bulk_zip_name
+            with ZipFile(bulk_zip_path, "w", ZIP_DEFLATED) as zf:
+                for fn in generated:
+                    fp = out_dir / fn
+                    if fp.exists():
+                        zf.write(str(fp), fn)
+            flash(f"{len(bodies)} XML-bestand(en) gegenereerd uit JSON", "success")
+        
+        if errors:
+            for err in errors[:10]:
+                flash(err, "warning")
+        
+        return render_template("genereer_json.html", generated_files=generated, 
+                               bulk_zip=bulk_zip_name, errors=errors)
+    
+    except Exception as e:
+        flash(f"Fout bij verwerken JSON: {e}", "danger")
+        return redirect(url_for("genereer_xml_json"))
+
+
 @app.route("/genereer_xml/upload_excel", methods=["POST"])
 def upload_excel():
     if openpyxl is None:
@@ -1671,3 +1808,22 @@ def api_test_uitvoeren():
         "foutmeldingen": "",
     }
     return jsonify(result), 200
+
+def get_output_directory():
+    """Lees uitvoermap uit instellingen.json, of gebruik fallback."""
+    try:
+        settings_path = base / "instellingen.json"
+        if settings_path.exists():
+            with open(settings_path, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+            output_dir = settings.get("output_directory")
+            if output_dir:
+                # Ondersteun relatieve en absolute paden
+                p = Path(output_dir)
+                if not p.is_absolute():
+                    p = base.parent / output_dir
+                return p
+    except Exception:
+        pass
+    # Fallback: oude mapping
+    return base.parent / "uzs_filedrop" / "UZI-GAP3" / "UZSx_ACC1" / "v0428"

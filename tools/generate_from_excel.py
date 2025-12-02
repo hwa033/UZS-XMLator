@@ -136,7 +136,7 @@ def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: 
 
 def save_envelope(envelope: ET.Element, out_dir: str, basename_hint: str, aanvraag_type: str = "ZBM") -> str:
     os.makedirs(out_dir, exist_ok=True)
-    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     
     # Map CdBerichtType codes to friendly names for filename
     type_mapping = {

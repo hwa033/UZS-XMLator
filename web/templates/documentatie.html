@@ -102,6 +102,20 @@
                         <li><strong>XSD Schema:</strong> <code>docs/UwvZwMeldingInternBody-v0428-b01.xsd</code></li>
                         <li><strong>Logs:</strong> <code>build/logs/</code></li>
                     </ul>
+
+                    <h5 class="mt-4">Technische achtergrond & werking</h5>
+                    <ul>
+                        <li>Deze tool is gebouwd met <strong>Python</strong> en het <strong>Flask</strong> webframework.</li>
+                        <li>De interface draait lokaal als een webapplicatie, te openen in je browser.</li>
+                        <li>Je uploadt een <strong>Excel-bestand (.xlsx)</strong> met testdata; de tool zet elke rij om naar een XML-bericht volgens het UWV/XSD-formaat.</li>
+                        <li>De XML-generator gebruikt <strong>lxml</strong> en <strong>xml.etree.ElementTree</strong> voor het maken en valideren van XML.</li>
+                        <li>Je kunt kiezen voor verschillende berichttypes (ZBM, VM, Digipoort) via een dropdown.</li>
+                        <li>De tool ondersteunt bulkverwerking (één XML met meerdere berichten) en single mode (één XML per persoon).</li>
+                        <li>Alle gegenereerde bestanden worden opgeslagen in een lokale map en zijn direct te downloaden.</li>
+                        <li>De broncode staat in een <strong>GitHub repository</strong>: hwa033/UZS-XMLator.</li>
+                        <li>Er zijn geen externe servers of cloud-diensten nodig; alles draait lokaal.</li>
+                        <li>Voor gevorderden: de tool is uitbreidbaar, bijvoorbeeld voor JSON-import of extra validaties.</li>
+                    </ul>
                 </div>
             </div>
         </div>
