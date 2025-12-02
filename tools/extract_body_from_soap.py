@@ -39,13 +39,21 @@ def extract_body_from_soap(input_path: str, output_path: str = None) -> str:
     if body_content is None:
         raise ValueError("No content found in SOAP Body")
     
+    # Create a clean copy of the element without SOAP namespace declarations
+    # by serializing and re-parsing
+    xml_bytes = etree.tostring(body_content, encoding='UTF-8')
+    clean_body = etree.fromstring(xml_bytes)
+    
+    # Remove any lingering SOAP-ENV namespace declaration
+    etree.cleanup_namespaces(clean_body)
+    
     # Determine output path
     if output_path is None:
         input_p = Path(input_path)
         output_path = str(input_p.parent / f"{input_p.stem}_body{input_p.suffix}")
     
     # Write just the body content as root element
-    output_tree = etree.ElementTree(body_content)
+    output_tree = etree.ElementTree(clean_body)
     output_tree.write(
         output_path,
         pretty_print=True,

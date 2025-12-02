@@ -1305,12 +1305,17 @@ def download_body_only(filename):
             flash("Geen content gevonden in SOAP Body", "danger")
             return redirect(url_for("resultaten_pagina"))
         
+        # Create a clean copy without SOAP namespace declarations
+        xml_bytes = ET.tostring(body_content, encoding='UTF-8')
+        clean_body = etree.fromstring(xml_bytes)
+        etree.cleanup_namespaces(clean_body)
+        
         # Create output filename
         body_filename = fn.replace('.xml', '_body.xml')
         
         # Write body content to a temporary file in downloads dir
         output_path = DOWNLOADS_DIR / body_filename
-        output_tree = etree.ElementTree(body_content)
+        output_tree = etree.ElementTree(clean_body)
         output_tree.write(
             str(output_path),
             pretty_print=True,
