@@ -295,6 +295,7 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
     # CdBerichtType: REQUIRED by XSD. Must be one of the enumerated values.
     # Only use OTP3 for Digipoort messages; for ZBM, VM, etc., use their actual code.
     # Default to ZBM if not specified (most common use case).
+    aanvraag_type = "ZBM"  # Initialize default
     try:
         excel_cd_names = ['CdBerichtType', 'aanvraag_type', 'Type']
         excel_cd = None
@@ -476,7 +477,8 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
         tag = _sanitize_tag(str(key))
         ET.SubElement(msg, tag).text = str(val)
 
-    return msg
+    # This code is unreachable due to earlier return, but kept for reference
+    # return msg, aanvraag_type
 
 
 def main():
