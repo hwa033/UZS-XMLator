@@ -15,15 +15,23 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not session.get("beheer_ingelogd"):
-            return redirect(url_for("beheer.login"))
+            return redirect(url_for("login", next=request.url))
         return f(*args, **kwargs)
 
     return decorated_function
 
 
-@instellingen_bp.route("/", methods=["GET", "POST"])
+@instellingen_bp.route("/")
 @login_required
-def instellingen():
+def dashboard():
+    """Main dashboard showing admin panel with all management options"""
+    return render_template("instellingen.html")
+
+
+@instellingen_bp.route("/configuratie", methods=["GET", "POST"])
+@login_required
+def configuratie():
+    """System configuration settings"""
     # Laad huidige instellingen
     if not os.path.exists(SETTINGS_FILE):
         settings = {
@@ -45,6 +53,6 @@ def instellingen():
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
         flash("Instellingen opgeslagen", "success")
-        return redirect(url_for("instellingen.instellingen"))
+        return redirect(url_for("instellingen.configuratie"))
 
-    return render_template("instellingen.html", settings=settings)
+    return render_template("configuratie.html", settings=settings)

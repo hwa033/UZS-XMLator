@@ -36,8 +36,7 @@
                     <button id="theme-toggle" class="btn btn-sm btn-outline-light ms-2" title="Toggle Theme">
                         <i class="bi bi-circle-half"></i>
                     </button>
-                    <a href="/beheer" class="btn btn-sm btn-outline-light ms-3">Beheer</a>
-                    <a href="/instellingen" class="btn btn-sm btn-outline-light">Instellingen</a>
+                    <a href="/instellingen" class="btn btn-sm btn-outline-light ms-3">Instellingen</a>
                     {% if session.get('user') %}
                         <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light">Uitloggen</a>
                     {% else %}

@@ -203,10 +203,8 @@ def save_xml(tree: etree._ElementTree, aanvraag_type: str, filename: str):
 
 # Register optional admin blueprints if present
 try:
-    from .beheer import beheer_bp
     from .instellingen import instellingen_bp
 
-    app.register_blueprint(beheer_bp, url_prefix="/beheer")
     app.register_blueprint(instellingen_bp, url_prefix="/instellingen")
 except Exception:
     # If the blueprint import fails, continue without admin pages.
