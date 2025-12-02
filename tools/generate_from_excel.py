@@ -137,7 +137,16 @@ def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: 
 def save_envelope(envelope: ET.Element, out_dir: str, basename_hint: str, aanvraag_type: str = "ZBM") -> str:
     os.makedirs(out_dir, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename = f"{aanvraag_type}_{basename_hint}_{ts}.xml"
+    
+    # Map CdBerichtType codes to friendly names for filename
+    type_mapping = {
+        "OTP3": "digipoort",
+        "ZBM": "zbm",
+        "VM": "vm"
+    }
+    friendly_type = type_mapping.get(aanvraag_type, aanvraag_type.lower())
+    
+    filename = f"{friendly_type}_{basename_hint}_{ts}.xml"
     path = os.path.join(out_dir, filename)
     
     if USING_LXML:
