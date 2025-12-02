@@ -134,10 +134,10 @@ def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: 
     return env
 
 
-def save_envelope(envelope: ET.Element, out_dir: str, basename_hint: str) -> str:
+def save_envelope(envelope: ET.Element, out_dir: str, basename_hint: str, aanvraag_type: str = "ZBM") -> str:
     os.makedirs(out_dir, exist_ok=True)
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    filename = f"generated_{basename_hint}_{ts}.xml"
+    filename = f"{aanvraag_type}_{basename_hint}_{ts}.xml"
     path = os.path.join(out_dir, filename)
     
     if USING_LXML:
@@ -228,9 +228,11 @@ def _map_cd_reden_ziekmelding(code: str) -> str:
     return code
 
 
-def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
+def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Element, str]:
     """Create a `UwvZwMeldingInternBody` element (without Envelope/Body wrapper).
 
+    Returns tuple of (element, aanvraag_type) for use in filename generation.
+    
     This function is intentionally minimal and maps Excel columns to
     the child elements used in the sample XML.
     """
@@ -312,9 +314,11 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
             cd_val = "ZBM"  # Default to ZBM if not specified (required by XSD)
         
         ET.SubElement(msg, qname("CdBerichtType")).text = cd_val
+        aanvraag_type = cd_val  # Store for return
     except Exception:
         # Fallback: always provide a value since it's required
         ET.SubElement(msg, qname("CdBerichtType")).text = "ZBM"
+        aanvraag_type = "ZBM"
     ET.SubElement(msg, qname("IndAlleenControleUzs")).text = record.get("IndAlleenControleUzs", "2")
 
     # Ketenpartij
@@ -421,7 +425,7 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> ET.Element:
     set_if(arb, "PercLoondoorbetalingTijdensAo", record.get("PercLoondoorbetalingTijdensAo", None))
     set_if(arb, "IndArbeidsgehandicapt", record.get("IndArbeidsgehandicapt", None))
 
-    return msg
+    return msg, aanvraag_type
     # Add any remaining columns from the Excel that were not explicitly
     # mapped above. This makes the generator adapt to uploads where the
     # header contains extra fields — each non-empty extra column becomes
@@ -495,29 +499,31 @@ def main():
         try:
             # build per-row message element (namespaced)
             _, _, ns_body = _namespaces()
-            msg = build_message_element(rec, ns_body)
-            messages.append((rec, msg))
+            msg, aanvraag_type = build_message_element(rec, ns_body)
+            messages.append((rec, msg, aanvraag_type))
         except Exception as exc:
             append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}\tERROR_BUILD_MSG\t{exc}")
 
     processed = 0
     if args.mode == "bulk":
         # create one envelope containing all message bodies
-        bodies = [m for (_, m) in messages]
+        bodies = [m for (_, m, _) in messages]
+        # Use first message's type for bulk filename, or default to BULK
+        bulk_type = messages[0][2] if messages else "BULK"
         envelope = build_envelope_with_header_and_bodies(bodies)
-        saved = save_envelope(envelope, out_dir, "bulk")
+        saved = save_envelope(envelope, out_dir, "bulk", bulk_type)
         append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS\t{len(bodies)}")
         processed = len(bodies)
         if formula_count:
             append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}Z\tSANITIZED_FORMULAS\t{formula_count}")
     else:
         # single mode: one envelope per message
-        for idx, (rec, m) in enumerate(messages, start=1):
+        for idx, (rec, m, aanvraag_type) in enumerate(messages, start=1):
             try:
                 env = build_envelope_with_header_and_bodies([m])
                 bsn = rec.get("BSN") or f"row{idx}"
                 safe_bsn = str(bsn).replace(" ", "_")
-                saved = save_envelope(env, out_dir, safe_bsn)
+                saved = save_envelope(env, out_dir, safe_bsn, aanvraag_type)
                 append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS")
                 processed += 1
             except Exception as exc:

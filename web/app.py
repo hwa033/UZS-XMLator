@@ -723,7 +723,7 @@ def upload_excel():
                             errors.append(f"Regel {idx}: " + "; ".join(rec_errs))
                             continue
 
-                        msg = gen.build_message_element(rec_norm, ns_body)
+                        msg, msg_aanvraag_type = gen.build_message_element(rec_norm, ns_body)
                         # Handle CdBerichtType: ONLY override with OTP3 if user selected Digipoort.
                         # For all other types (ZBM, VM, etc.), keep existing valid schema codes.
                         try:
@@ -791,6 +791,9 @@ def upload_excel():
                                 continue
 
                         bodies.append(msg)
+                        # Store aanvraag_type from first message for bulk filename
+                        if len(bodies) == 1:
+                            bulk_aanvraag_type = msg_aanvraag_type
                     except Exception as exc:
                         try:
                             gen.append_log(log_path, f"{datetime.datetime.now().isoformat()}\tERROR_BUILD_MSG\t{exc}")
@@ -800,7 +803,9 @@ def upload_excel():
                 # Get tester name from session or default
                 tester_name = session.get("user", {}).get("name", "tester")
                 envelope = gen.build_envelope_with_header_and_bodies(bodies, sender=form_aanvraag_type, tester_name=tester_name)
-                saved = gen.save_envelope(envelope, out_dir_str, "bulk")
+                # Use aanvraag_type from first message, or form selection as fallback
+                bulk_type = bulk_aanvraag_type if 'bulk_aanvraag_type' in locals() else form_aanvraag_type
+                saved = gen.save_envelope(envelope, out_dir_str, "bulk", bulk_type)
                 try:
                     gen.append_log(log_path, f"{datetime.datetime.now().isoformat()}\t{saved}\tSUCCESS\t{len(bodies)}")
                 except Exception:
@@ -826,7 +831,7 @@ def upload_excel():
                             errors.append(f"Regel {idx}: " + "; ".join(rec_errs))
                             continue
 
-                        m = gen.build_message_element(rec_norm, ns_body)
+                        m, msg_aanvraag_type = gen.build_message_element(rec_norm, ns_body)
                         try:
                             # Handle CdBerichtType: ONLY override with OTP3 if user selected Digipoort.
                             # For all other types (ZBM, VM, etc.), keep existing valid schema codes.
@@ -890,7 +895,7 @@ def upload_excel():
                         env = gen.build_envelope_with_header_and_bodies([m], sender=form_aanvraag_type, tester_name=tester_name)
                         bsn = rec_norm.get("BSN") or f"row{idx}"
                         safe_bsn = str(bsn).replace(" ", "_")
-                        saved = gen.save_envelope(env, out_dir_str, safe_bsn)
+                        saved = gen.save_envelope(env, out_dir_str, safe_bsn, msg_aanvraag_type)
                         try:
                             gen.append_log(log_path, f"{datetime.datetime.now().isoformat()}\t{saved}\tSUCCESS")
                         except Exception:
