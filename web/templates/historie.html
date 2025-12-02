@@ -1,0 +1,96 @@
+{% extends '_base.html' %}
+
+{% block title %}XML Geschiedenis{% endblock %}
+
+{% block content %}
+<section class="hero mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h4 mb-0">XML Geschiedenis</h1>
+        <p class="text-muted small mb-0">Overzicht van gegenereerde XML-bestanden</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('instellingen.dashboard') }}" class="btn btn-outline-light">Terug naar Instellingen</a>
+    </div>
+</section>
+
+<div class="container mt-2">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <strong>Generatie Historie (laatste 200 events)</strong>
+        </div>
+        <div class="card-body">
+            {% if events %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tijdstip</th>
+                            <th>Bestandsnaam</th>
+                            <th>Type</th>
+                            <th>Grootte</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in events %}
+                        <tr>
+                            <td>{{ event.tijdstip }}</td>
+                            <td><small>{{ event.filename }}</small></td>
+                            <td>
+                                <span class="badge bg-{{ 'primary' if event.aanvraag_type == 'Digipoort' else 'secondary' }}">
+                                    {{ event.aanvraag_type }}
+                                </span>
+                            </td>
+                            <td>{{ "%.2f"|format(event.size / 1024) }} KB</td>
+                            <td>
+                                {% if event.success %}
+                                <span class="badge bg-success">Succes</span>
+                                {% else %}
+                                <span class="badge bg-danger">Fout</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Geen generatie geschiedenis beschikbaar.</p>
+            <p class="text-muted small">XML generatie events worden gelogd naar <code>web/xml_events.jsonl</code></p>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if events %}
+    <div class="card mt-4">
+        <div class="card-header bg-info text-white">
+            <strong>Statistieken</strong>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <h5>Totaal Gegenereerd</h5>
+                    <p class="display-6">{{ events | length }}</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Succesvol</h5>
+                    <p class="display-6 text-success">{{ events | selectattr('success') | list | length }}</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Gefaald</h5>
+                    <p class="display-6 text-danger">{{ events | rejectattr('success') | list | length }}</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Slagingspercentage</h5>
+                    <p class="display-6">
+                        {% set success_count = events | selectattr('success') | list | length %}
+                        {% set total = events | length %}
+                        {{ "%.1f"|format((success_count / total * 100) if total > 0 else 0) }}%
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

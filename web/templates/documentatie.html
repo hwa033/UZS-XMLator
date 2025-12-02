@@ -1,0 +1,110 @@
+{% extends '_base.html' %}
+
+{% block title %}Documentatie{% endblock %}
+
+{% block content %}
+<section class="hero mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h4 mb-0">Documentatie</h1>
+        <p class="text-muted small mb-0">Handleidingen en gebruikersinformatie</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('instellingen.dashboard') }}" class="btn btn-outline-light">Terug naar Instellingen</a>
+    </div>
+</section>
+
+<div class="container mt-2">
+    <div class="row">
+        <!-- Quick Start Guide -->
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <strong>Snelstartgids</strong>
+                </div>
+                <div class="card-body">
+                    <h5>XML Genereren uit Excel</h5>
+                    <ol>
+                        <li>Ga naar de <a href="{{ url_for('genereer_xml') }}">Genereer XML</a> pagina</li>
+                        <li>Selecteer het aanvraagtype (Digipoort, ZBM, of VM)</li>
+                        <li>Upload een Excel bestand met medewerkergegevens</li>
+                        <li>Klik op "Genereer XML" om de bestanden te maken</li>
+                        <li>Download de gegenereerde XML-bestanden of ZIP-archief</li>
+                    </ol>
+
+                    <h5 class="mt-4">Resultaten Bekijken</h5>
+                    <ol>
+                        <li>Ga naar de <a href="{{ url_for('resultaten_pagina') }}">Resultaten</a> pagina</li>
+                        <li>Bekijk een overzicht van alle gegenereerde XML-bestanden</li>
+                        <li>Download individuele bestanden of maak een ZIP van meerdere bestanden</li>
+                        <li>Bekijk een preview van de XML-inhoud</li>
+                    </ol>
+
+                    <h5 class="mt-4">Instellingen Configureren</h5>
+                    <ol>
+                        <li>Ga naar <a href="{{ url_for('instellingen.configuratie') }}">Systeemconfiguratie</a></li>
+                        <li>Pas instellingen aan zoals upload limiet, XSD pad, en log level</li>
+                        <li>Configureer standaardwaarden voor bedrijfsgegevens</li>
+                        <li>Stel bestandsretentie in (automatische opschoning oude bestanden)</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Available Documentation Files -->
+        {% if available_docs %}
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <strong>Beschikbare Documentatie Bestanden</strong>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for doc in available_docs %}
+                        <a href="{{ url_for('static', filename='../docs/' + doc.filename) }}" class="list-group-item list-group-item-action" target="_blank">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ doc.title }}</h6>
+                                <small>{{ "%.2f"|format(doc.size / 1024) }} KB</small>
+                            </div>
+                            <small class="text-muted">{{ doc.filename }}</small>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- System Information -->
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <strong>Systeeminformatie</strong>
+                </div>
+                <div class="card-body">
+                    <h5>Ondersteunde Formaten</h5>
+                    <ul>
+                        <li><strong>Input:</strong> Excel bestanden (.xlsx, .xls)</li>
+                        <li><strong>Output:</strong> XML bestanden volgens UWV schema v0428</li>
+                        <li><strong>Validatie:</strong> XSD schema validatie</li>
+                    </ul>
+
+                    <h5 class="mt-4">Aanvraagtypen</h5>
+                    <ul>
+                        <li><strong>Digipoort (OTP3):</strong> Digitale ziekmeldingen via Digipoort</li>
+                        <li><strong>ZBM:</strong> Ziekteverzuimbericht Medewerker</li>
+                        <li><strong>VM:</strong> Verzuimmelding</li>
+                    </ul>
+
+                    <h5 class="mt-4">Bestandslocaties</h5>
+                    <ul>
+                        <li><strong>Datasets:</strong> <code>docs/</code></li>
+                        <li><strong>Gegenereerde XMLs:</strong> <code>uzs_filedrop/UZI-GAP3/UZSx_ACC1/</code></li>
+                        <li><strong>XSD Schema:</strong> <code>docs/UwvZwMeldingInternBody-v0428-b01.xsd</code></li>
+                        <li><strong>Logs:</strong> <code>build/logs/</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

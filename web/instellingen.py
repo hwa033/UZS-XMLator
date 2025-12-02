@@ -1,7 +1,10 @@
 import json
 import os
+from pathlib import Path
+import yaml
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for, send_file
+from werkzeug.utils import secure_filename
 
 instellingen_bp = Blueprint("instellingen", __name__, template_folder="templates")
 
@@ -53,3 +56,113 @@ def configuratie():
         return redirect(url_for("instellingen.configuratie"))
 
     return render_template("configuratie.html", settings=settings)
+
+
+@instellingen_bp.route("/datasets", methods=["GET", "POST"])
+def datasets():
+    """Manage Excel datasets"""
+    yaml_path = Path(__file__).parent.parent / "docs" / "excel_datasets.yml"
+    
+    if request.method == "POST":
+        action = request.form.get("action")
+        
+        if action == "upload":
+            if "excel_file" not in request.files:
+                flash("Geen bestand geselecteerd", "danger")
+                return redirect(url_for("instellingen.datasets"))
+            
+            file = request.files["excel_file"]
+            if file.filename == "":
+                flash("Geen bestand geselecteerd", "danger")
+                return redirect(url_for("instellingen.datasets"))
+            
+            # Save uploaded Excel file to docs folder
+            filename = secure_filename(file.filename)
+            dest_path = Path(__file__).parent.parent / "docs" / filename
+            file.save(str(dest_path))
+            flash(f"Dataset '{filename}' succesvol geüpload naar docs/", "success")
+            return redirect(url_for("instellingen.datasets"))
+        
+        elif action == "delete":
+            filename = request.form.get("filename")
+            if filename:
+                file_path = Path(__file__).parent.parent / "docs" / secure_filename(filename)
+                if file_path.exists() and file_path.suffix in [".xlsx", ".xls"]:
+                    file_path.unlink()
+                    flash(f"Dataset '{filename}' verwijderd", "success")
+                else:
+                    flash("Bestand niet gevonden", "danger")
+            return redirect(url_for("instellingen.datasets"))
+    
+    # List all Excel files in docs folder
+    docs_path = Path(__file__).parent.parent / "docs"
+    excel_files = []
+    if docs_path.exists():
+        for f in docs_path.glob("*.xlsx"):
+            excel_files.append({
+                "name": f.name,
+                "size": f.stat().st_size,
+                "modified": f.stat().st_mtime
+            })
+        for f in docs_path.glob("*.xls"):
+            excel_files.append({
+                "name": f.name,
+                "size": f.stat().st_size,
+                "modified": f.stat().st_mtime
+            })
+    
+    excel_files.sort(key=lambda x: x["modified"], reverse=True)
+    
+    return render_template("datasets.html", excel_files=excel_files)
+
+
+@instellingen_bp.route("/historie")
+def historie():
+    """View XML generation history from events log"""
+    events_file = Path(__file__).parent / "xml_events.jsonl"
+    events = []
+    
+    if events_file.exists():
+        try:
+            with open(events_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        event = json.loads(line.strip())
+                        events.append(event)
+                    except:
+                        continue
+        except:
+            pass
+    
+    # Reverse to show newest first
+    events.reverse()
+    
+    # Limit to last 200 events
+    events = events[:200]
+    
+    return render_template("historie.html", events=events)
+
+
+@instellingen_bp.route("/documentatie")
+def documentatie():
+    """Show user documentation and help"""
+    # Check which documentation files exist
+    docs_path = Path(__file__).parent.parent / "docs"
+    available_docs = []
+    
+    doc_files = [
+        ("Gebruikershandleiding XML Automatisering Web Dashboard.md", "Gebruikershandleiding"),
+        ("digitale_aanvragen_uzs.md", "Digitale Aanvragen UZS"),
+        ("LOCAL_CHART_FALLBACK.md", "Chart.js Fallback"),
+    ]
+    
+    for filename, title in doc_files:
+        doc_path = docs_path / filename
+        if doc_path.exists():
+            available_docs.append({
+                "filename": filename,
+                "title": title,
+                "size": doc_path.stat().st_size
+            })
+    
+    return render_template("documentatie.html", available_docs=available_docs)
