@@ -1,0 +1,38 @@
+[
+  {
+    "BSN": "123456789",
+    "Naam": "Jan Jansen",
+    "Geboortedatum": "19900115",
+    "Geslacht": "1",
+    "Loonheffingennr": "136910038L01",
+    "DatEersteAoDag": "20251201",
+    "CdRedenZiekmelding": "03",
+    "Telefoonnr": "0612345678",
+    "EMailAdres": "jan.jansen@example.nl",
+    "Type": "ZBM"
+  },
+  {
+    "BSN": "987654321",
+    "Naam": "Marie Pieters",
+    "Geboortedatum": "19850620",
+    "Geslacht": "2",
+    "Loonheffingennr": "136910038L01",
+    "DatEersteAoDag": "20251128",
+    "CdRedenZiekmelding": "01",
+    "Telefoonnr": "0698765432",
+    "EMailAdres": "marie.pieters@example.nl",
+    "Type": "ZBM"
+  },
+  {
+    "BSN": "555501759",
+    "Naam": "Bianca de Jong",
+    "Geboortedatum": "19910530",
+    "Geslacht": "2",
+    "Loonheffingennr": "136910038L01",
+    "DatEersteAoDag": "20251125",
+    "CdRedenZiekmelding": "06",
+    "Telefoonnr": "0646630240",
+    "EMailAdres": "bianca.dejong@example.nl",
+    "Type": "VM"
+  }
+]
