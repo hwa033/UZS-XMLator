@@ -1234,34 +1234,6 @@ def resultaten_pagina():
     return render_template("resultaten.html", generated=generated, zip_limits=zip_limits)
 
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    # Hardened login: checks admin credentials from env vars or defaults.
-    ADMIN_USER = os.environ.get("U_XMLATOR_ADMIN_USER", "admin")
-    ADMIN_PASS = os.environ.get("U_XMLATOR_ADMIN_PASS", "admin123")
-
-    if request.method == "POST":
-        username = request.form.get("username", "")
-        password = request.form.get("password", "")
-        if username == ADMIN_USER and password == ADMIN_PASS:
-            session["user"] = {"name": username}
-            # manage area flag
-            session["beheer_ingelogd"] = True
-            flash("Ingelogd als beheerder")
-            next_target = request.args.get("next") or url_for("index")
-            return redirect(next_target)
-        else:
-            flash("Ongeldige gebruikersnaam of wachtwoord", "danger")
-    return render_template("login.html")
-
-
-@app.route("/logout")
-def logout():
-    session.pop("user", None)
-    session.pop("beheer_ingelogd", None)
-    flash("Uitgelogd")
-    return redirect(url_for("index"))
-
 
 @app.route("/resultaten/download/<filename>")
 def download_generated(filename):

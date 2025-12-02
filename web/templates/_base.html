@@ -37,11 +37,6 @@
                         <i class="bi bi-circle-half"></i>
                     </button>
                     <a href="/instellingen" class="btn btn-sm btn-outline-light ms-3">Instellingen</a>
-                    {% if session.get('user') %}
-                        <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-light">Uitloggen</a>
-                    {% else %}
-                        <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-light">Inloggen</a>
-                    {% endif %}
                 </div>
             </div>
         </div>

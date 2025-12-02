@@ -1,35 +1,20 @@
 import json
 import os
-from functools import wraps
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 
 instellingen_bp = Blueprint("instellingen", __name__, template_folder="templates")
 
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "instellingen.json")
 
-# Decorator voor beheer login
-
-
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get("beheer_ingelogd"):
-            return redirect(url_for("login", next=request.url))
-        return f(*args, **kwargs)
-
-    return decorated_function
-
 
 @instellingen_bp.route("/")
-@login_required
 def dashboard():
     """Main dashboard showing admin panel with all management options"""
     return render_template("instellingen.html")
 
 
 @instellingen_bp.route("/configuratie", methods=["GET", "POST"])
-@login_required
 def configuratie():
     """System configuration settings"""
     # Laad huidige instellingen
