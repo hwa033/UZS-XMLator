@@ -770,6 +770,8 @@ def upload_excel():
                                         c.text = desired
                                 else:
                                     ET.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
+                                # Update aanvraag_type for filename to match final CdBerichtType
+                                msg_aanvraag_type = desired
                         except Exception:
                             pass
 
@@ -876,6 +878,8 @@ def upload_excel():
                                         c.text = desired
                                 else:
                                     ET.SubElement(m, '{' + ns_body + '}CdBerichtType').text = desired
+                                # Update aanvraag_type for filename to match final CdBerichtType
+                                msg_aanvraag_type = desired
                         except Exception:
                             pass
                         if validate_flag and schema is not None:
