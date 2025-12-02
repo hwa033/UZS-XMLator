@@ -770,8 +770,13 @@ def upload_excel():
                                         c.text = desired
                                 else:
                                     ET.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
-                                # Update aanvraag_type for filename to match final CdBerichtType
-                                msg_aanvraag_type = desired
+                            
+                            # Always update aanvraag_type to match final CdBerichtType in XML
+                            final_existing = msg.findall('{' + ns_body + '}CdBerichtType')
+                            if final_existing and len(final_existing) > 0:
+                                final_text = final_existing[0].text
+                                if final_text and final_text.strip():
+                                    msg_aanvraag_type = final_text.strip()
                         except Exception:
                             pass
 
@@ -878,8 +883,13 @@ def upload_excel():
                                         c.text = desired
                                 else:
                                     ET.SubElement(m, '{' + ns_body + '}CdBerichtType').text = desired
-                                # Update aanvraag_type for filename to match final CdBerichtType
-                                msg_aanvraag_type = desired
+                            
+                            # Always update aanvraag_type to match final CdBerichtType in XML
+                            final_existing = m.findall('{' + ns_body + '}CdBerichtType')
+                            if final_existing and len(final_existing) > 0:
+                                final_text = final_existing[0].text
+                                if final_text and final_text.strip():
+                                    msg_aanvraag_type = final_text.strip()
                         except Exception:
                             pass
                         if validate_flag and schema is not None:
