@@ -751,7 +751,8 @@ def upload_excel():
 
                             # ONLY override if:
                             # 1. User selected Digipoort (form_aanvraag_type == "Digipoort"), OR
-                            # 2. Existing value is not a valid schema code
+                            # 2. Existing value is not a valid schema code, OR
+                            # 3. User form selection differs from existing value (user wants specific type)
                             should_override = False
                             if form_aanvraag_type == "Digipoort":
                                 # Always set to OTP3 for Digipoort, regardless of Excel content
@@ -762,6 +763,9 @@ def upload_excel():
                                 should_override = True
                             elif not existing_text:
                                 # No existing value, set the desired one
+                                should_override = True
+                            elif existing_text != desired:
+                                # User selected a different type than what's in Excel/default
                                 should_override = True
 
                             if should_override:
@@ -866,7 +870,8 @@ def upload_excel():
 
                             # ONLY override if:
                             # 1. User selected Digipoort, OR
-                            # 2. Existing value is not a valid schema code
+                            # 2. Existing value is not a valid schema code, OR
+                            # 3. User form selection differs from existing value (user wants specific type)
                             should_override = False
                             if form_aanvraag_type == "Digipoort":
                                 # Always set to OTP3 for Digipoort, regardless of Excel content
@@ -875,6 +880,9 @@ def upload_excel():
                             elif existing_text and existing_text not in _KNOWN_CDBERICHT_TYPES:
                                 should_override = True
                             elif not existing_text:
+                                should_override = True
+                            elif existing_text != desired:
+                                # User selected a different type than what's in Excel/default
                                 should_override = True
 
                             if should_override:
