@@ -627,7 +627,7 @@ def upload_json():
         generated = []
         errors = []
         
-        out_dir = get_output_directory()
+        out_dir = get_output_directory_json()
         out_dir_str = str(out_dir)
         os.makedirs(out_dir_str, exist_ok=True)
         
@@ -1827,3 +1827,22 @@ def get_output_directory():
         pass
     # Fallback: oude mapping
     return base.parent / "uzs_filedrop" / "UZI-GAP3" / "UZSx_ACC1" / "v0428"
+
+
+def get_output_directory_json():
+    """Lees uitvoermap voor JSON-gegenereerde bestanden uit instellingen.json."""
+    try:
+        settings_path = base / "instellingen.json"
+        if settings_path.exists():
+            with open(settings_path, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+            output_dir = settings.get("output_directory_json")
+            if output_dir:
+                p = Path(output_dir)
+                if not p.is_absolute():
+                    p = base.parent / output_dir
+                return p
+    except Exception:
+        pass
+    # Fallback: aparte JSON map
+    return base.parent / "uzs_filedrop" / "UZI-GAP3" / "UZSx_ACC1" / "json_output"

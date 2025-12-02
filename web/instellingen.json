@@ -1,5 +1,7 @@
 {
   "upload_max_size_mb": 16,
   "xsd_path": "docs/UwvZwMeldingInternBody-v0428-b01.xsd",
-  "log_level": "INFO"
+  "log_level": "INFO",
+  "output_directory": "uzs_filedrop/UZI-GAP3/UZSx_ACC1/v0428",
+  "output_directory_json": "uzs_filedrop/UZI-GAP3/UZSx_ACC1/json_output"
 }
