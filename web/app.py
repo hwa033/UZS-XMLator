@@ -1365,13 +1365,18 @@ def upload_excel():
 
 @app.route("/resultaten")
 def resultaten_pagina():
-    # List generated XMLs from OUTPUT_MAP locations
+    # Legacy route - redirect to Excel results
+    return redirect(url_for("resultaten_excel"))
+
+
+@app.route("/resultaten/excel")
+def resultaten_excel():
+    """Resultaten pagina voor Excel-gegenereerde XML bestanden"""
     generated = []
     try:
-        for k, folder in OUTPUT_MAP.items():
-            if not folder.exists():
-                continue
-            for f in folder.glob("*.xml"):
+        out_dir = get_output_directory()
+        if out_dir.exists():
+            for f in out_dir.glob("*.xml"):
                 try:
                     generated.append(
                         {
@@ -1379,7 +1384,6 @@ def resultaten_pagina():
                                 f.stat().st_mtime
                             ).isoformat(),
                             "filename": f.name,
-                            "aanvraag_type": k,
                             "output_path": str(f),
                             "size": f.stat().st_size,
                         }
@@ -1389,13 +1393,46 @@ def resultaten_pagina():
         generated = sorted(generated, key=lambda x: x.get("tijdstip") or "", reverse=True)
     except Exception:
         generated = []
-    # expose server-side ZIP limits to the template for tooltips and UI hints
+    
     zip_limits = {
         "max_files": ZIP_MAX_FILES,
         "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
         "max_file_bytes": ZIP_MAX_FILE_SIZE,
     }
-    return render_template("resultaten.html", generated=generated, zip_limits=zip_limits)
+    return render_template("resultaten_excel.html", generated=generated, zip_limits=zip_limits, workflow="Excel")
+
+
+@app.route("/resultaten/json")
+def resultaten_json():
+    """Resultaten pagina voor JSON-gegenereerde XML bestanden"""
+    generated = []
+    try:
+        out_dir = get_output_directory_json()
+        if out_dir.exists():
+            for f in out_dir.glob("*.xml"):
+                try:
+                    generated.append(
+                        {
+                            "tijdstip": datetime.datetime.fromtimestamp(
+                                f.stat().st_mtime
+                            ).isoformat(),
+                            "filename": f.name,
+                            "output_path": str(f),
+                            "size": f.stat().st_size,
+                        }
+                    )
+                except Exception:
+                    continue
+        generated = sorted(generated, key=lambda x: x.get("tijdstip") or "", reverse=True)
+    except Exception:
+        generated = []
+    
+    zip_limits = {
+        "max_files": ZIP_MAX_FILES,
+        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
+        "max_file_bytes": ZIP_MAX_FILE_SIZE,
+    }
+    return render_template("resultaten_json.html", generated=generated, zip_limits=zip_limits, workflow="JSON")
 
 
 

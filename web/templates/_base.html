@@ -27,9 +27,24 @@
             <div class="collapse navbar-collapse" id="navMain">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('genereer_xml') }}">Genereer XML</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('genereer_xml_json') }}">JSON naar XML</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('resultaten_pagina') }}">Resultaten</a></li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navExcel" role="button" data-bs-toggle="dropdown">
+                            Excel Workflow
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('genereer_xml') }}"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Genereer XML</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('resultaten_excel') }}"><i class="bi bi-folder2-open me-2"></i>Resultaten Excel</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navJson" role="button" data-bs-toggle="dropdown">
+                            JSON Workflow
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('genereer_xml_json') }}"><i class="bi bi-filetype-json me-2"></i>JSON naar XML</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('resultaten_json') }}"><i class="bi bi-folder2-open me-2"></i>Resultaten JSON</a></li>
+                        </ul>
+                    </li>
                 </ul>
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-clock text-white"></i>
