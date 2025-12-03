@@ -136,17 +136,6 @@ def load_datasets_yaml(path: Path):
         return []
 
 
-# Where generated XMLs are saved per aanvraag type
-OUTPUT_MAP = {
-    "ZBM": base.parent / "uzs_filedrop" / "UZI-GAP3" / "UZSx_ACC1" / "v0428",
-    "VM": base.parent / "uzs_filedrop" / "UZI-GAP3" / "UZSx_ACC1" / "v0428",
-    "Digipoort": base.parent
-    / "uzs_filedrop"
-    / "UZI-GAP3"
-    / "UZSx_ACC1"
-    / "UwvZwMelding_MQ_V0428",
-}
-
 # Central downloads directory for bulk archives (independent of aanvraag type)
 DOWNLOADS_DIR = Path(__file__).parent / "static" / "downloads"
 DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
@@ -177,9 +166,7 @@ def _cleanup_downloads(max_age_minutes: int = 60):
 
 
 def save_xml(tree: etree._ElementTree, aanvraag_type: str, filename: str):
-    out_dir = OUTPUT_MAP.get(aanvraag_type) or (
-        base.parent / "uzs_filedrop" / "UZI-GAP3" / "UZSx_ACC1" / "v0428"
-    )
+    out_dir = get_output_directory()
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / filename
     tree.write(str(out_path), encoding="utf-8", xml_declaration=True, pretty_print=True)
@@ -855,8 +842,8 @@ def upload_excel():
             global _LAST_XSD_ERROR
             _LAST_XSD_ERROR = None
 
-            # choose output directory: map to OUTPUT_MAP if possible, otherwise generator default
-            out_dir = OUTPUT_MAP.get(form_aanvraag_type) or (Path(__file__).parent.parent / "build" / "excel_generated")
+            # Use configured output directory
+            out_dir = get_output_directory()
             out_dir_str = str(out_dir)
             os.makedirs(out_dir_str, exist_ok=True)
 
@@ -1139,23 +1126,10 @@ def upload_excel():
                     from zipfile import ZIP_DEFLATED as _ZIP_DEF, ZipFile as _ZipFile
                     with _ZipFile(str(zip_path), "w", _ZIP_DEF) as zf:
                         for fn in generated:
-                            found = None
-                            # search priority: the out_dir where generator saved the file,
-                            # then configured OUTPUT_MAP folders, then the build/excel_generated fallback
-                            candidates = []
-                            try:
-                                candidates.append(Path(out_dir_str))
-                            except Exception:
-                                pass
-                            candidates.extend(list(OUTPUT_MAP.values()))
-                            candidates.append(Path(__file__).parent.parent / "build" / "excel_generated")
-                            for folder in candidates:
-                                p = Path(folder) / fn
-                                if p.exists():
-                                    found = p
-                                    break
-                            if found:
-                                zf.write(str(found), arcname=fn)
+                            # Search in output directory
+                            p = out_dir / fn
+                            if p.exists():
+                                zf.write(str(p), arcname=fn)
                 except Exception:
                     bulk_zip_name = None
 
@@ -1375,17 +1349,10 @@ def upload_excel():
             zip_path = DOWNLOADS_DIR / bulk_zip_name
             with ZipFile(str(zip_path), "w", ZIP_DEFLATED) as zf:
                 for fn in generated:
-                    # search OUTPUT_MAP locations and fallback to build/excel_generated
-                    found = None
-                    candidates = list(OUTPUT_MAP.values())
-                    candidates.append(Path(__file__).parent.parent / "build" / "excel_generated")
-                    for folder in candidates:
-                        p = Path(folder) / fn
-                        if p.exists():
-                            found = p
-                            break
-                    if found:
-                        zf.write(str(found), arcname=fn)
+                    # Search in output directory
+                    p = get_output_directory() / fn
+                    if p.exists():
+                        zf.write(str(p), arcname=fn)
             # Also include zip name in generated list for template convenience
         except Exception:
             bulk_zip_name = None
@@ -1415,102 +1382,29 @@ def upload_excel():
     )
 
 
-@app.route("/resultaten")
-def resultaten_pagina():
-    # Legacy route - redirect to Excel results
-    return redirect(url_for("resultaten_excel"))
-
-
-@app.route("/resultaten/excel")
-def resultaten_excel():
-    """Resultaten pagina voor Excel-gegenereerde XML bestanden"""
-    generated = []
-    try:
-        out_dir = get_output_directory()
-        if out_dir.exists():
-            for f in out_dir.glob("*.xml"):
-                try:
-                    generated.append(
-                        {
-                            "tijdstip": datetime.datetime.fromtimestamp(
-                                f.stat().st_mtime
-                            ).isoformat(),
-                            "filename": f.name,
-                            "output_path": str(f),
-                            "size": f.stat().st_size,
-                        }
-                    )
-                except Exception:
-                    continue
-        generated = sorted(generated, key=lambda x: x.get("tijdstip") or "", reverse=True)
-    except Exception:
-        generated = []
-    
-    zip_limits = {
-        "max_files": ZIP_MAX_FILES,
-        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
-        "max_file_bytes": ZIP_MAX_FILE_SIZE,
-    }
-    return render_template("resultaten_excel.html", generated=generated, zip_limits=zip_limits, workflow="Excel")
-
-
-@app.route("/resultaten/json")
-def resultaten_json():
-    """Resultaten pagina voor JSON-gegenereerde XML bestanden"""
-    generated = []
-    try:
-        out_dir = get_output_directory_json()
-        if out_dir.exists():
-            for f in out_dir.glob("*.xml"):
-                try:
-                    generated.append(
-                        {
-                            "tijdstip": datetime.datetime.fromtimestamp(
-                                f.stat().st_mtime
-                            ).isoformat(),
-                            "filename": f.name,
-                            "output_path": str(f),
-                            "size": f.stat().st_size,
-                        }
-                    )
-                except Exception:
-                    continue
-        generated = sorted(generated, key=lambda x: x.get("tijdstip") or "", reverse=True)
-    except Exception:
-        generated = []
-    
-    zip_limits = {
-        "max_files": ZIP_MAX_FILES,
-        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
-        "max_file_bytes": ZIP_MAX_FILE_SIZE,
-    }
-    return render_template("resultaten_json.html", generated=generated, zip_limits=zip_limits, workflow="JSON")
-
-
 
 @app.route("/resultaten/download/<filename>")
 def download_generated(filename):
-    # Search known output locations for the filename and send it
-    for folder in OUTPUT_MAP.values():
-        p = folder / secure_filename(filename)
-        try:
-            if p.exists():
-                return send_file(
-                    str(p), as_attachment=True, download_name=secure_filename(filename)
-                )
-        except Exception:
-            continue
-    # Also check central downloads directory
-    dl = DOWNLOADS_DIR / secure_filename(filename)
-    try:
-        if dl.exists():
-            return send_file(
-                str(dl), as_attachment=True, download_name=secure_filename(filename)
-            )
-    except Exception:
-        pass
+    """Download generated file from Excel or JSON output directories"""
+    fn = secure_filename(filename)
+    
+    # Check Excel output directory
+    p = get_output_directory() / fn
+    if p.exists():
+        return send_file(str(p), as_attachment=True, download_name=fn)
+    
+    # Check JSON output directory
+    p = get_output_directory_json() / fn
+    if p.exists():
+        return send_file(str(p), as_attachment=True, download_name=fn)
+    
+    # Check central downloads directory
+    dl = DOWNLOADS_DIR / fn
+    if dl.exists():
+        return send_file(str(dl), as_attachment=True, download_name=fn)
+    
     flash("Gevraagd bestand niet gevonden", "danger")
-    return redirect(url_for("resultaten_pagina"))
+    return redirect(url_for("genereer_xml"))
 
 
 @app.route("/resultaten/download-body/<filename>")
@@ -1519,12 +1413,16 @@ def download_body_only(filename):
     fn = secure_filename(filename)
     found = None
     
-    # Search for the file in known locations
-    for folder in OUTPUT_MAP.values():
-        p = folder / fn
+    # Search Excel output directory
+    p = get_output_directory() / fn
+    if p.exists() and p.is_file():
+        found = p
+    
+    # Search JSON output directory if not found
+    if not found:
+        p = get_output_directory_json() / fn
         if p.exists() and p.is_file():
             found = p
-            break
     
     if not found:
         dl = DOWNLOADS_DIR / fn
@@ -1533,7 +1431,7 @@ def download_body_only(filename):
     
     if not found:
         flash("Bestand niet gevonden", "danger")
-        return redirect(url_for("resultaten_pagina"))
+        return redirect(url_for("genereer_xml"))
     
     try:
         # Parse the SOAP XML
@@ -1546,7 +1444,7 @@ def download_body_only(filename):
         
         if body is None:
             flash("Geen SOAP Body gevonden in XML", "danger")
-            return redirect(url_for("resultaten_pagina"))
+            return redirect(url_for("genereer_xml"))
         
         # Get the first child of Body (should be UwvZwMeldingInternBody)
         body_content = None
@@ -1556,7 +1454,7 @@ def download_body_only(filename):
         
         if body_content is None:
             flash("Geen content gevonden in SOAP Body", "danger")
-            return redirect(url_for("resultaten_pagina"))
+            return redirect(url_for("genereer_xml"))
         
         # Create a clean copy without SOAP namespace declarations
         xml_bytes = ET.tostring(body_content, encoding='UTF-8')
@@ -1585,7 +1483,7 @@ def download_body_only(filename):
         
     except Exception as e:
         flash(f"Fout bij extraheren body: {e}", "danger")
-        return redirect(url_for("resultaten_pagina"))
+        return redirect(url_for("genereer_xml"))
 
 
 @app.route('/resultaten/download-zip', methods=['POST'])
@@ -1593,9 +1491,7 @@ def download_generated_zip():
     """Create a ZIP archive of requested generated files and return it.
 
     Expects JSON body: {"filenames": ["a.xml", "b.xml"]}
-    Only files from known OUTPUT_MAP locations or the central DOWNLOADS_DIR
-    are included. The created ZIP is stored in `DOWNLOADS_DIR` and returned
-    as an attachment.
+    Only files from Excel/JSON output directories or DOWNLOADS_DIR are included.
     """
     try:
         req = request.get_json(force=True)
@@ -1608,19 +1504,28 @@ def download_generated_zip():
     if not filenames:
         return jsonify({"error": "No valid filenames provided"}), 400
 
-    # Collect found files
+    # Collect found files from Excel and JSON output directories
     found_files = []
     for fn in filenames:
         found = None
-        for folder in OUTPUT_MAP.values():
-            p = folder / fn
+        
+        # Check Excel output
+        p = get_output_directory() / fn
+        if p.exists() and p.is_file():
+            found = p
+        
+        # Check JSON output
+        if not found:
+            p = get_output_directory_json() / fn
             if p.exists() and p.is_file():
                 found = p
-                break
+        
+        # Check downloads dir
         if not found:
             dl = DOWNLOADS_DIR / fn
             if dl.exists() and dl.is_file():
                 found = dl
+        
         if found:
             found_files.append((fn, found))
 
@@ -1677,15 +1582,24 @@ def preview_generated(filename):
     """Return a small preview (first N chars/lines) and metadata for a generated file."""
     fn = secure_filename(filename)
     found = None
-    for folder in OUTPUT_MAP.values():
-        p = folder / fn
+    
+    # Check Excel output
+    p = get_output_directory() / fn
+    if p.exists() and p.is_file():
+        found = p
+    
+    # Check JSON output
+    if not found:
+        p = get_output_directory_json() / fn
         if p.exists() and p.is_file():
             found = p
-            break
+    
+    # Check downloads dir
     if not found:
         dl = DOWNLOADS_DIR / fn
         if dl.exists() and dl.is_file():
             found = dl
+    
     if not found:
         return jsonify({"error": "Bestand niet gevonden"}), 404
 
