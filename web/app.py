@@ -557,28 +557,80 @@ def logo():
 
 @app.route("/genereer_xml")
 def genereer_xml():
-    # Render the generator page (bulk upload only)
-    total_tests = 0
-    last_status = None
-    last_time = None
-
+    """Excel upload page with results below"""
+    # Get existing generated files
+    generated = []
+    try:
+        out_dir = get_output_directory()
+        if out_dir.exists():
+            for f in out_dir.glob("*.xml"):
+                try:
+                    generated.append(
+                        {
+                            "tijdstip": datetime.datetime.fromtimestamp(
+                                f.stat().st_mtime
+                            ).isoformat(),
+                            "filename": f.name,
+                            "output_path": str(f),
+                            "size": f.stat().st_size,
+                        }
+                    )
+                except Exception:
+                    continue
+        generated = sorted(generated, key=lambda x: x.get("tijdstip") or "", reverse=True)
+    except Exception:
+        generated = []
+    
     events_file = Path(__file__).parent / "xml_events.jsonl"
     success_rate = _get_success_rate(events_file)
+    
+    zip_limits = {
+        "max_files": ZIP_MAX_FILES,
+        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
+        "max_file_bytes": ZIP_MAX_FILE_SIZE,
+    }
 
     return render_template(
         "genereer_xml.html",
-        xml_path=None,
-        total_tests=total_tests,
-        last_test_status=last_status,
-        last_test_time=last_time,
+        generated=generated,
+        zip_limits=zip_limits,
         success_rate=success_rate,
     )
 
 
 @app.route("/genereer_xml_json")
 def genereer_xml_json():
-    """Render JSON to XML generation page"""
-    return render_template("genereer_json.html")
+    """JSON upload page with results below"""
+    # Get existing generated files
+    generated = []
+    try:
+        out_dir = get_output_directory_json()
+        if out_dir.exists():
+            for f in out_dir.glob("*.xml"):
+                try:
+                    generated.append(
+                        {
+                            "tijdstip": datetime.datetime.fromtimestamp(
+                                f.stat().st_mtime
+                            ).isoformat(),
+                            "filename": f.name,
+                            "output_path": str(f),
+                            "size": f.stat().st_size,
+                        }
+                    )
+                except Exception:
+                    continue
+        generated = sorted(generated, key=lambda x: x.get("tijdstip") or "", reverse=True)
+    except Exception:
+        generated = []
+    
+    zip_limits = {
+        "max_files": ZIP_MAX_FILES,
+        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
+        "max_file_bytes": ZIP_MAX_FILE_SIZE,
+    }
+    
+    return render_template("genereer_json.html", generated=generated, zip_limits=zip_limits)
 
 
 @app.route("/genereer_xml_json/upload_json", methods=["POST"])

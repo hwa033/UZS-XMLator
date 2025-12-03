@@ -1,100 +1,238 @@
 {% extends '_base.html' %}
 
-{% block title %}JSON naar XML{% endblock %}
+{% block title %}JSON Workflow{% endblock %}
 
 {% block content %}
-<section class="hero mb-4 d-flex justify-content-between align-items-center">
-    <div>
-        <h1 class="h4 mb-0">JSON naar XML Conversie</h1>
-        <p class="text-muted small mb-0">Upload een JSON-bestand om XML-berichten te genereren</p>
-    </div>
-</section>
+<div class="container-fluid py-4">
+    <h1 class="mb-3"><i class="bi bi-filetype-json text-primary"></i> JSON Workflow</h1>
+    <p class="text-muted mb-4">Upload een JSON-bestand om XML te genereren en bekijk direct de resultaten hieronder.</p>
 
-<div class="container mt-2">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <strong>JSON Bestand Uploaden</strong>
+    <!-- Upload Form Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-upload"></i> JSON uploaden & XML genereren</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('upload_json') }}" method="post" enctype="multipart/form-data" class="row g-3">
+                <div class="col-md-5">
+                    <label for="json_file" class="form-label">JSON-bestand (.json)</label>
+                    <input type="file" name="json_file" id="json_file" accept=".json" class="form-control" required>
+                    <div class="form-text small">Object of array met medewerkergegevens</div>
                 </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('upload_json') }}" enctype="multipart/form-data">
-                        <!-- Aanvraagtype -->
-                        <div class="mb-3">
-                            <label for="aanvraag_type" class="form-label">Aanvraagtype</label>
-                            <select class="form-select" id="aanvraag_type" name="aanvraag_type" required>
-                                <option value="ZBM">ZBM - Ziekmelding</option>
-                                <option value="VM">VM - Voortzetting Melding</option>
-                                <option value="Digipoort">Digipoort (OTP3)</option>
-                            </select>
-                            <div class="form-text">Selecteer het type aanvraag voor de XML-generatie</div>
-                        </div>
-
-                        <!-- JSON Bestand Upload -->
-                        <div class="mb-3">
-                            <label for="json_file" class="form-label">JSON Bestand</label>
-                            <input type="file" class="form-control" id="json_file" name="json_file" accept=".json" required>
-                            <div class="form-text">Upload een JSON-bestand met medewerkergegevens</div>
-                        </div>
-
-                        <!-- Validatie Optie -->
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="validate" name="validate" checked>
+                <div class="col-md-3">
+                    <label for="aanvraag_type" class="form-label">Type aanvraag</label>
+                    <select name="aanvraag_type" id="aanvraag_type" class="form-select">
+                        <option value="ZBM">ZBM</option>
+                        <option value="VM">VM</option>
+                        <option value="Digipoort">Digipoort</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="me-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="on" id="validate" name="validate" checked>
                             <label class="form-check-label" for="validate">
-                                XSD-validatie uitvoeren
+                                XSD-validatie
                             </label>
-                            <div class="form-text">Valideer de gegenereerde XML tegen het XSD-schema</div>
                         </div>
-
-                        <!-- Submit Button -->
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-file-earmark-code"></i> Genereer XML uit JSON
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Info Card -->
-            <div class="card mt-4">
-                <div class="card-header bg-info text-white">
-                    <strong><i class="bi bi-info-circle"></i> JSON Formaat Voorbeelden</strong>
-                </div>
-                <div class="card-body">
-                    <h6>Enkele record (object):</h6>
-                    <pre class="bg-light p-2"><code>{
-  "BSN": "123456789",
-  "Naam": "Jan Jansen",
-  "Geboortedatum": "19900101",
-  "Loonheffingennr": "136910038L01",
-  ...
-}</code></pre>
-
-                    <h6 class="mt-3">Meerdere records (array):</h6>
-                    <pre class="bg-light p-2"><code>[
-  {
-    "BSN": "123456789",
-    "Naam": "Jan Jansen",
-    "Geboortedatum": "19900101"
-  },
-  {
-    "BSN": "987654321",
-    "Naam": "Piet Pietersen",
-    "Geboortedatum": "19850515"
-  }
-]</code></pre>
-
-                    <div class="alert alert-info mt-3 mb-0">
-                        <small>
-                            <strong>Tip:</strong> De JSON-sleutels moeten overeenkomen met de verwachte veldnamen 
-                            (BSN, Naam, Geboortedatum, Loonheffingennr, etc.). De tool herkent automatisch 
-                            veel varianten van veldnamen.
-                        </small>
                     </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-lightning-charge"></i> Genereer</button>
                 </div>
+            </form>
+            
+            <!-- Compact Format Examples -->
+            <div class="mt-3">
+                <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#formatExamples">
+                    <i class="bi bi-info-circle"></i> JSON Formaat Voorbeelden
+                </button>
+                <div class="collapse mt-2" id="formatExamples">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Enkele record:</h6>
+                            <pre class="bg-light p-2 small"><code>{"BSN": "123456789", "Naam": "Jan"}</code></pre>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Array:</h6>
+                            <pre class="bg-light p-2 small"><code>[{"BSN": "123456789"}, {"BSN": "987654321"}]</code></pre>
+                        </div>
+                    </div>
             </div>
         </div>
     </div>
+
+    <!-- Results Section -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-folder2-open"></i> Gegenereerde XML-bestanden ({{ generated|length if generated else 0 }})</h5>
+                <button id="download-selected-btn" class="btn btn-sm btn-outline-primary" disabled
+                        title="Max {{ zip_limits.max_files if zip_limits else 100 }} bestanden per download">
+                    <span id="zipSpinner" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="display:none;"></span>
+                    <i class="bi bi-download"></i> Download geselecteerd
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if generated and generated|length > 0 %}
+                <div class="mb-3">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="select-all-generated">
+                        <label class="form-check-label small text-muted" for="select-all-generated">Selecteer alles</label>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-7">
+                        <div class="list-group" id="generatedList">
+                            {% for file in generated %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center generated-item" data-filename="{{ file.filename }}">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input generated-select" type="checkbox" id="gen-select-{{ loop.index }}" data-file="{{ file.filename }}">
+                                    </div>
+                                    <div class="generated-clickable" style="cursor:pointer;">
+                                        <div class="fw-bold text-truncate" style="max-width:480px;">{{ file.filename }}</div>
+                                        <div class="small text-muted">{{ file.tijdstip }} — {{ file.size }} B</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_generated', filename=file.filename) }}" title="Download"><i class="bi bi-download"></i></a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="card border-light bg-light">
+                            <div class="card-body" id="previewPane">
+                                <h6 class="card-title">Voorvertoning</h6>
+                                <div id="previewMeta" class="small text-muted mb-2">Klik op een bestand voor preview</div>
+                                <pre id="previewContent" style="max-height:400px; overflow:auto; white-space:pre-wrap; background:#fff; padding:12px; border:1px solid #e9ecef; border-radius:4px;"></pre>
+                                <div class="mt-2 d-flex justify-content-end">
+                                    <a id="previewDownloadLink" class="btn btn-sm btn-outline-primary" href="#" style="display:none;"><i class="bi bi-download"></i> Download</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                    <p>Nog geen bestanden gegenereerd. Upload een JSON-bestand hierboven om te beginnen.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+<script>
+// Selection and download handler (same as Excel workflow)
+document.addEventListener('DOMContentLoaded', function () {
+    const list = document.getElementById('generatedList');
+    const downloadBtn = document.getElementById('download-selected-btn');
+    const selectAll = document.getElementById('select-all-generated');
+    const previewMeta = document.getElementById('previewMeta');
+    const previewContent = document.getElementById('previewContent');
+    const previewDownloadLink = document.getElementById('previewDownloadLink');
+    const zipSpinner = document.getElementById('zipSpinner');
+
+    function updateSelectionState() {
+        const checkboxes = Array.from(document.querySelectorAll('.generated-select'));
+        const anyChecked = checkboxes.some(cb => cb.checked);
+        if (downloadBtn) downloadBtn.disabled = !anyChecked;
+        checkboxes.forEach(cb => {
+            const item = cb.closest('.generated-item');
+            if (item) item.classList.toggle('selected', cb.checked);
+        });
+    }
+
+    if (list) {
+        list.addEventListener('change', function (ev) {
+            if (ev.target && ev.target.classList.contains('generated-select')) updateSelectionState();
+        });
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            const checkboxes = Array.from(document.querySelectorAll('.generated-select'));
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            updateSelectionState();
+        });
+    }
+
+    async function downloadSelectedAsZip(filenames) {
+        try {
+            if (zipSpinner) zipSpinner.style.display = '';
+            const resp = await fetch('/resultaten/download-zip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filenames: filenames })
+            });
+            if (!resp.ok) {
+                alert('Fout bij maken van ZIP: ' + await resp.text());
+                return;
+            }
+            const blob = await resp.blob();
+            let zipName = 'selected_files.zip';
+            const cd = resp.headers.get('Content-Disposition');
+            if (cd) {
+                const m = cd.match(/filename\*=UTF-8''([^;\n\r]+)/) || cd.match(/filename="?([^";]+)"?/);
+                if (m && m[1]) zipName = decodeURIComponent(m[1]);
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = zipName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } catch (err) {
+            alert('Fout bij downloaden: ' + err);
+        } finally {
+            if (zipSpinner) zipSpinner.style.display = 'none';
+        }
+    }
+
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', function () {
+            const checked = Array.from(document.querySelectorAll('.generated-select:checked'));
+            const filenames = checked.map(cb => cb.getAttribute('data-file')).filter(Boolean);
+            if (filenames.length > 0) downloadSelectedAsZip(filenames);
+        });
+    }
+
+    // Preview handling
+    if (list) {
+        list.addEventListener('click', async function (ev) {
+            const target = ev.target;
+            const item = target.closest('.generated-item');
+            if (!item || target.tagName === 'INPUT' || target.closest('a')) return;
+            const fn = item.getAttribute('data-filename');
+            if (!fn) return;
+            try {
+                const resp = await fetch('/resultaten/preview/' + encodeURIComponent(fn));
+                if (!resp.ok) {
+                    previewMeta.textContent = 'Kon preview niet laden.';
+                    previewContent.textContent = '';
+                    previewDownloadLink.style.display = 'none';
+                    return;
+                }
+                const j = await resp.json();
+                previewMeta.textContent = `${j.filename} — ${j.size} B — ${j.tijdstip}`;
+                previewContent.textContent = j.preview || '(Leeg)';
+                previewDownloadLink.href = '/resultaten/download/' + encodeURIComponent(j.filename);
+                previewDownloadLink.style.display = '';
+            } catch (err) {
+                previewMeta.textContent = 'Fout bij laden preview.';
+                previewContent.textContent = '';
+                previewDownloadLink.style.display = 'none';
+            }
+        });
+    }
+
+    updateSelectionState();
+});
+</script>
+
 </div>
 {% endblock %}
