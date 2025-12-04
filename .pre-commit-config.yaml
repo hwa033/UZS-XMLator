@@ -9,6 +9,15 @@ repos:
     hooks:
       - id: black
         args: ["--fast"]
+  - repo: local
+    hooks:
+      - id: isort
+        name: isort (local)
+        # Use the venv python to run isort so the executable is available.
+        entry: .venv\\Scripts\\python.exe -m isort
+        language: system
+        types: [python]
+        args: ["--profile", "black"]
   # isort hook removed temporarily because the mirrors-isort repo tags
   # used to initialize the hook were not available in the environment.
   # Re-add the hook with a valid `rev` once a compatible tag is confirmed.

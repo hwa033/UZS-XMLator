@@ -8,17 +8,18 @@ This script provides three minimal functions:
 
 No external dependencies; uses only Python standard library.
 """
+
 from __future__ import annotations
+
 import argparse
 import csv
 import json
 import os
-from datetime import datetime
-from typing import List, Dict, Optional
 import xml.etree.ElementTree as ET
+from datetime import datetime
 
 
-def read_input(input_path: Optional[str] = None) -> List[Dict[str, str]]:
+def read_input(input_path: str | None = None) -> list[dict[str, str]]:
     """Read input data from JSON or CSV file. If no path is provided,
     return a small sample dataset so non-technical users can run the tool immediately.
 
@@ -34,7 +35,7 @@ def read_input(input_path: Optional[str] = None) -> List[Dict[str, str]]:
 
     input_path = os.path.abspath(input_path)
     if input_path.lower().endswith(".json"):
-        with open(input_path, "r", encoding="utf-8") as fh:
+        with open(input_path, encoding="utf-8") as fh:
             data = json.load(fh)
             # Ensure we always return a list of dicts
             if isinstance(data, dict):
@@ -42,14 +43,16 @@ def read_input(input_path: Optional[str] = None) -> List[Dict[str, str]]:
             return list(data)
 
     if input_path.lower().endswith(".csv"):
-        with open(input_path, "r", encoding="utf-8", newline="") as fh:
+        with open(input_path, encoding="utf-8", newline="") as fh:
             reader = csv.DictReader(fh)
-            return [row for row in reader]
+            return list(reader)
 
-    raise ValueError("Unsupported input format. Provide a .json or .csv file, or omit the argument to use sample data.")
+    raise ValueError(
+        "Unsupported input format. Provide a .json or .csv file, or omit the argument to use sample data."
+    )
 
 
-def generate_xml(records: List[Dict[str, str]]) -> ET.Element:
+def generate_xml(records: list[dict[str, str]]) -> ET.Element:
     """Generate an XML Element tree using a fixed template.
 
     Template structure:
@@ -131,7 +134,9 @@ def save_and_log(element: ET.Element, out_dir: str = "output") -> str:
     os.makedirs(logs_dir, exist_ok=True)
     log_path = os.path.join(logs_dir, "generator.log")
     with open(log_path, "a", encoding="utf-8") as logf:
-        logf.write(f"{datetime.utcnow().isoformat()}Z\t{os.path.abspath(path)}\t{status}\n")
+        logf.write(
+            f"{datetime.utcnow().isoformat()}Z\t{os.path.abspath(path)}\t{status}\n"
+        )
 
     if status.startswith("SUCCESS"):
         return path
@@ -139,9 +144,15 @@ def save_and_log(element: ET.Element, out_dir: str = "output") -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Minimal XML generator (standard library only)")
+    parser = argparse.ArgumentParser(
+        description="Minimal XML generator (standard library only)"
+    )
     parser.add_argument("--input", help="Path to input .json or .csv file (optional)")
-    parser.add_argument("--outdir", default="build/minimal_xml_output", help="Directory where XML and logs are saved")
+    parser.add_argument(
+        "--outdir",
+        default="build/minimal_xml_output",
+        help="Directory where XML and logs are saved",
+    )
     args = parser.parse_args()
 
     try:

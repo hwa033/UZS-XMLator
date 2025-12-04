@@ -12,24 +12,30 @@ Behavior (minimal):
 This is intentionally minimal and uses only `openpyxl` for reading
 the Excel file and `xml.etree.ElementTree` for XML writing.
 """
+
 from __future__ import annotations
+
 import argparse
 import os
-from datetime import datetime, timezone
-from typing import Dict, Iterable
 import uuid
+from collections.abc import Iterable
+from datetime import datetime, timezone
 
 try:
     import xml.etree.ElementTree as ET
+
     USING_LXML = True
 except ImportError:
     import xml.etree.ElementTree as ET
+
     USING_LXML = False
 
 try:
     import openpyxl
 except Exception:
-    raise SystemExit("openpyxl is required to run this script. Install it in your environment.")
+    raise SystemExit(
+        "openpyxl is required to run this script. Install it in your environment."
+    )
 
 
 def read_excel_rows(path: str, data_only: bool = False):
@@ -70,25 +76,27 @@ def _namespaces():
     NS_UWVH = "http://schemas.uwv.nl/UwvML/Header-v0202"
     NS_BODY = "http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"
     if not USING_LXML:
-        ET.register_namespace('SOAP-ENV', NS_SOAP)
-        ET.register_namespace('uwvh', NS_UWVH)
+        ET.register_namespace("SOAP-ENV", NS_SOAP)
+        ET.register_namespace("uwvh", NS_UWVH)
     return NS_SOAP, NS_UWVH, NS_BODY
 
 
-def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: str = "Digipoort", tester_name: str = "tester") -> ET.Element:
+def build_envelope_with_header_and_bodies(
+    bodies: Iterable[ET.Element], sender: str = "Digipoort", tester_name: str = "tester"
+) -> ET.Element:
     """Create a SOAP Envelope with header information and append provided message bodies.
 
     Header fields mimic the sample: RouteInformatie, BerichtIdentificatie and Transactie.
     """
     ns_soap, ns_uwvh, ns_body = _namespaces()
-    
+
     if USING_LXML:
         # With lxml, declare ALL namespaces at the Envelope level with desired prefixes
         # This prevents lxml from auto-generating ns0, ns1, ns2 prefixes
         NSMAP_ENV = {
-            'SOAP-ENV': ns_soap,
-            'uwvh': ns_uwvh,
-            None: ns_body  # default namespace for body elements
+            "SOAP-ENV": ns_soap,
+            "uwvh": ns_uwvh,
+            None: ns_body,  # default namespace for body elements
         }
         env = ET.Element("{" + ns_soap + "}Envelope", nsmap=NSMAP_ENV)  # type: ignore[call-arg]
         header = ET.SubElement(env, "{" + ns_soap + "}Header")
@@ -103,10 +111,14 @@ def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: 
     route = ET.SubElement(uwvh, "RouteInformatie")
     bron = ET.SubElement(route, "Bron")
     ET.SubElement(bron, "ApplicatieNaam").text = sender
-    ET.SubElement(bron, "DatTijdVersturenBericht").text = datetime.now(timezone.utc).astimezone().isoformat()
+    ET.SubElement(bron, "DatTijdVersturenBericht").text = (
+        datetime.now(timezone.utc).astimezone().isoformat()
+    )
     dst = ET.SubElement(route, "Bestemming")
     ET.SubElement(dst, "ApplicatieNaam").text = "UZS"
-    ET.SubElement(route, "GegevensUitwisselingsnr").text = f"GegUitNr-{uuid.uuid4().hex[:8]}"
+    ET.SubElement(route, "GegevensUitwisselingsnr").text = (
+        f"GegUitNr-{uuid.uuid4().hex[:8]}"
+    )
     ET.SubElement(route, "RefnrGegevensUitwisselingsExtern").text = "NOCOREFLEX"
 
     # BerichtIdentificatie - use tester name + timestamp (max 50 chars)
@@ -121,7 +133,9 @@ def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: 
     ET.SubElement(bt, "Buildnr").text = "01"
     ET.SubElement(bt, "CommunicatieType").text = "Melding"
     ET.SubElement(bt, "CommunicatieElement").text = "Melding"
-    ET.SubElement(bi, "DatTijdAanmaakBericht").text = datetime.now(timezone.utc).astimezone().isoformat()
+    ET.SubElement(bi, "DatTijdAanmaakBericht").text = (
+        datetime.now(timezone.utc).astimezone().isoformat()
+    )
     ET.SubElement(bi, "IndTestbericht").text = "2"
 
     # Transactie
@@ -137,59 +151,56 @@ def build_envelope_with_header_and_bodies(bodies: Iterable[ET.Element], sender: 
     return env
 
 
-def save_envelope(envelope: ET.Element, out_dir: str, basename_hint: str, aanvraag_type: str = "ZBM") -> str:
+def save_envelope(
+    envelope: ET.Element, out_dir: str, basename_hint: str, aanvraag_type: str = "ZBM"
+) -> str:
     os.makedirs(out_dir, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
+
     # Map CdBerichtType codes to friendly names for filename
-    type_mapping = {
-        "OTP3": "digipoort",
-        "ZBM": "zbm",
-        "VM": "vm"
-    }
+    type_mapping = {"OTP3": "digipoort", "ZBM": "zbm", "VM": "vm"}
     friendly_type = type_mapping.get(aanvraag_type, aanvraag_type.lower())
-    
+
     filename = f"{friendly_type}_{basename_hint}_{ts}.xml"
     path = os.path.join(out_dir, filename)
-    
+
     if USING_LXML:
         # Serialize with pretty print
-        xml_bytes = ET.tostring(envelope, pretty_print=True, xml_declaration=False, encoding='UTF-8')  # type: ignore[call-arg]
-        xml_str = xml_bytes.decode('UTF-8')
-        
+        xml_bytes = ET.tostring(envelope, pretty_print=True, xml_declaration=False, encoding="UTF-8")  # type: ignore[call-arg]
+        xml_str = xml_bytes.decode("UTF-8")
+
         # Move xmlns:uwvh from Envelope to UwvMLHeader (user preference for example alignment)
         # Remove it from Envelope tag (first occurrence only)
         xml_str = xml_str.replace(
-            ' xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202"',
-            '',
-            1
+            ' xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202"', "", 1
         )
         # Add it to UwvMLHeader tag (first occurrence only)
         xml_str = xml_str.replace(
-            '<uwvh:UwvMLHeader>',
+            "<uwvh:UwvMLHeader>",
             '<uwvh:UwvMLHeader xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202">',
-            1
+            1,
         )
-        
+
         # Also move default namespace from Envelope to Body element (if present)
         xml_str = xml_str.replace(
             ' xmlns="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"',
-            '',
-            1
+            "",
+            1,
         )
         # Find the UwvZwMeldingInternBody opening tag and add xmlns there
         # This regex handles possible existing attributes or whitespace
         import re
+
         xml_str = re.sub(
-            r'<UwvZwMeldingInternBody',
+            r"<UwvZwMeldingInternBody",
             '<UwvZwMeldingInternBody xmlns="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"',
             xml_str,
-            count=1
+            count=1,
         )
-        
-        with open(path, 'wb') as f:
+
+        with open(path, "wb") as f:
             f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
-            f.write(xml_str.encode('UTF-8'))
+            f.write(xml_str.encode("UTF-8"))
     else:
         # ElementTree fallback
         try:
@@ -198,7 +209,7 @@ def save_envelope(envelope: ET.Element, out_dir: str, basename_hint: str, aanvra
             pass
         tree = ET.ElementTree(envelope)
         tree.write(path, encoding="utf-8", xml_declaration=True)
-    
+
     return path
 
 
@@ -213,10 +224,10 @@ def _normalize_ind_jn(value: str) -> str:
     if value is None:
         return None
     v = str(value).strip().upper()
-    if v in ('J', 'JA', 'YES', '1', 'TRUE'):
-        return '1'
-    elif v in ('N', 'NEE', 'NO', '2', 'FALSE'):
-        return '2'
+    if v in ("J", "JA", "YES", "1", "TRUE"):
+        return "1"
+    elif v in ("N", "NEE", "NO", "2", "FALSE"):
+        return "2"
     return value  # Pass through if already numeric or unknown
 
 
@@ -225,26 +236,30 @@ def _map_cd_reden_ziekmelding(code: str) -> str:
     Returns formatted string with code and description.
     """
     mapping = {
-        '01': 'Toeslag op loon (aanvraag)',
-        '02': 'Adoptieverlof',
-        '03': 'Pleegzorgverlof',
-        '04': 'Zwangerschaps/bevallingsverlof',
-        '05': 'Ziek tgv bevalling',
-        '06': 'Ziek/anders',
-        '07': 'Orgaandonatie',
-        '08': 'Ziek ivm zwangerschap',
-        '99': 'Overig'
+        "01": "Toeslag op loon (aanvraag)",
+        "02": "Adoptieverlof",
+        "03": "Pleegzorgverlof",
+        "04": "Zwangerschaps/bevallingsverlof",
+        "05": "Ziek tgv bevalling",
+        "06": "Ziek/anders",
+        "07": "Orgaandonatie",
+        "08": "Ziek ivm zwangerschap",
+        "99": "Overig",
     }
     if code in mapping:
-        return code  # Just return the code; description can be added as comment if needed
+        return (
+            code  # Just return the code; description can be added as comment if needed
+        )
     return code
 
 
-def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Element, str]:
+def build_message_element(
+    record: dict[str, str], ns_body: str
+) -> tuple[ET.Element, str]:
     """Create a `UwvZwMeldingInternBody` element (without Envelope/Body wrapper).
 
     Returns tuple of (element, aanvraag_type) for use in filename generation.
-    
+
     This function is intentionally minimal and maps Excel columns to
     the child elements used in the sample XML.
     """
@@ -309,14 +324,14 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
     # Default to ZBM if not specified (most common use case).
     aanvraag_type = "ZBM"  # Initialize default
     try:
-        excel_cd_names = ['CdBerichtType', 'aanvraag_type', 'Type']
+        excel_cd_names = ["CdBerichtType", "aanvraag_type", "Type"]
         excel_cd = None
         for n in excel_cd_names:
             v = record.get(n)
-            if v is not None and str(v).strip() != '':
+            if v is not None and str(v).strip() != "":
                 excel_cd = str(v).strip()
                 break
-        
+
         if excel_cd:
             # Map Digipoort to OTP3; for ZBM, VM, etc., use as-is
             if excel_cd.upper() == "DIGIPOORT":
@@ -325,31 +340,49 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
                 cd_val = excel_cd  # ZBM stays ZBM, VM stays VM
         else:
             cd_val = "ZBM"  # Default to ZBM if not specified (required by XSD)
-        
+
         ET.SubElement(msg, qname("CdBerichtType")).text = cd_val
         aanvraag_type = cd_val  # Store for return
     except Exception:
         # Fallback: always provide a value since it's required
         ET.SubElement(msg, qname("CdBerichtType")).text = "ZBM"
         aanvraag_type = "ZBM"
-    ET.SubElement(msg, qname("IndAlleenControleUzs")).text = record.get("IndAlleenControleUzs", "2")
+    ET.SubElement(msg, qname("IndAlleenControleUzs")).text = record.get(
+        "IndAlleenControleUzs", "2"
+    )
 
     # Ketenpartij
     kp = ET.SubElement(msg, qname("Ketenpartij"))
-    lhn = record.get("Loonheffingennummer") or record.get("Loonheffingennr") or record.get("Loonheffingennr")
+    lhn = (
+        record.get("Loonheffingennummer")
+        or record.get("Loonheffingennr")
+        or record.get("Loonheffingennr")
+    )
     if lhn:
         set_if(kp, "FiscaalNr", str(lhn)[:9])
         set_if(kp, "Loonheffingennr", str(lhn))
     set_if(kp, "Naam", record.get("IndienerNaam", None))
-    ET.SubElement(kp, qname("CdRolKetenpartij")).text = record.get("CdRolKetenpartij", "01")
+    ET.SubElement(kp, qname("CdRolKetenpartij")).text = record.get(
+        "CdRolKetenpartij", "01"
+    )
     ET.SubElement(kp, qname("CdSrtIndiener")).text = record.get("CdSrtIndiener", "WG")
-    ET.SubElement(kp, qname("NaamSoftwarePakket")).text = record.get("NaamSoftwarePakket", "Generated")
-    ET.SubElement(kp, qname("VersieSoftwarePakket")).text = record.get("VersieSoftwarePakket", "1.0")
-    ET.SubElement(kp, qname("BerichtkenmerkIndiener")).text = record.get("BerichtkenmerkIndiener", "")
+    ET.SubElement(kp, qname("NaamSoftwarePakket")).text = record.get(
+        "NaamSoftwarePakket", "Generated"
+    )
+    ET.SubElement(kp, qname("VersieSoftwarePakket")).text = record.get(
+        "VersieSoftwarePakket", "1.0"
+    )
+    ET.SubElement(kp, qname("BerichtkenmerkIndiener")).text = record.get(
+        "BerichtkenmerkIndiener", ""
+    )
     ET.SubElement(kp, qname("VolgNr")).text = record.get("VolgNr", "1")
     kp_c = ET.SubElement(kp, qname("Contactgegevens"))
-    ET.SubElement(kp_c, qname("NaamContactpersoonAfd")).text = record.get("Kp_NaamContactpersoon", "")
-    ET.SubElement(kp_c, qname("TelefoonnrContactpersoonAfd")).text = record.get("Kp_TelefoonnrContactpersoonAfd", "")
+    ET.SubElement(kp_c, qname("NaamContactpersoonAfd")).text = record.get(
+        "Kp_NaamContactpersoon", ""
+    )
+    ET.SubElement(kp_c, qname("TelefoonnrContactpersoonAfd")).text = record.get(
+        "Kp_TelefoonnrContactpersoonAfd", ""
+    )
 
     # NatuurlijkPersoon
     np = ET.SubElement(msg, qname("NatuurlijkPersoon"))
@@ -373,9 +406,17 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
 
     # Contactgegevens (top-level)
     contact = ET.SubElement(msg, qname("Contactgegevens"))
-    set_if(contact, "NaamContactpersoonAfd", record.get("Contact_NaamContactpersoonAfd", None))
+    set_if(
+        contact,
+        "NaamContactpersoonAfd",
+        record.get("Contact_NaamContactpersoonAfd", None),
+    )
     set_if(contact, "Geslacht", record.get("Contact_Geslacht", None))
-    set_if(contact, "TelefoonnrContactpersoonAfd", record.get("Contact_TelefoonnrContactpersoonAfd", None))
+    set_if(
+        contact,
+        "TelefoonnrContactpersoonAfd",
+        record.get("Contact_TelefoonnrContactpersoonAfd", None),
+    )
     set_if(contact, "NrLokaleVestiging", record.get("Contact_NrLokaleVestiging", None))
     set_if(contact, "EMailAdres", record.get("Contact_EMailAdres", None))
 
@@ -384,8 +425,18 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
     set_if(mz, "IndVerzoekTotIntrekken", record.get("IndVerzoekTotIntrekken", None))
     set_if(mz, "ReferentieMelding", record.get("ReferentieMelding", None))
     # DatTijdOpstellenMelding expects a datetime-like value
-    set_date_if(mz, "DatTijdOpstellenMelding", record.get("DatTijdOpstellenMelding", None), date_only=False)
-    set_date_if(mz, "DatOntvangstMeldingWerkgever", record.get("DatOntvangstMeldingWerkgever", None), date_only=True)
+    set_date_if(
+        mz,
+        "DatTijdOpstellenMelding",
+        record.get("DatTijdOpstellenMelding", None),
+        date_only=False,
+    )
+    set_date_if(
+        mz,
+        "DatOntvangstMeldingWerkgever",
+        record.get("DatOntvangstMeldingWerkgever", None),
+        date_only=True,
+    )
     d1 = record.get("DatEersteAoDag")
     set_date_if(mz, "DatEersteAoDag", d1, date_only=True)
     set_if(mz, "ToelichtingMelding", record.get("ToelichtingMelding", None))
@@ -400,20 +451,44 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
     # Map CdRedenZiekmelding if present
     cd_reden = record.get("CdRedenZiekmelding", None)
     if cd_reden:
-        set_if(mz, "CdRedenZiekmelding", _map_cd_reden_ziekmelding(str(cd_reden).strip()))
-    set_if(mz, "AantGewerkteUrenEersteAoDag", record.get("AantGewerkteUrenEersteAoDag", None))
-    set_if(mz, "AantRoosterurenEersteAoDag", record.get("AantRoosterurenEersteAoDag", None))
+        set_if(
+            mz, "CdRedenZiekmelding", _map_cd_reden_ziekmelding(str(cd_reden).strip())
+        )
+    set_if(
+        mz,
+        "AantGewerkteUrenEersteAoDag",
+        record.get("AantGewerkteUrenEersteAoDag", None),
+    )
+    set_if(
+        mz, "AantRoosterurenEersteAoDag", record.get("AantRoosterurenEersteAoDag", None)
+    )
     ind_zat = record.get("IndWerkdagOpZaterdag", None)
     if ind_zat:
         set_if(mz, "IndWerkdagOpZaterdag", _normalize_ind_jn(ind_zat))
     ind_zon = record.get("IndWerkdagOpZondag", None)
     if ind_zon:
         set_if(mz, "IndWerkdagOpZondag", _normalize_ind_jn(ind_zon))
-    set_if(mz, "BedrSvLoonGedWerkenEersteAoDag", record.get("BedrSvLoonGedWerkenEersteAoDag", None))
+    set_if(
+        mz,
+        "BedrSvLoonGedWerkenEersteAoDag",
+        record.get("BedrSvLoonGedWerkenEersteAoDag", None),
+    )
     set_if(mz, "CdRedenRegres", record.get("CdRedenRegres", None))
-    set_if(mz, "OmsRedenTeLateAanvraagUitkering", record.get("OmsRedenTeLateAanvraagUitkering", None))
-    set_if(mz, "GemiddeldAantWerkurenPerWeek", record.get("GemiddeldAantWerkurenPerWeek", None))
-    set_if(mz, "IndEDnstvrbndCtrTijdensZiekte", record.get("IndEDnstvrbndCtrTijdensZiekte", None))
+    set_if(
+        mz,
+        "OmsRedenTeLateAanvraagUitkering",
+        record.get("OmsRedenTeLateAanvraagUitkering", None),
+    )
+    set_if(
+        mz,
+        "GemiddeldAantWerkurenPerWeek",
+        record.get("GemiddeldAantWerkurenPerWeek", None),
+    )
+    set_if(
+        mz,
+        "IndEDnstvrbndCtrTijdensZiekte",
+        record.get("IndEDnstvrbndCtrTijdensZiekte", None),
+    )
 
     # AdministratieveEenheid
     ae = ET.SubElement(msg, qname("AdministratieveEenheid"))
@@ -435,7 +510,11 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
     set_if(arb, "CdLbtabel", record.get("CdLbtabel", None))
     set_date_if(arb, "DatB", record.get("DatB", None), date_only=True)
     set_if(arb, "AantLoonwachtdagen", record.get("AantLoonwachtdagen", None))
-    set_if(arb, "PercLoondoorbetalingTijdensAo", record.get("PercLoondoorbetalingTijdensAo", None))
+    set_if(
+        arb,
+        "PercLoondoorbetalingTijdensAo",
+        record.get("PercLoondoorbetalingTijdensAo", None),
+    )
     set_if(arb, "IndArbeidsgehandicapt", record.get("IndArbeidsgehandicapt", None))
 
     return msg, aanvraag_type
@@ -445,21 +524,69 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
     # a direct child element of `UwvZwMeldingInternBody` with a
     # sanitized tag name derived from the header.
     known_keys = {
-        'IndAlleenControleUzs', 'Loonheffingennummer', 'IndienerNaam', 'CdRolKetenpartij',
-        'CdSrtIndiener', 'NaamSoftwarePakket', 'VersieSoftwarePakket', 'BerichtkenmerkIndiener',
-        'VolgNr', 'Kp_NaamContactpersoon', 'Kp_TelefoonnrContactpersoonAfd', 'BSN', 'Geboortedatum',
-        'IndOverlijden', 'Geslacht', 'EersteVoornaam', 'Voorletters', 'Voorvoegsel', 'Achternaam',
-        'Telefoonnr', 'TelefoonnrMobiel', 'TelefoonnrBuitenland', 'Contact_NaamContactpersoonAfd',
-        'Contact_Geslacht', 'Contact_TelefoonnrContactpersoonAfd', 'Contact_NrLokaleVestiging',
-        'Contact_EMailAdres', 'IndVerzoekTotIntrekken', 'ReferentieMelding', 'DatTijdOpstellenMelding',
-        'DatOntvangstMeldingWerkgever', 'DatEersteAoDag', 'ToelichtingMelding', 'IndWerkverplichtingEersteAoDag',
-        'IndDirecteUitkering', 'CdRedenAangifteAo', 'CdRedenZiekmelding', 'AantGewerkteUrenEersteAoDag',
-        'AantRoosterurenEersteAoDag', 'IndWerkdagOpZaterdag', 'IndWerkdagOpZondag', 'BedrSvLoonGedWerkenEersteAoDag',
-        'CdRedenRegres', 'OmsRedenTeLateAanvraagUitkering', 'GemiddeldAantWerkurenPerWeek',
-        'IndEDnstvrbndCtrTijdensZiekte', 'AE_Naam', 'Bankrekeningnr', 'BIC', 'Rekeningnummer (IBAN)',
-        'IBAN', 'CdRisicopremiegroep', 'CdSectorOsv', 'Volgnr', 'IndLoonheffingskorting', 'Personeelsnr',
-        'NaamBeroepOngecodeerd', 'CdAardArbv', 'CdLbtabel', 'DatB', 'AantLoonwachtdagen',
-        'PercLoondoorbetalingTijdensAo', 'IndArbeidsgehandicapt'
+        "IndAlleenControleUzs",
+        "Loonheffingennummer",
+        "IndienerNaam",
+        "CdRolKetenpartij",
+        "CdSrtIndiener",
+        "NaamSoftwarePakket",
+        "VersieSoftwarePakket",
+        "BerichtkenmerkIndiener",
+        "VolgNr",
+        "Kp_NaamContactpersoon",
+        "Kp_TelefoonnrContactpersoonAfd",
+        "BSN",
+        "Geboortedatum",
+        "IndOverlijden",
+        "Geslacht",
+        "EersteVoornaam",
+        "Voorletters",
+        "Voorvoegsel",
+        "Achternaam",
+        "Telefoonnr",
+        "TelefoonnrMobiel",
+        "TelefoonnrBuitenland",
+        "Contact_NaamContactpersoonAfd",
+        "Contact_Geslacht",
+        "Contact_TelefoonnrContactpersoonAfd",
+        "Contact_NrLokaleVestiging",
+        "Contact_EMailAdres",
+        "IndVerzoekTotIntrekken",
+        "ReferentieMelding",
+        "DatTijdOpstellenMelding",
+        "DatOntvangstMeldingWerkgever",
+        "DatEersteAoDag",
+        "ToelichtingMelding",
+        "IndWerkverplichtingEersteAoDag",
+        "IndDirecteUitkering",
+        "CdRedenAangifteAo",
+        "CdRedenZiekmelding",
+        "AantGewerkteUrenEersteAoDag",
+        "AantRoosterurenEersteAoDag",
+        "IndWerkdagOpZaterdag",
+        "IndWerkdagOpZondag",
+        "BedrSvLoonGedWerkenEersteAoDag",
+        "CdRedenRegres",
+        "OmsRedenTeLateAanvraagUitkering",
+        "GemiddeldAantWerkurenPerWeek",
+        "IndEDnstvrbndCtrTijdensZiekte",
+        "AE_Naam",
+        "Bankrekeningnr",
+        "BIC",
+        "Rekeningnummer (IBAN)",
+        "IBAN",
+        "CdRisicopremiegroep",
+        "CdSectorOsv",
+        "Volgnr",
+        "IndLoonheffingskorting",
+        "Personeelsnr",
+        "NaamBeroepOngecodeerd",
+        "CdAardArbv",
+        "CdLbtabel",
+        "DatB",
+        "AantLoonwachtdagen",
+        "PercLoondoorbetalingTijdensAo",
+        "IndArbeidsgehandicapt",
     }
 
     import re
@@ -494,12 +621,33 @@ def build_message_element(record: Dict[str, str], ns_body: str) -> tuple[ET.Elem
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate SOAP XML from the Excel sheet")
-    parser.add_argument("--mode", choices=("single", "bulk"), default="bulk", help="single: one file per row; bulk: single file containing all messages")
-    parser.add_argument("--input", default=r"docs/Input XML electr ziekmeldinge.xlsx", help="Path to input Excel file")
-    parser.add_argument("--outdir", default=r"build/excel_generated", help="Output directory for XML files")
-    parser.add_argument("--log", default=r"build/logs/generator_excel.log", help="Path to append logs")
-    parser.add_argument("--data-only", action="store_true", help="Open workbook with openpyxl data_only=True to prefer cached values over formulas")
+    parser = argparse.ArgumentParser(
+        description="Generate SOAP XML from the Excel sheet"
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("single", "bulk"),
+        default="bulk",
+        help="single: one file per row; bulk: single file containing all messages",
+    )
+    parser.add_argument(
+        "--input",
+        default=r"docs/Input XML electr ziekmeldinge.xlsx",
+        help="Path to input Excel file",
+    )
+    parser.add_argument(
+        "--outdir",
+        default=r"build/excel_generated",
+        help="Output directory for XML files",
+    )
+    parser.add_argument(
+        "--log", default=r"build/logs/generator_excel.log", help="Path to append logs"
+    )
+    parser.add_argument(
+        "--data-only",
+        action="store_true",
+        help="Open workbook with openpyxl data_only=True to prefer cached values over formulas",
+    )
     args = parser.parse_args()
 
     src = os.path.abspath(args.input)
@@ -516,7 +664,10 @@ def main():
             msg, aanvraag_type = build_message_element(rec, ns_body)
             messages.append((rec, msg, aanvraag_type))
         except Exception as exc:
-            append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}\tERROR_BUILD_MSG\t{exc}")
+            append_log(
+                log_path,
+                f"{datetime.now(timezone.utc).isoformat()}\tERROR_BUILD_MSG\t{exc}",
+            )
 
     processed = 0
     if args.mode == "bulk":
@@ -526,10 +677,16 @@ def main():
         bulk_type = messages[0][2] if messages else "BULK"
         envelope = build_envelope_with_header_and_bodies(bodies)
         saved = save_envelope(envelope, out_dir, "bulk", bulk_type)
-        append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS\t{len(bodies)}")
+        append_log(
+            log_path,
+            f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS\t{len(bodies)}",
+        )
         processed = len(bodies)
         if formula_count:
-            append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}Z\tSANITIZED_FORMULAS\t{formula_count}")
+            append_log(
+                log_path,
+                f"{datetime.now(timezone.utc).isoformat()}Z\tSANITIZED_FORMULAS\t{formula_count}",
+            )
     else:
         # single mode: one envelope per message
         for idx, (rec, m, aanvraag_type) in enumerate(messages, start=1):
@@ -538,15 +695,24 @@ def main():
                 bsn = rec.get("BSN") or f"row{idx}"
                 safe_bsn = str(bsn).replace(" ", "_")
                 saved = save_envelope(env, out_dir, safe_bsn, aanvraag_type)
-                append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS")
+                append_log(
+                    log_path,
+                    f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS",
+                )
                 processed += 1
             except Exception as exc:
-                append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}Z\tERROR_SAVE\t{exc}")
+                append_log(
+                    log_path,
+                    f"{datetime.now(timezone.utc).isoformat()}Z\tERROR_SAVE\t{exc}",
+                )
         if formula_count:
-            append_log(log_path, f"{datetime.now(timezone.utc).isoformat()}Z\tSANITIZED_FORMULAS\t{formula_count}")
+            append_log(
+                log_path,
+                f"{datetime.now(timezone.utc).isoformat()}Z\tSANITIZED_FORMULAS\t{formula_count}",
+            )
 
     print(f"Processed {processed} rows; outputs written to: {out_dir}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

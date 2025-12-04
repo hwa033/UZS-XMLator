@@ -1,7 +1,6 @@
 import datetime
 import json
 from pathlib import Path
-from typing import Optional
 
 from lxml import etree
 
@@ -9,10 +8,10 @@ from lxml import etree
 def _format_date_yyyymmdd(value) -> str:
     if value is None:
         return ""
-    if isinstance(value, (datetime.date, datetime.datetime)):
+    if isinstance(value, datetime.date | datetime.datetime):
         return value.strftime("%Y%m%d")
     try:
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             serial = float(value)
             if serial > 0 and serial < 60000:
                 base = datetime.datetime(1899, 12, 30)
@@ -45,12 +44,12 @@ def _format_date_yyyymmdd(value) -> str:
     return s
 
 
-def _get_success_rate(events_path: Path) -> Optional[str]:
+def _get_success_rate(events_path: Path) -> str | None:
     try:
         total = 0
         success = 0
         if events_path.exists():
-            with open(events_path, "r", encoding="utf-8") as ef:
+            with open(events_path, encoding="utf-8") as ef:
                 for line in ef:
                     line = line.strip()
                     if not line:
