@@ -6,3 +6,7 @@ __pycache__/
 *.log
 xml-automation.bundle
 filter-repo-work/
+
+# Local virtual environment
+.venv/
+.env

@@ -20,7 +20,7 @@ from typing import Dict, Iterable
 import uuid
 
 try:
-    from lxml import etree as ET
+    import xml.etree.ElementTree as ET
     USING_LXML = True
 except ImportError:
     import xml.etree.ElementTree as ET
@@ -43,7 +43,10 @@ def read_excel_rows(path: str, data_only: bool = False):
     """
     wb = openpyxl.load_workbook(path, read_only=True, data_only=data_only)
     ws = wb.active
-    rows_iter = ws.iter_rows(values_only=True)
+    if ws is not None:
+        rows_iter = ws.iter_rows(values_only=True)
+    else:
+        raise ValueError("Worksheet is None")
     headers = [h if h is not None else "" for h in next(rows_iter)]
     out_rows = []
     formula_count = 0

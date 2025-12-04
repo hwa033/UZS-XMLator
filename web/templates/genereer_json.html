@@ -1,131 +1,280 @@
 {% extends '_base.html' %}
 
-{% block title %}JSON Workflow{% endblock %}
+{% block title %}JSON XMLator{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <h1 class="mb-3"><i class="bi bi-filetype-json text-primary"></i> JSON Workflow</h1>
-    <p class="text-muted mb-4">Upload een JSON-bestand om XML te genereren en bekijk direct de resultaten hieronder.</p>
+{% if not fragment_only %}
+<div class="dashboard-wrap">
+    <div class="dashboard-main">
 
-    <!-- Upload Form Section -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-upload"></i> JSON uploaden & XML genereren</h5>
-        </div>
-        <div class="card-body">
-            <form action="{{ url_for('upload_json') }}" method="post" enctype="multipart/form-data" class="row g-3">
-                <div class="col-md-5">
-                    <label for="json_file" class="form-label">JSON-bestand (.json)</label>
-                    <input type="file" name="json_file" id="json_file" accept=".json" class="form-control" required>
-                    <div class="form-text small">Object of array met medewerkergegevens</div>
+        <!-- Page Header -->
+        <section class="hero mb-4">
+            <div>
+                <h1 class="mb-0">JSON XMLator</h1>
+                <p class="page-subtitle mb-0">Upload een JSON-bestand met aanvraagdata om een XML te genereren</p>
+            </div>
+        </section>
+
+        <!-- Upload Form Panel -->
+        <section class="main-panel card mb-4 app-panel">
+            <div class="card-body">
+                <div class="d-flex justify-content-end mb-3">
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#jsonFormatHelp">
+                        <i class="bi bi-question-circle"></i> Formaat voorbeeld
+                    </button>
                 </div>
-                <div class="col-md-3">
-                    <label for="aanvraag_type" class="form-label">Type aanvraag</label>
-                    <select name="aanvraag_type" id="aanvraag_type" class="form-select">
-                        <option value="ZBM">ZBM</option>
-                        <option value="VM">VM</option>
-                        <option value="Digipoort">Digipoort</option>
-                    </select>
-                </div>
-                <div class="col-md-4 d-flex align-items-end">
-                    <div class="me-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="on" id="validate" name="validate" checked>
-                            <label class="form-check-label" for="validate">
-                                XSD-validatie
-                            </label>
+
+                <!-- JSON Format Help (Collapsible) -->
+                <div class="collapse mb-3" id="jsonFormatHelp">
+                    <div class="card border-primary">
+                        <div class="card-body">
+                            <h6 class="card-title text-primary"><i class="bi bi-info-circle"></i> JSON Formaat voorbeelden</h6>
+                            <p class="small mb-2">Upload een JSON-bestand met de volgende structuur:</p>
+                            
+                            <div class="mb-3">
+                                <strong class="small">Voorbeeld 1: Ziekmelding (ZBM)</strong>
+                                <pre class="bg-light p-2 rounded small mb-0" style="max-height: 200px; overflow-y: auto;">{
+  "aanvraag_type": "ZBM",
+  "BSN": "123456789",
+  "Voorletters": "J",
+  "Achternaam": "Jansen",
+  "Geboortedatum": "1990-01-15",
+  "Geslacht": "M",
+  "DatumAangifte": "2024-01-10",
+  "DatumVanaf": "2024-01-08",
+  "Werkgevereigenrisicodrager": "Ja"
+}</pre>
+                            </div>
+
+                            <div class="mb-3">
+                                <strong class="small">Voorbeeld 2: Voortzetting Melding (VM)</strong>
+                                <pre class="bg-light p-2 rounded small mb-0" style="max-height: 200px; overflow-y: auto;">{
+  "aanvraag_type": "VM",
+  "BSN": "987654321",
+  "Voorletters": "M",
+  "Achternaam": "Bakker",
+  "Geboortedatum": "1985-05-20",
+  "Geslacht": "V",
+  "DatumAangifte": "2024-02-15",
+  "DatumVanaf": "2024-02-10"
+}</pre>
+                            </div>
+
+                            <div>
+                                <strong class="small">Voorbeeld 3: Digipoort (OTP3)</strong>
+                                <pre class="bg-light p-2 rounded small mb-0" style="max-height: 200px; overflow-y: auto;">{
+  "aanvraag_type": "Digipoort",
+  "BSN": "456789123",
+  "Voorletters": "A",
+  "Achternaam": "de Vries",
+  "Geboortedatum": "1992-11-30",
+  "Geslacht": "M",
+  "DatumAangifte": "2024-03-05",
+  "DatumVanaf": "2024-03-01"
+}</pre>
+                            </div>
+
+                            <p class="small text-muted mt-3 mb-0">
+                                <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> Het veld <code>aanvraag_type</code> bepaalt het type XML dat wordt gegenereerd. 
+                                Gebruik "ZBM" voor ziekmeldingen, "VM" voor voortzettingen, en "Digipoort" voor OTP3 meldingen.
+                            </p>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary"><i class="bi bi-lightning-charge"></i> Genereer</button>
                 </div>
-            </form>
-            
-            <!-- Compact Format Examples -->
-            <div class="mt-3">
-                <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#formatExamples">
-                    <i class="bi bi-info-circle"></i> JSON Formaat Voorbeelden
-                </button>
-                <div class="collapse mt-2" id="formatExamples">
+
+                <form id="json-upload-form" action="{{ url_for('upload_json') }}" method="post" enctype="multipart/form-data">
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label for="json_file" class="form-label">JSON-bestand</label>
+                            <input type="file" name="json_file" id="json_file" accept=".json" class="form-control" required>
+                            <div class="form-text small">Ondersteund formaat: .json</div>
+                        </div>
+                        <div class="col-md-5">
+                            <label for="aanvraag_type_json" class="form-label">Type aanvraag</label>
+                            <select name="aanvraag_type" id="aanvraag_type_json" class="form-select">
+                                <option value="ZBM">ZBM - Ziekmelding</option>
+                                <option value="VM">VM - Voortzetting</option>
+                                <option value="Digipoort">Digipoort (OTP3)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-7">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="on" id="validate_check_json" name="validate" checked data-bs-toggle="tooltip" data-bs-placement="right" title="Indien aangevinkt wordt elk bestand gecontroleerd op een geldig BSN en gevalideerd tegen het XSD-schema.">
+                                <label class="form-check-label" for="validate_check_json">
+                                    Valideer (BSN/XSD)
+                                    <span tabindex="0" data-bs-toggle="tooltip" title="Indien aangevinkt wordt elk bestand gecontroleerd op een geldig BSN en gevalideerd tegen het XSD-schema.">
+                                        <i class="bi bi-info-circle text-muted small"></i>
+                                    </span>
+                                </label>
+                                            <!-- Flash/foutmeldingen -->
+                                            {% with messages = get_flashed_messages(with_categories=true) %}
+                                                {% if messages %}
+                                                    <div class="mb-3">
+                                                        {% for category, message in messages %}
+                                                            <div class="alert alert-{{ 'danger' if category == 'danger' else (category if category else 'info') }} alert-dismissible fade show" role="alert">
+                                                                {{ message }}
+                                                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Sluiten"></button>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+                                            {% endwith %}
+                            </div>
+                        </div>
+                        <div class="col-md-5 d-flex flex-column align-items-end">
+                            <button type="submit" class="btn btn-outline-primary px-4" id="json-upload-btn">
+                                Genereer XML
+                            </button>
+                            <div class="w-100 mt-2" id="json-upload-progress-wrap" style="display:none;">
+                                <div class="progress">
+                                    <div id="json-upload-progress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%">0%</div>
+                                </div>
+                            </div>
+                        </div>
+                    <script>
+                    // Upload voortgangsbalk voor JSON upload
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const form = document.getElementById('json-upload-form');
+                        const btn = document.getElementById('json-upload-btn');
+                        const progressWrap = document.getElementById('json-upload-progress-wrap');
+                        const progressBar = document.getElementById('json-upload-progress');
+                        if (form && btn && progressWrap && progressBar) {
+                            form.addEventListener('submit', function (e) {
+                                e.preventDefault();
+                                const data = new FormData(form);
+                                const xhr = new XMLHttpRequest();
+                                xhr.open('POST', form.action, true);
+                                xhr.upload.onprogress = function (evt) {
+                                    if (evt.lengthComputable) {
+                                        const percent = Math.round((evt.loaded / evt.total) * 100);
+                                        progressBar.style.width = percent + '%';
+                                        progressBar.textContent = percent + '%';
+                                    }
+                                };
+                                xhr.onloadstart = function () {
+                                    progressWrap.style.display = '';
+                                    progressBar.style.width = '0%';
+                                    progressBar.textContent = '0%';
+                                    btn.disabled = true;
+                                };
+                                xhr.onloadend = function () {
+                                    btn.disabled = false;
+                                    progressWrap.style.display = 'none';
+                                };
+                                xhr.onreadystatechange = function () {
+                                    if (xhr.readyState === 4) {
+                                        if (xhr.status >= 200 && xhr.status < 400) {
+                                            // Succesvol, ververs alleen de resultatenlijst
+                                            refreshResultsList();
+                                        } else {
+                                            alert('Upload mislukt: ' + xhr.statusText);
+                                        }
+                                    }
+                                // Automatische refresh van resultatenlijst na upload
+                                function refreshResultsList() {
+                                    fetch(window.location.pathname + '/fragment')
+                                        .then(resp => resp.text())
+                                        .then(html => {
+                                            const parser = new DOMParser();
+                                            const doc = parser.parseFromString(html, 'text/html');
+                                            const newResults = doc.getElementById('results-panel');
+                                            const oldResults = document.getElementById('results-panel');
+                                            if (newResults && oldResults) {
+                                                oldResults.innerHTML = newResults.innerHTML;
+                                            }
+                                        });
+                                }
+                                };
+                                xhr.send(data);
+                            });
+                        }
+                    });
+                    </script>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- Results Section Header -->
+        <section class="hero mb-3">
+            <div>
+                <h2 class="mb-0">Gegenereerde XML-bestanden</h2>
+                <p class="page-subtitle mb-0">{{ generated|length }} bestand(en) beschikbaar voor download</p>
+            </div>
+        </section>
+
+        <!-- Results Panel -->
+        <section class="main-panel card mb-4 app-panel" id="results-panel">
+            <div class="card-body">
+                <div class="d-flex justify-content-end mb-3">
+                    <button id="download-selected-btn" class="btn btn-sm btn-outline-primary" disabled
+                            title="Max {{ zip_limits.max_files }} bestanden per download">
+                        <span id="zipSpinner" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="display:none;"></span>
+                        <span id="zipProgressWrap" style="display:none; min-width:80px;">
+                            <span id="zipProgressText" class="small text-primary">0%</span>
+                        </span>
+                        <i class="bi bi-download"></i> Download geselecteerd
+                    </button>
+                </div>
+
+                {% if generated and generated|length > 0 %}
+                    <div class="mb-3">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="select-all-generated">
+                            <label class="form-check-label small text-muted" for="select-all-generated">Selecteer alles</label>
+                        </div>
+                    </div>
+
                     <div class="row">
-                        <div class="col-md-6">
-                            <h6>Enkele record:</h6>
-                            <pre class="bg-light p-2 small"><code>{"BSN": "123456789", "Naam": "Jan"}</code></pre>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Array:</h6>
-                            <pre class="bg-light p-2 small"><code>[{"BSN": "123456789"}, {"BSN": "987654321"}]</code></pre>
-                        </div>
-                    </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Results Section -->
-    <div class="card">
-        <div class="card-header bg-light">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-folder2-open"></i> Gegenereerde XML-bestanden ({{ generated|length if generated else 0 }})</h5>
-                <button id="download-selected-btn" class="btn btn-sm btn-outline-primary" disabled
-                        title="Max {{ zip_limits.max_files if zip_limits else 100 }} bestanden per download">
-                    <span id="zipSpinner" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="display:none;"></span>
-                    <i class="bi bi-download"></i> Download geselecteerd
-                </button>
-            </div>
-        </div>
-        <div class="card-body">
-            {% if generated and generated|length > 0 %}
-                <div class="mb-3">
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="select-all-generated">
-                        <label class="form-check-label small text-muted" for="select-all-generated">Selecteer alles</label>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-7">
-                        <div class="list-group" id="generatedList">
-                            {% for file in generated %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center generated-item" data-filename="{{ file.filename }}">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input generated-select" type="checkbox" id="gen-select-{{ loop.index }}" data-file="{{ file.filename }}">
+                        <div class="col-md-7">
+                            <div class="list-group" id="generatedList">
+                                {% for file in generated %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center generated-item" data-filename="{{ file.filename }}">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input generated-select" type="checkbox" id="gen-select-{{ loop.index }}" data-file="{{ file.filename }}">
+                                        </div>
+                                        <div class="generated-clickable" style="cursor:pointer;">
+                                            <div class="fw-bold text-truncate" style="max-width:480px;">{{ file.filename }}</div>
+                                            <div class="small text-muted">{{ file.tijdstip }} — {{ file.size }} B</div>
+                                        </div>
                                     </div>
-                                    <div class="generated-clickable" style="cursor:pointer;">
-                                        <div class="fw-bold text-truncate" style="max-width:480px;">{{ file.filename }}</div>
-                                        <div class="small text-muted">{{ file.tijdstip }} — {{ file.size }} B</div>
+                                    <div>
+                                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_generated', filename=file.filename) }}" title="Download"><i class="bi bi-download"></i></a>
                                     </div>
                                 </div>
-                                <div>
-                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_generated', filename=file.filename) }}" title="Download"><i class="bi bi-download"></i></a>
-                                </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
                         </div>
-                    </div>
-                    <div class="col-md-5">
-                        <div class="card border-light bg-light">
-                            <div class="card-body" id="previewPane">
-                                <h6 class="card-title">Voorvertoning</h6>
-                                <div id="previewMeta" class="small text-muted mb-2">Klik op een bestand voor preview</div>
-                                <pre id="previewContent" style="max-height:400px; overflow:auto; white-space:pre-wrap; background:#fff; padding:12px; border:1px solid #e9ecef; border-radius:4px;"></pre>
-                                <div class="mt-2 d-flex justify-content-end">
-                                    <a id="previewDownloadLink" class="btn btn-sm btn-outline-primary" href="#" style="display:none;"><i class="bi bi-download"></i> Download</a>
+                        <div class="col-md-5">
+                            <div class="card border-light bg-light">
+                                <div class="card-body" id="previewPane">
+                                    <h6 class="card-title">Voorvertoning</h6>
+                                    <div id="previewMeta" class="small text-muted mb-2">Klik op een bestand voor preview</div>
+                                    <pre id="previewContent" style="max-height:400px; overflow:auto; white-space:pre-wrap; background:#fff; padding:12px; border:1px solid #e9ecef; border-radius:4px;"></pre>
+                                    <div class="mt-2 d-flex justify-content-end">
+                                        <a id="previewDownloadLink" class="btn btn-sm btn-outline-primary" href="#" style="display:none;"><i class="bi bi-download"></i> Download</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            {% else %}
-                <div class="text-center py-4 text-muted">
-                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                    <p>Nog geen bestanden gegenereerd. Upload een JSON-bestand hierboven om te beginnen.</p>
-                </div>
-            {% endif %}
-        </div>
+                {% else %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                        <p>Nog geen bestanden gegenereerd. Upload een JSON-bestand hierboven om te beginnen.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </section>
     </div>
+</div>
+{% endif %}
 
 <script>
-// Selection and download handler (same as Excel workflow)
+// Selection and download handler
 document.addEventListener('DOMContentLoaded', function () {
     const list = document.getElementById('generatedList');
     const downloadBtn = document.getElementById('download-selected-btn');
@@ -162,6 +311,12 @@ document.addEventListener('DOMContentLoaded', function () {
     async function downloadSelectedAsZip(filenames) {
         try {
             if (zipSpinner) zipSpinner.style.display = '';
+            const zipProgressWrap = document.getElementById('zipProgressWrap');
+            const zipProgressText = document.getElementById('zipProgressText');
+            if (zipProgressWrap && zipProgressText) {
+                zipProgressWrap.style.display = '';
+                zipProgressText.textContent = '0%';
+            }
             const resp = await fetch('/resultaten/download-zip', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -171,7 +326,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Fout bij maken van ZIP: ' + await resp.text());
                 return;
             }
-            const blob = await resp.blob();
+            // Simuleer voortgang tijdens het downloaden van de blob
+            const reader = resp.body.getReader();
+            const contentLength = +resp.headers.get('Content-Length') || 0;
+            let received = 0;
+            let chunks = [];
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+                received += value.length;
+                if (zipProgressText && contentLength) {
+                    const percent = Math.round((received / contentLength) * 100);
+                    zipProgressText.textContent = percent + '%';
+                }
+            }
+            if (zipProgressText) zipProgressText.textContent = '100%';
+            const blob = new Blob(chunks);
             let zipName = 'selected_files.zip';
             const cd = resp.headers.get('Content-Disposition');
             if (cd) {
@@ -190,6 +361,8 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Fout bij downloaden: ' + err);
         } finally {
             if (zipSpinner) zipSpinner.style.display = 'none';
+            const zipProgressWrap = document.getElementById('zipProgressWrap');
+            if (zipProgressWrap) zipProgressWrap.style.display = 'none';
         }
     }
 
@@ -233,6 +406,4 @@ document.addEventListener('DOMContentLoaded', function () {
     updateSelectionState();
 });
 </script>
-
-</div>
 {% endblock %}

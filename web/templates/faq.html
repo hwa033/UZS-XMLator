@@ -1,0 +1,37 @@
+{% extends '_base.html' %}
+
+{% block title %}FAQ & Uitleg{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrap">
+    <div class="dashboard-main">
+        <section class="hero mb-4">
+            <div>
+                <h1 class="mb-0">Veelgestelde vragen & uitleg</h1>
+                <p class="page-subtitle mb-0">Antwoorden op de meest gestelde vragen over de UZS XMLator</p>
+            </div>
+        </section>
+        <section class="main-panel card app-panel mb-4">
+            <div class="card-body">
+                <h5>Wat doet deze applicatie?</h5>
+                <p>De UZS XMLator maakt het mogelijk om eenvoudig XML-bestanden te genereren uit Excel- of JSON-bestanden volgens de UZS-specificaties. Je kunt de gegenereerde XML-bestanden direct downloaden en valideren.</p>
+                <h5>Welke bestandsformaten worden ondersteund?</h5>
+                <ul>
+                    <li>Excel: <code>.xlsx</code>, <code>.xls</code></li>
+                    <li>JSON: <code>.json</code></li>
+                </ul>
+                <h5>Wat doet de optie "Valideer (BSN/XSD)"?</h5>
+                <p>Als deze optie is aangevinkt, wordt elk gegenereerd XML-bestand gecontroleerd op een geldig BSN en gevalideerd tegen het XSD-schema. Fouten worden direct getoond.</p>
+                <h5>Waar vind ik de gegenereerde bestanden?</h5>
+                <p>Na upload en verwerking verschijnen de gegenereerde XML-bestanden direct onder het uploadformulier. Je kunt ze individueel downloaden of als ZIP-bestand bundelen.</p>
+                <h5>Wat gebeurt er bij fouten?</h5>
+                <p>Fouten bij uploaden, valideren of genereren worden als duidelijke melding bovenaan de pagina getoond. Zie je geen resultaat? Controleer of je bestand het juiste formaat heeft.</p>
+                <h5>Wie kan de logbestanden bekijken?</h5>
+                <p>Alleen gebruikers met admin-rechten kunnen via het instellingenmenu de upload- en foutlogs inzien.</p>
+                <h5>Meer hulp nodig?</h5>
+                <p>Neem contact op met het beheerteam of raadpleeg de technische documentatie.</p>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

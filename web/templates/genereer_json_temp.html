@@ -1,0 +1,387 @@
+{% extends '_base.html' %}
+
+{% block title %}Excel Workflow{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrap">
+    <div class="dashboard-main">
+        <section class="hero mb-4 d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="mb-0"><i class="bi bi-file-earmark-spreadsheet text-success"></i> Excel Workflow</h1>
+                <p class="page-subtitle mb-0">Upload Excel bestanden en genereer XML</p>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Dashboard
+                </a>
+            </div>
+        </section>
+
+        <!-- Statistics Tiles -->
+        <section class="result-tiles mb-4 app-panel" aria-label="Excel Workflow statistieken">
+            <div class="chart-tiles" role="group" aria-label="Snelstatistieken Excel Workflow">
+                <div class="stat-link" role="group" aria-label="Totaal bestanden">
+                    <div class="stat-card uwv-blue chart-tile" aria-live="polite">
+                        <div class="stat-icon" aria-hidden="true"><i class="bi bi-file-earmark-text"></i></div>
+                        <div class="stat-body">
+                            <div class="stat-label">Totaal bestanden</div>
+                            <div class="stat-value">{{ generated|length if generated else 0 }}</div>
+                            <div class="stat-sub">XML gegenereerd</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-link" role="group" aria-label="Laatste bestand">
+                    <div class="stat-card uws-success chart-tile" aria-live="polite">
+                        <div class="stat-icon" aria-hidden="true"><i class="bi bi-clock"></i></div>
+                        <div class="stat-body">
+                            <div class="stat-label">Laatste bestand</div>
+                            <div class="stat-value small">{% if generated and generated|length > 0 %}{{ generated[0].filename[:20] }}...{% else %}Geen{% endif %}</div>
+                            <div class="stat-sub">{% if generated and generated|length > 0 %}{{ generated[0].tijdstip[:10] }}{% else %}&nbsp;{% endif %}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-link" role="group" aria-label="Totale grootte">
+                    <div class="stat-card neutral-gray chart-tile" aria-live="polite">
+                        <div class="stat-icon" aria-hidden="true"><i class="bi bi-hdd"></i></div>
+                        <div class="stat-body">
+                            <div class="stat-label">Totale grootte</div>
+                            <div class="stat-value">{% if generated %}{{ "%.2f"|format((generated|map(attribute='size')|sum) / 1024) }}{% else %}0{% endif %} KB</div>
+                            <div class="stat-sub">Opslag gebruikt</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Upload Form Panel -->
+        <section class="main-panel card mb-4 app-panel">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="card-title mb-1"><i class="bi bi-upload"></i> Excel uploaden & XML genereren</h5>
+                        <div class="text-muted small">Upload een Excel-bestand om meerdere aanvragen in één keer te genereren</div>
+                    </div>
+                </div>
+                <form action="{{ url_for('upload_excel') }}" method="post" enctype="multipart/form-data" class="row g-3">
+                    <div class="col-md-5">
+                        <label for="excel_file" class="form-label">Excel-bestand</label>
+                        <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls" class="form-control" required>
+                        <div class="form-text small">Ondersteunde formaten: .xlsx, .xls</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="aanvraag_type_bulk" class="form-label">Type aanvraag</label>
+                        <select name="aanvraag_type" id="aanvraag_type_bulk" class="form-select">
+                            <option value="ZBM">ZBM - Ziekmelding</option>
+                            <option value="VM">VM - Voortzetting</option>
+                            <option value="Digipoort">Digipoort (OTP3)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <div class="form-check me-3">
+                            <input class="form-check-input" type="checkbox" value="on" id="validate_check" name="validate" checked>
+                            <label class="form-check-label" for="validate_check">
+                                Valideer (BSN/XSD)
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-lightning-charge"></i> Genereer XML
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+            {% if bulk_results %}
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="mb-3">Resultaat</h3>
+                        {% if xsd_error %}
+                            <div class="alert alert-warning" role="alert">
+                                <strong>Schema waarschuwing:</strong> Er was een probleem met het laden van het XSD-schema. XSD-validatie is uitgeschakeld voor deze aanvraag.<br>
+                                <small class="text-muted">{{ xsd_error }}</small>
+                            </div>
+                        {% endif %}
+                        <div class="row align-items-center mb-3">
+                            <div class="col-auto">
+                                <span class="badge bg-primary text-white rounded-pill px-3 py-2 shadow-sm" style="font-size:1.05rem;">Gegenereerd: <strong>{{ bulk_results.generated|length }}</strong></span>
+                            </div>
+                            <div class="col">
+                                {% if bulk_zip %}
+                                    <a href="{{ url_for('download_generated', filename=bulk_zip) }}" class="btn btn-outline-success me-2">Download ZIP</a>
+                                {% endif %}
+                                <a href="{{ url_for('resultaten_pagina') }}" class="btn btn-outline-primary btn-sm shadow-sm">Bekijk alle gegenereerde bestanden</a>
+                            </div>
+                        </div>
+
+                        {% if bulk_results.generated and bulk_results.generated|length > 0 %}
+                            <div class="mb-3">
+                                <div class="row gy-2">
+                                    {% for fn in bulk_results.generated %}
+                                        <div class="col-12">
+                                            <div class="card shadow-sm">
+                                                <div class="card-body d-flex justify-content-between align-items-center">
+                                                    <div class="text-truncate me-3" style="max-width:70%"><i class="bi bi-file-earmark-code me-2"></i>{{ fn }}</div>
+                                                    <div>
+                                                        <a class="btn btn-sm btn-outline-primary me-2" href="{{ url_for('download_generated', filename=fn) }}">Download</a>
+                                                        <button class="btn btn-sm btn-outline-secondary" onclick="previewGenerated('{{ fn }}');">Preview</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-light">Er zijn geen individuele bestanden gevonden in de gegenereerde lijst. Klik op "Bekijk alle gegenereerde bestanden" om de server-output-map te bekijken.</div>
+                        {% endif %}
+
+                        {% if bulk_results.errors and bulk_results.errors|length > 0 %}
+                            <div class="alert alert-warning">
+                                <strong>Er waren {{ bulk_results.errors|length }} fouten.</strong>
+                                <button class="btn btn-sm btn-outline-secondary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#errorsCollapse" aria-expanded="false">Toon / verberg details</button>
+                                <div class="collapse mt-3" id="errorsCollapse">
+                                    <ul class="mb-0">
+                                        {% for e in bulk_results.errors %}
+                                            <li><code>{{ e }}</code></li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div id="previewModalPlaceholder"></div>
+
+                        <script>
+                        async function previewGenerated(filename) {
+                                try {
+                                        const resp = await fetch('/resultaten/preview/' + encodeURIComponent(filename));
+                                        if (!resp.ok) {
+                                                alert('Kon preview niet ophalen');
+                                                return;
+                                        }
+                                        const data = await resp.json();
+                                        
+                                        // HTML-escape the preview content to prevent XML tags from being interpreted as HTML
+                                        const escapedPreview = (data.preview || '')
+                                                .replace(/&/g, '&amp;')
+                                                .replace(/</g, '&lt;')
+                                                .replace(/>/g, '&gt;')
+                                                .replace(/"/g, '&quot;')
+                                                .replace(/'/g, '&#039;');
+                                        
+                                        const modalHtml = `
+                                                <div class="modal fade" id="previewModal" tabindex="-1" aria-hidden="true">
+                                                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                                                        <div class="modal-content">
+                                                            <div class="modal-header">
+                                                                <h5 class="modal-title">Preview: ${data.filename}</h5>
+                                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                            </div>
+                                                            <div class="modal-body">
+                                                                <p><strong>Grootte:</strong> ${data.size} bytes — <strong>Tijdstip:</strong> ${data.tijdstip}</p>
+                                                                <pre style="white-space:pre-wrap; max-height:60vh; overflow:auto; background-color:#f8f9fa; padding:1rem; border:1px solid #dee2e6; border-radius:0.25rem; color:#212529;">${escapedPreview}</pre>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <a class="btn btn-primary" href="/resultaten/download/${encodeURIComponent(data.filename)}">Download</a>
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Sluiten</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>`;
+                                        document.getElementById('previewModalPlaceholder').innerHTML = modalHtml;
+                                        var modalEl = document.getElementById('previewModal');
+                                        var modal = new bootstrap.Modal(modalEl);
+                                        modal.show();
+                                } catch (e) {
+                                        console.error(e);
+                                        alert('Fout bij ophalen preview');
+                                }
+                        }
+                        </script>
+                    </div>
+                </div>
+            {% endif %}
+
+        <!-- Results Panel -->
+        <section class="main-panel card mb-4 app-panel">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="card-title mb-1"><i class="bi bi-folder2-open"></i> Gegenereerde XML-bestanden</h5>
+                        <div class="text-muted small">{{ generated|length }} bestand(en) beschikbaar voor download</div>
+                    </div>
+                    <button id="download-selected-btn" class="btn btn-sm btn-outline-primary" disabled
+                            title="Max {{ zip_limits.max_files }} bestanden per download">
+                        <span id="zipSpinner" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="display:none;"></span>
+                        <i class="bi bi-download"></i> Download geselecteerd
+                    </button>
+                </div>
+
+                {% if generated and generated|length > 0 %}
+                    <div class="mb-3">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="select-all-generated">
+                            <label class="form-check-label small text-muted" for="select-all-generated">Selecteer alles</label>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-7">
+                            <div class="list-group" id="generatedList">
+                                {% for file in generated %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center generated-item" data-filename="{{ file.filename }}">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input generated-select" type="checkbox" id="gen-select-{{ loop.index }}" data-file="{{ file.filename }}">
+                                    </div>
+                                    <div class="generated-clickable" style="cursor:pointer;">
+                                        <div class="fw-bold text-truncate" style="max-width:480px;">{{ file.filename }}</div>
+                                        <div class="small text-muted">{{ file.tijdstip }} — {{ file.size }} B</div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_generated', filename=file.filename) }}" title="Download"><i class="bi bi-download"></i></a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="card border-light bg-light">
+                            <div class="card-body" id="previewPane">
+                                <h6 class="card-title">Voorvertoning</h6>
+                                <div id="previewMeta" class="small text-muted mb-2">Klik op een bestand voor preview</div>
+                                <pre id="previewContent" style="max-height:400px; overflow:auto; white-space:pre-wrap; background:#fff; padding:12px; border:1px solid #e9ecef; border-radius:4px;"></pre>
+                                <div class="mt-2 d-flex justify-content-end">
+                                    <a id="previewDownloadLink" class="btn btn-sm btn-outline-primary" href="#" style="display:none;"><i class="bi bi-download"></i> Download</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                    <p>Nog geen bestanden gegenereerd. Upload een Excel-bestand hierboven om te beginnen.</p>
+                </div>
+            {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+// Selection and download handler
+document.addEventListener('DOMContentLoaded', function () {
+    const list = document.getElementById('generatedList');
+    const downloadBtn = document.getElementById('download-selected-btn');
+    const selectAll = document.getElementById('select-all-generated');
+    const previewMeta = document.getElementById('previewMeta');
+    const previewContent = document.getElementById('previewContent');
+    const previewDownloadLink = document.getElementById('previewDownloadLink');
+    const zipSpinner = document.getElementById('zipSpinner');
+
+    function updateSelectionState() {
+        const checkboxes = Array.from(document.querySelectorAll('.generated-select'));
+        const anyChecked = checkboxes.some(cb => cb.checked);
+        if (downloadBtn) downloadBtn.disabled = !anyChecked;
+        checkboxes.forEach(cb => {
+            const item = cb.closest('.generated-item');
+            if (item) item.classList.toggle('selected', cb.checked);
+        });
+    }
+
+    if (list) {
+        list.addEventListener('change', function (ev) {
+            if (ev.target && ev.target.classList.contains('generated-select')) updateSelectionState();
+        });
+    }
+
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            const checkboxes = Array.from(document.querySelectorAll('.generated-select'));
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            updateSelectionState();
+        });
+    }
+
+    async function downloadSelectedAsZip(filenames) {
+        try {
+            if (zipSpinner) zipSpinner.style.display = '';
+            const resp = await fetch('/resultaten/download-zip', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filenames: filenames })
+            });
+            if (!resp.ok) {
+                alert('Fout bij maken van ZIP: ' + await resp.text());
+                return;
+            }
+            const blob = await resp.blob();
+            let zipName = 'selected_files.zip';
+            const cd = resp.headers.get('Content-Disposition');
+            if (cd) {
+                const m = cd.match(/filename\*=UTF-8''([^;\n\r]+)/) || cd.match(/filename="?([^";]+)"?/);
+                if (m && m[1]) zipName = decodeURIComponent(m[1]);
+            }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = zipName;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } catch (err) {
+            alert('Fout bij downloaden: ' + err);
+        } finally {
+            if (zipSpinner) zipSpinner.style.display = 'none';
+        }
+    }
+
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', function () {
+            const checked = Array.from(document.querySelectorAll('.generated-select:checked'));
+            const filenames = checked.map(cb => cb.getAttribute('data-file')).filter(Boolean);
+            if (filenames.length > 0) downloadSelectedAsZip(filenames);
+        });
+    }
+
+    // Preview handling
+    if (list) {
+        list.addEventListener('click', async function (ev) {
+            const target = ev.target;
+            const item = target.closest('.generated-item');
+            if (!item || target.tagName === 'INPUT' || target.closest('a')) return;
+            const fn = item.getAttribute('data-filename');
+            if (!fn) return;
+            try {
+                const resp = await fetch('/resultaten/preview/' + encodeURIComponent(fn));
+                if (!resp.ok) {
+                    previewMeta.textContent = 'Kon preview niet laden.';
+                    previewContent.textContent = '';
+                    previewDownloadLink.style.display = 'none';
+                    return;
+                }
+                const j = await resp.json();
+                previewMeta.textContent = `${j.filename} — ${j.size} B — ${j.tijdstip}`;
+                previewContent.textContent = j.preview || '(Leeg)';
+                previewDownloadLink.href = '/resultaten/download/' + encodeURIComponent(j.filename);
+                previewDownloadLink.style.display = '';
+            } catch (err) {
+                previewMeta.textContent = 'Fout bij laden preview.';
+                previewContent.textContent = '';
+                previewDownloadLink.style.display = 'none';
+            }
+        });
+    }
+
+    updateSelectionState();
+});
+</script>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+

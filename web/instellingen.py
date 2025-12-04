@@ -1,3 +1,27 @@
+@instellingen_bp.route("/logs")
+def logs():
+    """Bekijk recente logbestanden (alleen voor admins)."""
+    # Locaties van logbestanden
+    log_dir = Path(__file__).parent.parent / "build" / "logs"
+    log_files = [
+        (log_dir / "generator_excel.log", "Generator Excel Log"),
+        (log_dir / "generator_json.log", "Generator JSON Log"),
+        (log_dir / "user_uploads_json.log", "User Uploads JSON Log"),
+    ]
+    logs = []
+    for path, title in log_files:
+        lines = []
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8", errors="replace") as f:
+                    # Laatste 100 regels, zonder alles in geheugen te laden
+                    from collections import deque
+                    lines = list(deque(f, 100))
+                    lines = [l.rstrip("\n") for l in lines]
+            except Exception:
+                lines = ["[Fout bij lezen van logbestand]"]
+        logs.append({"title": title, "lines": lines})
+    return render_template("logs.html", logs=logs)
 import json
 import os
 from pathlib import Path

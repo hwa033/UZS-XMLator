@@ -7,9 +7,12 @@ systems expect for direct upload.
 """
 import sys
 from pathlib import Path
-from lxml import etree
+try:
+    from lxml import etree
+except ImportError:
+    raise ImportError("lxml is required for this script. Please install it with 'pip install lxml'.")
 
-def extract_body_from_soap(input_path: str, output_path: str = None) -> str:
+def extract_body_from_soap(input_path: str, output_path: str = "") -> str:
     """
     Extract the UwvZwMeldingInternBody from SOAP envelope.
     
@@ -74,7 +77,7 @@ def main():
     output_file = sys.argv[2] if len(sys.argv) > 2 else None
     
     try:
-        result = extract_body_from_soap(input_file, output_file)
+        result = extract_body_from_soap(input_file, output_file or "output.xml")
         print(f"Extracted body to: {result}")
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

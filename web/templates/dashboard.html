@@ -10,8 +10,9 @@
                 <h1 class="mb-0">Dashboard</h1>
                 <p class="page-subtitle mb-0">Overzicht van testuitvoeringen</p>
             </div>
-                <div class="d-flex align-items-center gap-2">
-                <a href="{{ url_for('genereer_xml') }}" id="open-genereer-xml-btn" class="btn btn-sm btn-outline-primary me-2">Genereer XML</a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ url_for('genereer_xml') }}" class="btn btn-outline-primary">Excel XMLator</a>
+                <a href="{{ url_for('genereer_xml_json') }}" class="btn btn-outline-primary">JSON XMLator</a>
             </div>
         </section>
 

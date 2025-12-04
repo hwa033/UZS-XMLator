@@ -1,3 +1,4 @@
+## ROUTES verplaatst NA app-definitie (zie einde bestand)
 import datetime
 import io
 import json
@@ -18,8 +19,10 @@ from flask import (
 )
 import tempfile
 from zipfile import ZIP_DEFLATED, ZipFile
-from lxml import etree
-import xml.etree.ElementTree as ET
+try:
+    from lxml import etree
+except ImportError:
+    raise ImportError("lxml is required for this application. Please install it with 'pip install lxml'.")
 from werkzeug.utils import secure_filename
 import importlib.util
 
@@ -165,11 +168,11 @@ def _cleanup_downloads(max_age_minutes: int = 60):
         pass
 
 
-def save_xml(tree: etree._ElementTree, aanvraag_type: str, filename: str):
+def save_xml(tree, aanvraag_type: str, filename: str):
     out_dir = get_output_directory()
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / filename
-    tree.write(str(out_path), encoding="utf-8", xml_declaration=True, pretty_print=True)
+    tree.write(str(out_path), encoding="utf-8", xml_declaration=True)
     # Log event for dashboard and analytics
     try:
         events_file = Path(__file__).parent / "xml_events.jsonl"
@@ -221,6 +224,17 @@ def index():
         last_test_time=last_time,
         success_rate=success_rate,
     )
+
+
+@app.route("/download/<filename>")
+def download_generated(filename):
+    """Download a generated XML file from the output directory."""
+    out_dir = get_output_directory()
+    file_path = out_dir / filename
+    if file_path.exists():
+        return send_file(str(file_path), as_attachment=True)
+    flash("Bestand niet gevonden", "danger")
+    return redirect(url_for("genereer_xml"))
 
 
 @app.route("/health")
@@ -284,8 +298,11 @@ def _load_generator_module():
         if not gen_path.exists():
             return None
         spec = importlib.util.spec_from_file_location("tools_generate_from_excel", str(gen_path))
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
+        if spec is not None and spec.loader is not None:
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+        else:
+            raise ImportError(f"Could not load module: {spec}")
         return mod
     except Exception:
         return None
@@ -432,11 +449,8 @@ def _load_message_xsd():
             return schema
         except Exception as se:
             app.logger.warning("XSD compile failed (safe parse): %s", se)
-            # Fall through to a more permissive parse below
     except Exception as e:
         app.logger.debug("Safe XSD parse failed, will attempt permissive parse: %s", e)
-
-    # Attempt a permissive parse that allows external resources, but catch failures
     try:
         permissive_parser = etree.XMLParser(load_dtd=True, no_network=False)
         doc2 = etree.parse(str(xsd_path), permissive_parser)
@@ -445,7 +459,6 @@ def _load_message_xsd():
         return schema2
     except Exception as ex:
         app.logger.warning("Full XSD load/compile failed: %s", ex)
-        # Record the error for the request/response so the UI can show an inline warning.
         global _LAST_XSD_ERROR
         try:
             _LAST_XSD_ERROR = str(ex)
@@ -518,7 +531,10 @@ def _is_blank_normalized_record(rec: dict) -> bool:
 @app.route("/favicon.ico")
 def favicon():
     # Serve a favicon from static if present, otherwise return 204
-    p = Path(app.static_folder) / "favicon.ico"
+    if app.static_folder is not None:
+        p = Path(app.static_folder) / "favicon.ico"
+    else:
+        p = Path("static") / "favicon.ico"
     if p.exists():
         return send_file(str(p))
     return "", 204
@@ -531,7 +547,7 @@ def logo():
     candidates = [
         base_dir / "uzs_logo.png",
         base_dir / "uzs-logo.png",
-        Path(app.static_folder) / "img" / "uzs_logo.png",
+        Path(app.static_folder or "static") / "img" / "uzs_logo.png",
     ]
     for c in candidates:
         if c.exists():
@@ -623,13 +639,24 @@ def genereer_xml_json():
 @app.route("/genereer_xml_json/upload_json", methods=["POST"])
 def upload_json():
     """Process uploaded JSON file and generate XML"""
+    log_path = str(Path(__file__).parent.parent / "build" / "logs" / "user_uploads_json.log")
     if "json_file" not in request.files:
         flash("Geen bestand geüpload", "danger")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_FILE\tERROR\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml_json"))
 
     f = request.files["json_file"]
     if f.filename == "":
         flash("Geen bestand geselecteerd", "danger")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_FILENAME\tERROR\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml_json"))
 
     # Lees JSON content
@@ -638,6 +665,11 @@ def upload_json():
         json_data = json.loads(content.decode('utf-8'))
     except Exception as e:
         flash(f"Ongeldig JSON-bestand: {e}", "danger")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\t{f.filename}\tJSON_DECODE_ERROR: {e}\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml_json"))
 
     # Converteer naar lijst van records
@@ -647,6 +679,11 @@ def upload_json():
         rows_list = json_data
     else:
         flash("JSON moet een object of array zijn", "danger")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\t{f.filename}\tJSON_STRUCTURE_ERROR\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml_json"))
 
     # Bepaal aanvraagtype
@@ -659,6 +696,11 @@ def upload_json():
     gen = _load_generator_module()
     if gen is None:
         flash("Generator module niet beschikbaar", "warning")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\t{f.filename}\tGENERATOR_MODULE_MISSING\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml_json"))
 
     try:
@@ -696,7 +738,7 @@ def upload_json():
                     if existing:
                         existing[0].text = desired
                     else:
-                        ET.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
+                        etree.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
                     msg_aanvraag_type = desired
                 
                 final_existing = msg.findall('{' + ns_body + '}CdBerichtType')
@@ -705,7 +747,7 @@ def upload_json():
                 
                 # XSD validatie
                 if validate_flag and schema:
-                    xml_bytes = ET.tostring(msg, encoding="utf-8")
+                    xml_bytes = etree.tostring(msg, encoding="utf-8")
                     lmsg = etree.fromstring(xml_bytes)
                     if not schema.validate(lmsg):
                         msgs = [str(e.message) for e in schema.error_log]
@@ -748,25 +790,46 @@ def upload_json():
     
     except Exception as e:
         flash(f"Fout bij verwerken JSON: {e}", "danger")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\t{f.filename}\tPROCESSING_ERROR: {e}\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml_json"))
 
 
 @app.route("/genereer_xml/upload_excel", methods=["POST"])
 def upload_excel():
+    log_path = str(Path(__file__).parent.parent / "build" / "logs" / "user_uploads_excel.log")
     if openpyxl is None:
         flash(
             "Excel-ondersteuning niet beschikbaar (openpyxl niet geïnstalleerd).",
             "danger",
         )
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_OPENPYXL\tERROR\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml"))
 
     if "excel_file" not in request.files:
         flash("Geen bestand geüpload", "danger")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_FILE\tERROR\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml"))
 
     f = request.files["excel_file"]
     if f.filename == "":
         flash("Geen bestand geselecteerd", "danger")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_FILENAME\tERROR\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml"))
 
     # Read workbook from uploaded file (file storage provides file-like object)
@@ -776,6 +839,11 @@ def upload_excel():
         wb = openpyxl.load_workbook(filename=io.BytesIO(content), read_only=True, data_only=True)
     except Exception as e:
         flash("Kon Excel-bestand niet lezen: " + str(e), "danger")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\t{f.filename}\tEXCEL_READ_ERROR: {e}\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml"))
 
     sheet = wb.active
@@ -786,6 +854,11 @@ def upload_excel():
         headers = [h if h is not None else "" for h in next(rows)]
     except StopIteration:
         flash("Leeg Excel-bestand", "danger")
+        try:
+            with open(log_path, "a", encoding="utf-8") as lf:
+                lf.write(f"{datetime.datetime.now().isoformat()}\t{f.filename}\tEMPTY_EXCEL\n")
+        except Exception:
+            pass
         return redirect(url_for("genereer_xml"))
 
     # Determine aanvraag type (used by generator output mapping)
@@ -949,7 +1022,7 @@ def upload_excel():
                                     for c in existing:
                                         c.text = desired
                                 else:
-                                    ET.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
+                                    etree.SubElement(msg, '{' + ns_body + '}CdBerichtType').text = desired
                             
                             # Always update aanvraag_type to match final CdBerichtType in XML
                             final_existing = msg.findall('{' + ns_body + '}CdBerichtType')
@@ -963,7 +1036,7 @@ def upload_excel():
                         # XSD validation per message if validation is enabled and schema available
                         if validate_flag and schema is not None:
                             try:
-                                xml_bytes = ET.tostring(msg, encoding="utf-8")
+                                xml_bytes = etree.tostring(msg, encoding="utf-8")
                                 lmsg = etree.fromstring(xml_bytes)
                                 if not schema.validate(lmsg):
                                     # collect schema errors
@@ -1066,7 +1139,7 @@ def upload_excel():
                                     for c in existing:
                                         c.text = desired
                                 else:
-                                    ET.SubElement(m, '{' + ns_body + '}CdBerichtType').text = desired
+                                    etree.SubElement(m, '{' + ns_body + '}CdBerichtType').text = desired
                             
                             # Always update aanvraag_type to match final CdBerichtType in XML
                             final_existing = m.findall('{' + ns_body + '}CdBerichtType')
@@ -1078,7 +1151,7 @@ def upload_excel():
                             pass
                         if validate_flag and schema is not None:
                             try:
-                                xml_bytes = ET.tostring(m, encoding="utf-8")
+                                xml_bytes = etree.tostring(m, encoding="utf-8")
                                 lmsg = etree.fromstring(xml_bytes)
                                 if not schema.validate(lmsg):
                                     le = schema.error_log
@@ -1297,7 +1370,7 @@ def upload_excel():
         schema = _load_message_xsd()
         if schema is not None:
             try:
-                xml_bytes = ET.tostring(root, encoding="utf-8")
+                xml_bytes = etree.tostring(root, encoding="utf-8")
                 lroot = etree.fromstring(xml_bytes)
                 if not schema.validate(lroot):
                     le = schema.error_log
@@ -1383,249 +1456,89 @@ def upload_excel():
 
 
 
-@app.route("/resultaten/download/<filename>")
-def download_generated(filename):
-    """Download generated file from Excel or JSON output directories"""
-    fn = secure_filename(filename)
-    
-    # Check Excel output directory
-    p = get_output_directory() / fn
-    if p.exists():
-        return send_file(str(p), as_attachment=True, download_name=fn)
-    
-    # Check JSON output directory
-    p = get_output_directory_json() / fn
-    if p.exists():
-        return send_file(str(p), as_attachment=True, download_name=fn)
-    
-    # Check central downloads directory
-    dl = DOWNLOADS_DIR / fn
-    if dl.exists():
-        return send_file(str(dl), as_attachment=True, download_name=fn)
-    
-    flash("Gevraagd bestand niet gevonden", "danger")
-    return redirect(url_for("genereer_xml"))
-
-
-@app.route("/resultaten/download-body/<filename>")
-def download_body_only(filename):
-    """Extract and download just the UwvZwMeldingInternBody (without SOAP envelope)."""
-    fn = secure_filename(filename)
-    found = None
-    
-    # Search Excel output directory
-    p = get_output_directory() / fn
-    if p.exists() and p.is_file():
-        found = p
-    
-    # Search JSON output directory if not found
-    if not found:
-        p = get_output_directory_json() / fn
-        if p.exists() and p.is_file():
-            found = p
-    
-    if not found:
-        dl = DOWNLOADS_DIR / fn
-        if dl.exists() and dl.is_file():
-            found = dl
-    
-    if not found:
-        flash("Bestand niet gevonden", "danger")
-        return redirect(url_for("genereer_xml"))
-    
+# --- ROUTES die bovenaan stonden, nu correct na app-definitie ---
+@app.route("/genereer_xml/fragment")
+def genereer_xml_fragment():
+    """Fragment van de resultatenlijst voor AJAX refresh."""
+    generated = []
     try:
-        # Parse the SOAP XML
-        tree = etree.parse(str(found))
-        root = tree.getroot()
-        
-        # Find the SOAP Body element
-        ns = {'soap': 'http://schemas.xmlsoap.org/soap/envelope/'}
-        body = root.find('.//soap:Body', ns)
-        
-        if body is None:
-            flash("Geen SOAP Body gevonden in XML", "danger")
-            return redirect(url_for("genereer_xml"))
-        
-        # Get the first child of Body (should be UwvZwMeldingInternBody)
-        body_content = None
-        for child in body:
-            body_content = child
-            break
-        
-        if body_content is None:
-            flash("Geen content gevonden in SOAP Body", "danger")
-            return redirect(url_for("genereer_xml"))
-        
-        # Create a clean copy without SOAP namespace declarations
-        xml_bytes = ET.tostring(body_content, encoding='UTF-8')
-        clean_body = etree.fromstring(xml_bytes)
-        etree.cleanup_namespaces(clean_body)
-        
-        # Create output filename
-        body_filename = fn.replace('.xml', '_body.xml')
-        
-        # Write body content to a temporary file in downloads dir
-        output_path = DOWNLOADS_DIR / body_filename
-        output_tree = etree.ElementTree(clean_body)
-        output_tree.write(
-            str(output_path),
-            pretty_print=True,
-            xml_declaration=True,
-            encoding='UTF-8'
-        )
-        
-        # Send the file
-        return send_file(
-            str(output_path),
-            as_attachment=True,
-            download_name=body_filename
-        )
-        
-    except Exception as e:
-        flash(f"Fout bij extraheren body: {e}", "danger")
-        return redirect(url_for("genereer_xml"))
-
-
-@app.route('/resultaten/download-zip', methods=['POST'])
-def download_generated_zip():
-    """Create a ZIP archive of requested generated files and return it.
-
-    Expects JSON body: {"filenames": ["a.xml", "b.xml"]}
-    Only files from Excel/JSON output directories or DOWNLOADS_DIR are included.
-    """
-    try:
-        req = request.get_json(force=True)
-    except Exception:
-        return jsonify({"error": "Invalid JSON"}), 400
-    if not req or not isinstance(req.get('filenames'), list):
-        return jsonify({"error": "Missing 'filenames' list"}), 400
-
-    filenames = [secure_filename(str(f)) for f in req.get('filenames') if f]
-    if not filenames:
-        return jsonify({"error": "No valid filenames provided"}), 400
-
-    # Collect found files from Excel and JSON output directories
-    found_files = []
-    for fn in filenames:
-        found = None
-        
-        # Check Excel output
-        p = get_output_directory() / fn
-        if p.exists() and p.is_file():
-            found = p
-        
-        # Check JSON output
-        if not found:
-            p = get_output_directory_json() / fn
-            if p.exists() and p.is_file():
-                found = p
-        
-        # Check downloads dir
-        if not found:
-            dl = DOWNLOADS_DIR / fn
-            if dl.exists() and dl.is_file():
-                found = dl
-        
-        if found:
-            found_files.append((fn, found))
-
-    if not found_files:
-        return jsonify({"error": "Geen van de gevraagde bestanden gevonden"}), 404
-
-    # Enforce limits: number of files, per-file size, total size
-    if len(found_files) > ZIP_MAX_FILES:
-        return (
-            jsonify({"error": f"Te veel bestanden aangevraagd (max {ZIP_MAX_FILES})"}),
-            413,
-        )
-    total_size = 0
-    for arcname, p in found_files:
-        try:
-            sz = p.stat().st_size
-        except Exception:
-            sz = 0
-        if ZIP_MAX_FILE_SIZE and sz > ZIP_MAX_FILE_SIZE:
-            return (
-                jsonify({"error": f"Bestand te groot: {arcname} (max {ZIP_MAX_FILE_SIZE} bytes)"}),
-                413,
-            )
-        total_size += sz
-    if ZIP_MAX_TOTAL_SIZE and total_size > ZIP_MAX_TOTAL_SIZE:
-        return (
-            jsonify({"error": "Totale omvang van gekozen bestanden overschrijdt de limiet"}),
-            413,
-        )
-
-    # Create zip in DOWNLOADS_DIR with a unique name
-    ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    zip_name = f"bulk_selected_{ts}.zip"
-    zip_path = DOWNLOADS_DIR / zip_name
-    try:
-        DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
-        with ZipFile(str(zip_path), 'w', ZIP_DEFLATED) as zf:
-            for arcname, p in found_files:
+        out_dir = get_output_directory()
+        if out_dir.exists():
+            for f in out_dir.glob("*.xml"):
                 try:
-                    zf.write(str(p), arcname=arcname)
+                    generated.append(
+                        {
+                            "tijdstip": datetime.datetime.fromtimestamp(
+                                f.stat().st_mtime
+                            ).isoformat(),
+                            "filename": f.name,
+                            "output_path": str(f),
+                            "size": f.stat().st_size,
+                        }
+                    )
                 except Exception:
                     continue
-    except Exception as e:
-        return jsonify({"error": f"Kon ZIP niet maken: {e}"}), 500
-
-    try:
-        return send_file(str(zip_path), as_attachment=True, download_name=zip_name)
+        generated = sorted(generated, key=lambda x: x.get("tijdstip") or "", reverse=True)
     except Exception:
-        return jsonify({"error": "Kon ZIP niet terugsturen"}), 500
+        generated = []
+    events_file = Path(__file__).parent / "xml_events.jsonl"
+    success_rate = _get_success_rate(events_file)
+    zip_limits = {
+        "max_files": ZIP_MAX_FILES,
+        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
+        "max_file_bytes": ZIP_MAX_FILE_SIZE,
+    }
+    return render_template(
+        "genereer_xml.html",
+        generated=generated,
+        zip_limits=zip_limits,
+        success_rate=success_rate,
+        fragment_only=True,
+    )
 
-
-@app.route('/resultaten/preview/<filename>')
-def preview_generated(filename):
-    """Return a small preview (first N chars/lines) and metadata for a generated file."""
-    fn = secure_filename(filename)
-    found = None
-    
-    # Check Excel output
-    p = get_output_directory() / fn
-    if p.exists() and p.is_file():
-        found = p
-    
-    # Check JSON output
-    if not found:
-        p = get_output_directory_json() / fn
-        if p.exists() and p.is_file():
-            found = p
-    
-    # Check downloads dir
-    if not found:
-        dl = DOWNLOADS_DIR / fn
-        if dl.exists() and dl.is_file():
-            found = dl
-    
-    if not found:
-        return jsonify({"error": "Bestand niet gevonden"}), 404
-
+@app.route("/genereer_xml_json/fragment")
+def genereer_json_fragment():
+    """Fragment van de resultatenlijst voor AJAX refresh (JSON workflow)."""
+    generated = []
     try:
-        stat = found.stat()
-        size = stat.st_size
-        mtime = datetime.datetime.fromtimestamp(stat.st_mtime).isoformat()
-        # Read small preview (first ~8KB)
-        preview_text = ''
-        with open(found, 'r', encoding='utf-8', errors='ignore') as fh:
-            preview_text = fh.read(8192)
-            # Truncate to last complete line for nicer display
-            if len(preview_text) == 8192:
-                # ensure we end at a line break
-                last_n = preview_text.rfind('\n')
-                if last_n > 0:
-                    preview_text = preview_text[:last_n]
-
-        return jsonify({
-            "filename": fn,
-            "size": size,
-            "tijdstip": mtime,
-            "preview": preview_text,
-        }), 200
+        out_dir = get_output_directory()
+        if out_dir.exists():
+            for f in out_dir.glob("*.xml"):
+                try:
+                    generated.append(
+                        {
+                            "tijdstip": datetime.datetime.fromtimestamp(
+                                f.stat().st_mtime
+                            ).isoformat(),
+                            "filename": f.name,
+                            "output_path": str(f),
+                            "size": f.stat().st_size,
+                        }
+                    )
+                except Exception:
+                    continue
+        generated = sorted(generated, key=lambda x: x.get("tijdstip") or "", reverse=True)
     except Exception:
-        return jsonify({"error": "Kon bestand niet lezen"}), 500
+        generated = []
+    events_file = Path(__file__).parent / "xml_events.jsonl"
+    success_rate = _get_success_rate(events_file)
+    zip_limits = {
+        "max_files": ZIP_MAX_FILES,
+        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
+        "max_file_bytes": ZIP_MAX_FILE_SIZE,
+    }
+    return render_template(
+        "genereer_json.html",
+        generated=generated,
+        zip_limits=zip_limits,
+        success_rate=success_rate,
+        fragment_only=True,
+    )
+
+@app.route("/faq")
+def faq():
+    """FAQ & uitlegpagina."""
+    return render_template("faq.html")
 
 
 @app.route("/upload_xml_validatie", methods=["POST"])
@@ -1647,15 +1560,18 @@ def upload_xml_validatie():
         )
         if xsd_path.exists():
             schema_doc = etree.parse(str(xsd_path))
-            schema = etree.XMLSchema(schema_doc)
-            if schema.validate(doc):
-                flash(
-                    f'Bestand "{bestand.filename}" is geldig en voldoet aan het XSD.',
-                    "success",
-                )
-            else:
-                fouten = schema.error_log
-                flash("XML voldoet niet aan het XSD: " + str(fouten), "danger")
+            try:
+                schema = etree.XMLSchema(schema_doc)
+                if schema.validate(doc):
+                    flash(
+                        f'Bestand "{bestand.filename}" is geldig en voldoet aan het XSD.',
+                        "success",
+                    )
+                else:
+                    fouten = schema.error_log
+                    flash("XML voldoet niet aan het XSD: " + str(fouten), "danger")
+            except Exception as ex:
+                flash(f"XSD validatie mislukt: {ex}", "danger")
         else:
             flash(
                 "XSD niet gevonden; alleen syntactische XML-validatie uitgevoerd.",
