@@ -60,12 +60,14 @@ body {
     padding-bottom: 4px;
     background: linear-gradient(180deg, #061726 0%, #072033 100%); /* dark navy header */
 }
-.navbar-custom .navbar-brand { display: flex; align-items: center; gap: 12px; }
+/* Vergroot de ruimte rond het logo */
+.navbar-custom .navbar-brand { display: flex; align-items: center; gap: 12px; padding-left: 16px; padding-right: 18px; }
 /* Make the brand area share the same gradient so logos blend seamlessly */
 .navbar-custom .navbar-brand {
-    padding: 4px 6px;
+    padding: 4px 18px 4px 16px;
     border-radius: 8px;
     background: linear-gradient(180deg, #061726 0%, #072033 100%);
+    min-width: 220px;
 }
 .avatar-lg { height:72px; width:auto; object-fit:contain; display:block; }
 .navbar-custom .nav-link { color: rgba(255,255,255,0.92); font-weight:600; margin-right:8px; }
@@ -73,7 +75,13 @@ body {
 /* show beheer / instellingen buttons and make them subtle on the dark header */
 .navbar-custom .btn-outline-light { display:inline-block; color: rgba(255,255,255,0.95); border-color: rgba(255,255,255,0.12); }
 .navbar-custom .btn-outline-light:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.25); }
-.navbar-custom .container { gap: 12px; display: flex; align-items: center; }
+.navbar-custom .container {
+    gap: 12px;
+    display: flex;
+    align-items: center;
+    padding-left: 32px;
+    padding-right: 32px;
+}
 .navbar-custom .navbar-nav { margin-left: 22px; }
 .navbar-custom .nav-link { padding: 8px 12px; }
 .navbar-custom .current-time { color: rgba(255,255,255,0.85); margin-left: 10px; font-size:0.95rem; }

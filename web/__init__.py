@@ -1,4 +1,4 @@
-"""`web` package for UZS XMLator.
+"""`web` package for UWV XMLator.
 
 This file exposes the Flask `app` at package level so callers can do
 `from web import app` or `import web` and access `web.app` when running

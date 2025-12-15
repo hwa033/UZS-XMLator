@@ -1,6 +1,7 @@
 import datetime
 import json
 from pathlib import Path
+from typing import Any, Dict, cast
 
 from lxml import etree
 
@@ -93,8 +94,8 @@ def fill_xml_template(
     NS_UWVH = "http://schemas.uwv.nl/UwvML/Header-v0202"
     NS_BODY = "http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"
 
-    nsmap = {"SOAP-ENV": NS_SOAP, "uwvh": NS_UWVH, None: NS_BODY}
-    envelope = etree.Element(etree.QName(NS_SOAP, "Envelope"), nsmap=nsmap)
+    nsmap: Dict[Any, str] = {"SOAP-ENV": NS_SOAP, "uwvh": NS_UWVH, None: NS_BODY}
+    envelope = etree.Element(etree.QName(NS_SOAP, "Envelope"), nsmap=cast(dict, nsmap))
     header = etree.SubElement(envelope, etree.QName(NS_SOAP, "Header"))
     uwv_header = etree.SubElement(header, etree.QName(NS_UWVH, "UwvMLHeader"))
 
@@ -282,3 +283,161 @@ def fill_xml_template(
 
     tree = etree.ElementTree(envelope)
     return tree
+
+
+def extract_excel_cd(rec: dict) -> str | None:
+    """Return the first non-empty CdBerichtType-like value from the record."""
+    for name in ("CdBerichtType", "aanvraag_type", "Type"):
+        v = rec.get(name)
+        if v is not None and str(v).strip() != "":
+            return str(v).strip()
+    return None
+
+
+def decide_cd_override(
+    existing_text: str | None,
+    excel_cd: str | None,
+    form_aanvraag_type: str,
+    cd_bericht_default: str,
+    known_codes: set[str],
+) -> tuple[str, bool]:
+    """Decide the desired CdBerichtType and whether to override the existing value.
+
+    Returns (desired_code, should_override).
+    """
+    if excel_cd:
+        desired = {excel_cd: excel_cd}.get(excel_cd, excel_cd)
+    else:
+        desired = cd_bericht_default
+
+    should_override = False
+    if form_aanvraag_type == "Digipoort":
+        desired = "OTP3"
+        should_override = True
+    elif existing_text and existing_text not in known_codes:
+        should_override = True
+    elif not existing_text:
+        should_override = True
+    elif existing_text != desired:
+        should_override = True
+
+    return desired, should_override
+
+
+def validate_normalized_rows_for_generator(
+    norm_rows,
+    excel_headers,
+    validate_flag,
+    form_aanvraag_type,
+    aanvraag_map,
+    cd_bericht_default,
+    gen_module,
+    ns_body,
+    schema=None,
+):
+    """Validate normalized rows and build message elements using generator.
+
+    Returns (bodies, errors, bulk_aanvraag_type).
+    """
+    from lxml import etree
+
+    bodies = []
+    errors = []
+    bulk_aanvraag_type = None
+
+    _KNOWN_CDBERICHT_TYPES = {
+        "KCC",
+        "OTP1",
+        "OTP3",
+        "RFE",
+        "RFV",
+        "RFX",
+        "VM",
+        "ZBM",
+        "KAAN",
+        "ZBMA",
+    }
+
+    def is_blank(rec: dict) -> bool:
+        try:
+            s = lambda v: v is None or str(v).strip() in ("", "0", "None")
+            keys = [rec.get("BSN"), rec.get("Naam"), rec.get("Achternaam"), rec.get("Loonheffingennummer"), rec.get("IBAN")]
+            return all(s(k) for k in keys)
+        except Exception:
+            return False
+
+    for idx, rec in enumerate(norm_rows, start=1):
+        try:
+            if is_blank(rec):
+                # skip empty rows silently
+                continue
+
+            # Basic validation
+            errs = []
+            if not rec.get("BSN") or str(rec.get("BSN")).strip() == "":
+                errs.append("ontbrekende BSN")
+            naam = rec.get("Naam")
+            if not naam or str(naam).strip() == "":
+                first = rec.get("EersteVoornaam") or rec.get("Voornaam") or rec.get("Voorletters")
+                last = rec.get("Achternaam") or rec.get("SignificantDeelVanDeAchternaam")
+                if not (first or last):
+                    errs.append("ontbrekende Naam")
+            dae = rec.get("DatEersteAoDag")
+            if not dae or str(dae).strip() == "":
+                errs.append("ontbrekende DatEersteAoDag")
+
+            if errs:
+                errors.append(f"Record {idx}: {', '.join(errs)}")
+                continue
+
+            # build message element via generator
+            msg, msg_aanvraag_type = gen_module.build_message_element(rec, ns_body)
+
+            # Determine excel-declared code
+            excel_cd = extract_excel_cd(rec)
+
+            # existing text in message
+            existing = msg.findall("{" + ns_body + "}CdBerichtType")
+            existing_text = (
+                existing[0].text.strip() if existing and existing[0].text else None
+            )
+
+            desired, should_override = decide_cd_override(
+                existing_text, excel_cd, form_aanvraag_type, cd_bericht_default, _KNOWN_CDBERICHT_TYPES
+            )
+
+            if should_override:
+                if form_aanvraag_type == "Digipoort":
+                    desired = "OTP3"
+                if existing:
+                    existing[0].text = desired
+                else:
+                    etree.SubElement(msg, "{" + ns_body + "}CdBerichtType").text = desired
+                msg_aanvraag_type = desired
+
+            # final check
+            final_existing = msg.findall("{" + ns_body + "}CdBerichtType")
+            if final_existing and final_existing[0].text:
+                msg_aanvraag_type = final_existing[0].text.strip()
+
+            # optional XSD validation
+            if validate_flag and schema is not None:
+                try:
+                    xml_bytes = etree.tostring(msg, encoding="utf-8")
+                    lmsg = etree.fromstring(xml_bytes)
+                    if not schema.validate(lmsg):
+                        msgs = [str(e.message) for e in schema.error_log]
+                        errors.append(f"Record {idx}: {'; '.join(msgs)}")
+                        continue
+                except Exception as e:
+                    errors.append(f"Record {idx}: XSD error: {e}")
+                    continue
+
+            bodies.append(msg)
+            if bulk_aanvraag_type is None:
+                bulk_aanvraag_type = msg_aanvraag_type
+
+        except Exception as exc:
+            errors.append(f"Record {idx}: {exc}")
+
+    return bodies, errors, bulk_aanvraag_type

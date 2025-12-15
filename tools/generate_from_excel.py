@@ -22,12 +22,12 @@ from collections.abc import Iterable
 from datetime import datetime, timezone
 
 try:
-    import xml.etree.ElementTree as ET
-
+    # Prefer lxml if available for nicer serialization and namespace control
+    from lxml import etree as ET  # type: ignore
     USING_LXML = True
-except ImportError:
-    import xml.etree.ElementTree as ET
-
+except Exception:
+    # Fallback to stdlib ElementTree if lxml isn't installed
+    import xml.etree.ElementTree as ET  # type: ignore
     USING_LXML = False
 
 try:
@@ -157,7 +157,9 @@ def save_envelope(
     os.makedirs(out_dir, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+
     # Map CdBerichtType codes to friendly names for filename
+    # Digipoort aanvraag will start with digipoort_, not otp3_
     type_mapping = {"OTP3": "digipoort", "ZBM": "zbm", "VM": "vm"}
     friendly_type = type_mapping.get(aanvraag_type, aanvraag_type.lower())
 
@@ -711,7 +713,7 @@ def main():
                 f"{datetime.now(timezone.utc).isoformat()}Z\tSANITIZED_FORMULAS\t{formula_count}",
             )
 
-    print(f"Processed {processed} rows; outputs written to: {out_dir}")
+    # print(f"Processed {processed} rows; outputs written to: {out_dir}")
 
 
 if __name__ == "__main__":

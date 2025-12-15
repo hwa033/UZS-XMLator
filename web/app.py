@@ -1,1995 +1,409 @@
-## ROUTES verplaatst NA app-definitie (zie einde bestand)
-import datetime
-import io
-import json
+
+# --- Imports (must be at the very top) ---
 import os
-import tempfile
-from pathlib import Path
-from zipfile import ZIP_DEFLATED, ZipFile
+import datetime
+from flask import Flask, jsonify, render_template, request, send_from_directory, redirect, flash, url_for
+from markupsafe import escape
+from werkzeug.utils import secure_filename
 
-import yaml
-from flask import (
-    Flask,
-    flash,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    send_file,
-    session,
-    url_for,
-)
+# --- Flask app instance (must be at top level) ---
+app = Flask(__name__)
+app.secret_key = 'change-this-to-a-very-secret-key-1234'
 
-try:
-    from lxml import etree
-except ImportError:
-    raise ImportError(
-        "lxml is required for this application. Please install it with 'pip install lxml'."
-    )
-import importlib.util
-
-try:
-    import openpyxl
-except Exception:
-    openpyxl = None
-from .utils import (
-    _format_date_yyyymmdd,
-    _get_success_rate,
-    excel_serial_to_yyyymmdd,
-    fill_xml_template,
-)
-
-# Minimal Flask app — simplified for easier maintenance.
-base = Path(__file__).parent
-app = Flask(
-    __name__,
-    template_folder=str(base / "templates"),
-    static_folder=str(base / "static"),
-)
-
-# Secret and session hardening
-# Prefer an environment-provided secret in production. If running in a
-# production environment (FLASK_ENV=production or U_XMLATOR_PROD=1) the
-# application will refuse to start without `U_XMLATOR_SECRET` set.
-secret = os.environ.get("U_XMLATOR_SECRET")
-is_prod = (
-    os.environ.get("FLASK_ENV") == "production"
-    or os.environ.get("U_XMLATOR_PROD") == "1"
-)
-if not secret:
-    if is_prod:
-        raise RuntimeError("U_XMLATOR_SECRET must be set when running in production")
-    # development fallback (explicitly non-secure)
-    secret = "dev-simplified"
-app.secret_key = secret
-
-# Secure session cookie defaults; can be overridden via env vars for testing
-from datetime import timedelta
-
-app.permanent_session_lifetime = timedelta(
-    seconds=int(os.environ.get("U_XMLATOR_SESSION_SECONDS", str(7 * 24 * 3600)))
-)
-app.config.update(
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=(os.environ.get("U_XMLATOR_COOKIE_SECURE", "1") != "0"),
-    SESSION_COOKIE_SAMESITE=os.environ.get("U_XMLATOR_SAMESITE", "Lax"),
-)
-
-
-def load_datasets_yaml(path: Path):
-    if not path.exists():
-        return []
-    try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        entries = raw.get("datasets") if isinstance(raw, dict) else raw
-        if not entries:
-            return []
-        result = []
-        for i, e in enumerate(entries):
-            if not isinstance(e, dict):
-                continue
-            # prefer flattened keys (we keep compatibility with `fields`)
-            # fallbacks: prefer nested 'fields', then top-level flattened keys
-            src_fields = e.get("fields") if isinstance(e.get("fields"), dict) else {}
-
-            # helper to pick a value from several possible keys
-            def pick(*keys):
-                for k in keys:
-                    if (
-                        isinstance(src_fields, dict)
-                        and k in src_fields
-                        and src_fields.get(k) not in (None, "")
-                    ):
-                        return src_fields.get(k)
-                    if k in e and e.get(k) not in (None, ""):
-                        return e.get(k)
-                return ""
-
-            label_val = e.get("label") or pick("Naam", "BSN") or f"Dataset {i+1}"
-
-            # normalize common field names into a flat 'fields' dict for JS consumption
-            norm_fields = {
-                "BSN": pick("BSN", "Burgerservicenr", "burgerservicenr"),
-                "Naam": pick("Naam", "naam"),
-                "Geb_datum": pick(
-                    "Geb_datum", "Geboortedat", "Geboortedatum", "geb_datum"
-                ),
-                "Loonheffingennr": pick(
-                    "Loonheffingennr", "Loonheffingennummer", "loonheffingennr"
-                ),
-                "Iban": pick("Iban", "IBAN", "Rekeningnummer"),
-                "Bic": pick("Bic", "BIC"),
-                # keep original raw fields as fallback
-                "__raw": src_fields or {},
-            }
-
-            # Do not mix global test defaults into each dataset record.
-            # Each `norm_fields` entry must reflect values from the same dataset row only.
-            # If you want global defaults for interactive demo, handle that at render-time
-            # or on the client when explicitly requested, to avoid mismatching BSN and name.
-
-            ds = {
-                "id": e.get("id", i),
-                "label": label_val,
-                "fields": norm_fields,
-                # also expose top-level shortcuts for templates that expect them
-                "BSN": norm_fields.get("BSN", ""),
-                "Naam": norm_fields.get("Naam", ""),
-                "Geb_datum": norm_fields.get("Geb_datum", ""),
-                "Loonheffingennr": norm_fields.get("Loonheffingennr", ""),
-                "Iban": norm_fields.get("Iban", ""),
-                "Bic": norm_fields.get("Bic", ""),
-            }
-            result.append(ds)
-        return result
-    except Exception:
-        return []
-
-
-# Central downloads directory for bulk archives (independent of aanvraag type)
-DOWNLOADS_DIR = Path(__file__).parent / "static" / "downloads"
-DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
-
-# Limits for bulk zip requests (can be overridden by env vars)
-ZIP_MAX_FILES = int(os.environ.get("U_XMLATOR_MAX_ZIP_FILES", "50"))
-ZIP_MAX_TOTAL_SIZE = int(
-    os.environ.get("U_XMLATOR_MAX_ZIP_TOTAL_BYTES", str(50 * 1024 * 1024))
-)
-ZIP_MAX_FILE_SIZE = int(
-    os.environ.get("U_XMLATOR_MAX_ZIP_FILE_BYTES", str(10 * 1024 * 1024))
-)
-
-# One-time cleanup guard to avoid running cleanup during import
-_CLEANUP_RUN = False
-
-
-def _cleanup_downloads(max_age_minutes: int = 60):
-    """Remove files in DOWNLOADS_DIR older than max_age_minutes."""
-    try:
-        cutoff = datetime.datetime.now() - datetime.timedelta(minutes=max_age_minutes)
-        for p in DOWNLOADS_DIR.iterdir():
-            try:
-                if p.is_file():
-                    mtime = datetime.datetime.fromtimestamp(p.stat().st_mtime)
-                    if mtime < cutoff:
-                        p.unlink()
-            except Exception:
-                continue
-    except Exception:
-        pass
-
-
-def save_xml(tree, aanvraag_type: str, filename: str):
-    out_dir = get_output_directory()
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / filename
-    tree.write(str(out_path), encoding="utf-8", xml_declaration=True)
-    # Log event for dashboard and analytics
-    try:
-        events_file = Path(__file__).parent / "xml_events.jsonl"
-        event = {
-            "tijdstip": datetime.datetime.now().isoformat(),
-            "filename": filename,
-            "aanvraag_type": aanvraag_type,
-            "output_path": str(out_path),
-            "size": out_path.stat().st_size if out_path.exists() else 0,
-            "success": True,
-        }
-        with open(events_file, "a", encoding="utf-8") as ef:
-            ef.write(json.dumps(event, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
-    return out_path
-
-
-# Register optional admin blueprints if present
-try:
-    from .instellingen import instellingen_bp
-
-    app.register_blueprint(instellingen_bp, url_prefix="/instellingen")
-except Exception:
-    # If the blueprint import fails, continue without admin pages.
-    pass
-
-
-@app.route("/")
-def index():
-    # Pre-compute some dashboard values so tiles show data server-side even if JS fails
-    # Run one-time cleanup if necessary (lazy, avoids import-time decorators)
-    try:
-        _maybe_run_cleanup()
-    except Exception:
-        pass
-    # Simplified: we no longer track test historie in the minimal app
-    total_tests = 0
-    last_status = None
-    last_time = None
-    # Compute a basic success percentage from xml_events.jsonl as a fallback
-    events_file = Path(__file__).parent / "xml_events.jsonl"
-    success_rate = _get_success_rate(events_file)
-
-    return render_template(
-        "dashboard.html",
-        total_tests=total_tests,
-        last_test_status=last_status,
-        last_test_time=last_time,
-        success_rate=success_rate,
-    )
-
-
-@app.route("/download/<filename>")
+# --- Download generated XML file endpoint ---
+@app.route('/resultaten/download/<filename>')
 def download_generated(filename):
-    """Download a generated XML file from the output directory."""
-    out_dir = get_output_directory()
-    file_path = out_dir / filename
-    if file_path.exists():
-        return send_file(str(file_path), as_attachment=True)
-    flash("Bestand niet gevonden", "danger")
-    return redirect(url_for("genereer_xml"))
+    # Only allow .xml files, prevent path traversal
+    if not filename.endswith('.xml') or '/' in filename or '..' in filename:
+        flash('Ongeldige bestandsnaam.', 'danger')
+        return redirect(request.referrer or url_for('genereer_xml'))
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
+    file_path = os.path.join(output_dir, filename)
+    if not os.path.exists(file_path):
+        flash('Bestand niet gevonden.', 'danger')
+        return redirect(request.referrer or url_for('genereer_xml'))
+    return send_from_directory(output_dir, filename, as_attachment=True)
+app.secret_key = 'change-this-to-a-very-secret-key-1234'
 
-
-@app.route("/health")
-def health():
-    """Simple health check for load balancers and quick probes."""
-    try:
-        return (
-            jsonify({"status": "ok", "time": datetime.datetime.utcnow().isoformat()}),
-            200,
-        )
-    except Exception:
-        return jsonify({"status": "error"}), 500
-
-
-@app.route("/ready")
-def ready():
-    """Readiness check: verifies writable downloads dir and required libs present."""
-    ok = True
-    checks = {}
-    try:
-        checks["downloads_exists"] = DOWNLOADS_DIR.exists()
-        try:
-            checks["downloads_writable"] = os.access(str(DOWNLOADS_DIR), os.W_OK)
-        except Exception:
-            checks["downloads_writable"] = False
-            ok = False
-    except Exception:
-        checks["downloads_exists"] = False
-        checks["downloads_writable"] = False
-        ok = False
-    checks["openpyxl_installed"] = openpyxl is not None
-    if not checks["openpyxl_installed"]:
-        ok = False
-    status = 200 if ok else 503
-    return jsonify({"ready": ok, "checks": checks}), status
-
-
-def _maybe_run_cleanup():
-    """Run cleanup once per process when the index page is loaded.
-
-    Avoids import-time decorator usage which caused compatibility errors in
-    some runtime environments. This runs lazily on first index request.
-    """
-    global _CLEANUP_RUN
-    if _CLEANUP_RUN:
-        return
-    try:
-        _cleanup_downloads(max_age_minutes=24 * 60)
-    except Exception:
-        pass
-    _CLEANUP_RUN = True
-
-
-def _load_generator_module():
-    """Dynamically load `tools/generate_from_excel.py` as a module if present.
-
-    Returns the loaded module or None on error.
-    """
-    try:
-        gen_path = Path(__file__).parent.parent / "tools" / "generate_from_excel.py"
-        if not gen_path.exists():
-            return None
-        spec = importlib.util.spec_from_file_location(
-            "tools_generate_from_excel", str(gen_path)
-        )
-        if spec is not None and spec.loader is not None:
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-        else:
-            raise ImportError(f"Could not load module: {spec}")
-        return mod
-    except Exception:
-        return None
-
-
-def _normalize_record_for_generator(rec: dict) -> dict:
-    """Normalize a row dict (header->value) to the canonical keys expected by the generator.
-
-    The input `rec` comes from `read_excel_rows()` and uses the original header
-    strings as keys. This function produces a new dict with keys like 'BSN',
-    'Naam', 'Geboortedatum', 'Loonheffingennummer' etc. populated from common
-    header aliases.
-    """
-    import re
-
-    def tok(s: str) -> str:
-        if s is None:
-            return ""
-        t = str(s).strip().lower()
-        # remove non-alphanumeric
-        t = re.sub(r"[^0-9a-z]+", "", t)
-        return t
-
-    key_map = {tok(k): k for k in rec.keys()}
-
-    def pick(*candidates):
-        for c in candidates:
-            v = key_map.get(c)
-            if v is not None:
-                return rec.get(v)
-        return None
-
-    out = {}
-    # common mappings
-    out["BSN"] = pick("bsn", "burgerservicenr", "burgerservicenummer")
-    out["Naam"] = pick("naam", "volledigenaam", "volledige naam", "voornaamachternaam")
-    out["Achternaam"] = pick("achternaam", "surname", "lastname")
-    out["EersteVoornaam"] = pick("voornaam", "eerstevoornaam", "firstname")
-    out["Geboortedatum"] = pick("geboortedatum", "geboortedat", "gebdatum", "geb_datum")
-    out["DatEersteAoDag"] = pick("dateersteaodag", "dateersteaodag", "dat_eerste_aodag")
-    out["IndDirecteUitkering"] = pick("inddirecteuitkering", "inddirecteuitkering")
-    out["CdRedenAangifteAo"] = pick("cdredenaangifteao", "cdredenaangifteao")
-    out["CdRedenZiekmelding"] = pick("cdredenziekmelding", "cdredenziekmelding")
-    out["IndWerkdagOpZaterdag"] = pick("indwerkdagopzaterdag", "indwerkdagopzaterdag")
-    out["IndWerkdagOpZondag"] = pick("indwerkdagopzondag", "indwerkdagopzondag")
-    out["Loonheffingennummer"] = pick(
-        "loonheffingennummer", "loonheffingennr", "loonheffingennr"
-    )
-    out["IBAN"] = pick("iban", "rekeningnummeriban", "rekeningnummer")
-    out["BIC"] = pick("bic", "bic")
-    out["Personeelsnr"] = pick("personeelsnr", "personeelsnummer")
-
-    # copy any other keys through (sanitize to generator-friendly keys)
-    for k, v in rec.items():
-        if v is None:
-            continue
-        if isinstance(k, str) and tok(k) in (
-            "bsn",
-            "naam",
-            "achternaam",
-            "voornaam",
-            "geboortedatum",
-        ):
-            continue
-        # keep original header name as-is for wider generator compatibility
-        out.setdefault(k, v)
-
-    # If 'Naam' is missing, try to build it from available name parts
-    try:
-        if not out.get("Naam") or str(out.get("Naam")).strip() == "":
-            parts = []
-            # prefer EersteVoornaam + Achternaam
-            if out.get("EersteVoornaam"):
-                parts.append(str(out.get("EersteVoornaam")).strip())
-            # try also common alternatives from original row if present
-            alt_last = None
-            for candidate in (
-                "Achternaam",
-                "SignificantDeelVanDeAchternaam",
-                "lastname",
-                "surname",
-            ):
-                if out.get(candidate):
-                    alt_last = out.get(candidate)
-                    break
-            if alt_last:
-                parts.append(str(alt_last).strip())
-            # If we still have no parts but Achternaam exists and is a plausible string, use it as the name
-            if not parts and out.get("Achternaam"):
-                try:
-                    al = out.get("Achternaam")
-                    if not (isinstance(al, int | float) and float(al) == 0):
-                        s_al = str(al).strip()
-                        if s_al and s_al not in ("0", "None"):
-                            parts.append(s_al)
-                except Exception:
-                    pass
-            # fallback: look for fields in the original headers that look like 'voorletters' or 'initialen'
-            if not parts:
-                for h in ("voorletters", "initialen", "initials", "voornaam"):
-                    # check original record keys (case-insensitive)
-                    for k, v in rec.items():
-                        if k is None:
-                            continue
-                        kk = tok(k)
-                        if kk == h and v:
-                            parts.append(str(v).strip())
-            if parts:
-                out["Naam"] = " ".join(parts)
-    except Exception:
-        pass
-
-    return out
-
-
-def _is_valid_yyyymmdd(s: str) -> bool:
-    """Return True if s matches YYYYMMDD and is a real date."""
-    if not s:
-        return False
-    try:
-        ss = str(s).strip()
-        # accept either compact YYYYMMDD or ISO YYYY-MM-DD
-        if len(ss) == 8 and ss.isdigit():
-            datetime.datetime.strptime(ss, "%Y%m%d")
-            return True
-        if len(ss) == 10 and ss[4] == "-" and ss[7] == "-":
-            datetime.datetime.strptime(ss, "%Y-%m-%d")
-            return True
-        return False
-    except Exception:
-        return False
-
-
-_CACHED_XSD_SCHEMA = None
-_LAST_XSD_ERROR = None
-
-
-def _load_message_xsd():
-    """Load and cache the `UwvZwMeldingInternBody` XMLSchema if available.
-
-    Returns an lxml.etree.XMLSchema object or None if not loadable.
-    """
-    global _CACHED_XSD_SCHEMA
-    if _CACHED_XSD_SCHEMA is not None:
-        return _CACHED_XSD_SCHEMA
-    xsd_path = (
-        Path(__file__).parent.parent / "docs" / "UwvZwMeldingInternBody-v0428-b01.xsd"
-    )
-    if not xsd_path.exists():
-        return None
-
-    # Try a "safe" parse that avoids network fetches and external entity resolution
-    try:
-        safe_parser = etree.XMLParser(
-            load_dtd=False, no_network=True, resolve_entities=False
-        )
-        doc = etree.parse(str(xsd_path), safe_parser)
-        try:
-            schema = etree.XMLSchema(doc)
-            _CACHED_XSD_SCHEMA = schema
-            return schema
-        except Exception as se:
-            app.logger.warning("XSD compile failed (safe parse): %s", se)
-    except Exception as e:
-        app.logger.debug("Safe XSD parse failed, will attempt permissive parse: %s", e)
-    try:
-        permissive_parser = etree.XMLParser(load_dtd=True, no_network=False)
-        doc2 = etree.parse(str(xsd_path), permissive_parser)
-        schema2 = etree.XMLSchema(doc2)
-        _CACHED_XSD_SCHEMA = schema2
-        return schema2
-    except Exception as ex:
-        app.logger.warning("Full XSD load/compile failed: %s", ex)
-        global _LAST_XSD_ERROR
-        try:
-            _LAST_XSD_ERROR = str(ex)
-        except Exception:
-            _LAST_XSD_ERROR = "XSD load/compile failed"
-        _CACHED_XSD_SCHEMA = None
-        return None
-
-
-def _validate_generator_record(rec: dict) -> list:
-    """Validate a normalized record (keys like 'BSN','Naam','DatEersteAoDag').
-
-    Returns a list of error messages (empty if valid).
-    """
-    errs = []
-    # BSN required
-    bsn = rec.get("BSN") or rec.get("Burgerservicenr")
-    if not bsn or str(bsn).strip() == "":
-        errs.append("ontbrekende BSN")
-    # Naam required (either 'Naam' or first+last)
-    naam = rec.get("Naam")
-    if not naam or str(naam).strip() == "":
-        first = (
-            rec.get("EersteVoornaam") or rec.get("Voornaam") or rec.get("Voorletters")
-        )
-        last = rec.get("Achternaam") or rec.get("SignificantDeelVanDeAchternaam")
-        if not (first or last):
-            errs.append("ontbrekende Naam")
-    # DatEersteAoDag required and must be YYYYMMDD
-    dae = rec.get("DatEersteAoDag") or rec.get("DatEersteAoDag")
-    if dae:
-        s = str(dae).strip()
-        # allow Excel serial numbers (digits less than 6?) we'll only validate YYYYMMDD here
-        if len(s) == 8 and s.isdigit():
-            if not _is_valid_yyyymmdd(s):
-                errs.append(f"ongeldige DatEersteAoDag: {s}")
-        else:
-            # try to parse common date formats
-            try:
-                # leverage existing helper to format; if it raises or returns empty, flag
-                formatted = _format_date_yyyymmdd(dae)
-                if not formatted or not _is_valid_yyyymmdd(formatted):
-                    errs.append(f"ongeldige DatEersteAoDag: {dae}")
-            except Exception:
-                errs.append(f"ongeldige DatEersteAoDag: {dae}")
-    else:
-        errs.append("ontbrekende DatEersteAoDag")
-    return errs
-
-
-def _is_blank_normalized_record(rec: dict) -> bool:
-    """Return True if the normalized record appears to be an empty/placeholder row.
-
-    We consider a row blank if it contains no meaningful identifying values
-    (no BSN, no Naam/Achternaam, no Loonheffingennummer, no IBAN).
-    """
-    try:
-
-        def is_empty(v):
-            if v is None:
-                return True
-            s = str(v).strip()
-            if s == "" or s in ("0", "None"):
-                return True
-            return False
-
-        keys = [
-            rec.get("BSN"),
-            rec.get("Naam"),
-            rec.get("Achternaam"),
-            rec.get("Loonheffingennummer"),
-            rec.get("IBAN"),
-            rec.get("Rekeningnummer (IBAN)"),
-        ]
-        return all(is_empty(k) for k in keys)
-    except Exception:
-        return False
-
-
-@app.route("/favicon.ico")
-def favicon():
-    # Serve a favicon from static if present, otherwise return 204
-    if app.static_folder is not None:
-        p = Path(app.static_folder) / "favicon.ico"
-    else:
-        p = Path("static") / "favicon.ico"
-    if p.exists():
-        return send_file(str(p))
-    return "", 204
-
-
-@app.route("/logo.png")
-def logo():
-    # Serve a project-root logo if present in project root or static/img
-    base_dir = Path(__file__).parent.parent
-    candidates = [
-        base_dir / "uzs_logo.png",
-        base_dir / "uzs-logo.png",
-        Path(app.static_folder or "static") / "img" / "uzs_logo.png",
-    ]
-    for c in candidates:
-        if c.exists():
-            try:
-                return send_file(str(c), mimetype="image/png")
-            except Exception:
-                return send_file(str(c))
-    return "", 404
-
-
-@app.route("/genereer_xml")
-def genereer_xml():
-    """Excel upload page with results below"""
-    # Get existing generated files
-    generated = []
-    try:
-        out_dir = get_output_directory()
-        if out_dir.exists():
-            for f in out_dir.glob("*.xml"):
-                try:
-                    generated.append(
-                        {
-                            "tijdstip": datetime.datetime.fromtimestamp(
-                                f.stat().st_mtime
-                            ).isoformat(),
-                            "filename": f.name,
-                            "output_path": str(f),
-                            "size": f.stat().st_size,
-                        }
-                    )
-                except Exception:
-                    continue
-        generated = sorted(
-            generated, key=lambda x: x.get("tijdstip") or "", reverse=True
-        )
-    except Exception:
-        generated = []
-
-    events_file = Path(__file__).parent / "xml_events.jsonl"
-    success_rate = _get_success_rate(events_file)
-
-    zip_limits = {
-        "max_files": ZIP_MAX_FILES,
-        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
-        "max_file_bytes": ZIP_MAX_FILE_SIZE,
-    }
-
-    return render_template(
-        "genereer_xml.html",
-        generated=generated,
-        zip_limits=zip_limits,
-        success_rate=success_rate,
-    )
-
-
-@app.route("/genereer_xml_json")
-def genereer_xml_json():
-    """JSON upload page with results below"""
-    # Get existing generated files
-    generated = []
-    try:
-        out_dir = get_output_directory_json()
-        if out_dir.exists():
-            for f in out_dir.glob("*.xml"):
-                try:
-                    generated.append(
-                        {
-                            "tijdstip": datetime.datetime.fromtimestamp(
-                                f.stat().st_mtime
-                            ).isoformat(),
-                            "filename": f.name,
-                            "output_path": str(f),
-                            "size": f.stat().st_size,
-                        }
-                    )
-                except Exception:
-                    continue
-        generated = sorted(
-            generated, key=lambda x: x.get("tijdstip") or "", reverse=True
-        )
-    except Exception:
-        generated = []
-
-    zip_limits = {
-        "max_files": ZIP_MAX_FILES,
-        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
-        "max_file_bytes": ZIP_MAX_FILE_SIZE,
-    }
-
-    return render_template(
-        "genereer_json.html", generated=generated, zip_limits=zip_limits
-    )
-
-
-@app.route("/genereer_xml_json/upload_json", methods=["POST"])
+# --- JSON upload endpoint for genereer_json.html ---
+@app.route('/upload_json', methods=['POST'])
 def upload_json():
-    """Process uploaded JSON file and generate XML"""
-    log_path = str(
-        Path(__file__).parent.parent / "build" / "logs" / "user_uploads_json.log"
-    )
-    if "json_file" not in request.files:
-        flash("Geen bestand geüpload", "danger")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_FILE\tERROR\n")
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml_json"))
+    file = request.files.get('json_file')
+    if not file:
+        flash('Geen JSON-bestand geüpload.', 'danger')
+        return redirect(request.referrer or url_for('genereer_json'))
+    # Hier kun je de verwerking van het JSON-bestand toevoegen
+    # Bijvoorbeeld: bestand opslaan, valideren, verwerken, etc.
+    # file.save(os.path.join('uploads', secure_filename(file.filename)))
+    flash('JSON-bestand succesvol geüpload (dummy handler).', 'success')
+    return redirect(request.referrer or url_for('genereer_json'))
 
-    f = request.files["json_file"]
-    if f.filename == "":
-        flash("Geen bestand geselecteerd", "danger")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_FILENAME\tERROR\n")
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml_json"))
-
-    # Lees JSON content
-    try:
-        content = f.read()
-        json_data = json.loads(content.decode("utf-8"))
-    except Exception as e:
-        flash(f"Ongeldig JSON-bestand: {e}", "danger")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(
-                    f"{datetime.datetime.now().isoformat()}\t{f.filename}\tJSON_DECODE_ERROR: {e}\n"
-                )
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml_json"))
-
-    # Converteer naar lijst van records
-    if isinstance(json_data, dict):
-        rows_list = [json_data]
-    elif isinstance(json_data, list):
-        rows_list = json_data
-    else:
-        flash("JSON moet een object of array zijn", "danger")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(
-                    f"{datetime.datetime.now().isoformat()}\t{f.filename}\tJSON_STRUCTURE_ERROR\n"
-                )
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml_json"))
-
-    # Bepaal aanvraagtype
-    form_aanvraag_type = request.form.get("aanvraag_type") or "ZBM"
-    aanvraag_map = {"Digipoort": "OTP3"}
-    _KNOWN_CDBERICHT_TYPES = {
-        "KCC",
-        "OTP1",
-        "OTP3",
-        "RFE",
-        "RFV",
-        "RFX",
-        "VM",
-        "ZBM",
-        "KAAN",
-        "ZBMA",
-    }
-    cd_bericht_default = aanvraag_map.get(form_aanvraag_type, form_aanvraag_type)
-    validate_flag = str(request.form.get("validate", "on")).strip().lower() in (
-        "1",
-        "true",
-        "on",
-        "yes",
-    )
-
-    gen = _load_generator_module()
-    if gen is None:
-        flash("Generator module niet beschikbaar", "warning")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(
-                    f"{datetime.datetime.now().isoformat()}\t{f.filename}\tGENERATOR_MODULE_MISSING\n"
-                )
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml_json"))
-
-    try:
-        ns_soap, ns_uwvh, ns_body = gen._namespaces()
-        generated = []
-        errors = []
-
-        out_dir = get_output_directory_json()
-        out_dir_str = str(out_dir)
-        os.makedirs(out_dir_str, exist_ok=True)
-
-        log_path = str(
-            Path(__file__).parent.parent / "build" / "logs" / "generator_json.log"
-        )
-        schema = _load_message_xsd() if validate_flag else None
-        bodies = []
-
-        for idx, rec in enumerate(rows_list, start=1):
-            try:
-                rec_norm = _normalize_record_for_generator(rec)
-                msg, msg_aanvraag_type = gen.build_message_element(rec_norm, ns_body)
-
-                # CdBerichtType override
-                excel_cd = (
-                    rec_norm.get("CdBerichtType")
-                    or rec_norm.get("aanvraag_type")
-                    or rec_norm.get("Type")
-                )
-                desired = (
-                    aanvraag_map.get(excel_cd, excel_cd)
-                    if excel_cd
-                    else cd_bericht_default
-                )
-
-                existing = msg.findall("{" + ns_body + "}CdBerichtType")
-                existing_text = (
-                    existing[0].text.strip() if existing and existing[0].text else None
-                )
-
-                should_override = (
-                    form_aanvraag_type == "Digipoort"
-                    or not existing_text
-                    or (existing_text and existing_text not in _KNOWN_CDBERICHT_TYPES)
-                    or existing_text != desired
-                )
-
-                if should_override:
-                    if form_aanvraag_type == "Digipoort":
-                        desired = "OTP3"
-                    if existing:
-                        existing[0].text = desired
-                    else:
-                        etree.SubElement(msg, "{" + ns_body + "}CdBerichtType").text = (
-                            desired
-                        )
-                    msg_aanvraag_type = desired
-
-                final_existing = msg.findall("{" + ns_body + "}CdBerichtType")
-                if final_existing and final_existing[0].text:
-                    msg_aanvraag_type = final_existing[0].text.strip()
-
-                # XSD validatie
-                if validate_flag and schema:
-                    xml_bytes = etree.tostring(msg, encoding="utf-8")
-                    lmsg = etree.fromstring(xml_bytes)
-                    if not schema.validate(lmsg):
-                        msgs = [str(e.message) for e in schema.error_log]
-                        errors.append(f"Record {idx}: {'; '.join(msgs)}")
-                        continue
-
-                bodies.append(msg)
-                if len(bodies) == 1:
-                    bulk_aanvraag_type = msg_aanvraag_type
-            except Exception as exc:
-                errors.append(f"Record {idx}: {exc}")
-
-        if bodies:
-            tester_name = session.get("user", {}).get("name", "tester")
-            envelope = gen.build_envelope_with_header_and_bodies(
-                bodies, sender=form_aanvraag_type, tester_name=tester_name
-            )
-            bulk_type = (
-                bulk_aanvraag_type
-                if "bulk_aanvraag_type" in locals()
-                else form_aanvraag_type
-            )
-            saved = gen.save_envelope(envelope, out_dir_str, "json_bulk", bulk_type)
-            generated.append(Path(saved).name)
-
-            gen.append_log(
-                log_path,
-                f"{datetime.datetime.now().isoformat()}\t{saved}\tSUCCESS\t{len(bodies)}",
-            )
-
-        bulk_zip_name = None
-        if generated:
-            ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            bulk_zip_name = f"bulk_json_{form_aanvraag_type}_{ts}.zip"
-            bulk_zip_path = DOWNLOADS_DIR / bulk_zip_name
-            with ZipFile(bulk_zip_path, "w", ZIP_DEFLATED) as zf:
-                for fn in generated:
-                    fp = out_dir / fn
-                    if fp.exists():
-                        zf.write(str(fp), fn)
-            flash(f"{len(bodies)} XML-bestand(en) gegenereerd uit JSON", "success")
-
-        if errors:
-            for err in errors[:10]:
-                flash(err, "warning")
-
-        return render_template(
-            "genereer_json.html",
-            generated_files=generated,
-            bulk_zip=bulk_zip_name,
-            errors=errors,
-        )
-
-    except Exception as e:
-        flash(f"Fout bij verwerken JSON: {e}", "danger")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(
-                    f"{datetime.datetime.now().isoformat()}\t{f.filename}\tPROCESSING_ERROR: {e}\n"
-                )
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml_json"))
-
-
-@app.route("/genereer_xml/upload_excel", methods=["POST"])
+# --- Excel upload endpoint for genereer_xml.html ---
+@app.route('/upload_excel', methods=['POST'])
 def upload_excel():
-    log_path = str(
-        Path(__file__).parent.parent / "build" / "logs" / "user_uploads_excel.log"
-    )
-    if openpyxl is None:
-        flash(
-            "Excel-ondersteuning niet beschikbaar (openpyxl niet geïnstalleerd).",
-            "danger",
-        )
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_OPENPYXL\tERROR\n")
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml"))
+    file = request.files.get('excel_file')
+    if not file:
+        flash('Geen bestand geüpload.', 'danger')
+        return redirect(request.referrer or url_for('genereer_xml'))
+    # Save the uploaded file to uploads directory
+    uploads_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads')
+    os.makedirs(uploads_dir, exist_ok=True)
+    orig_filename = file.filename if file.filename else 'upload.xlsx'
+    filename = secure_filename(orig_filename)
+    file_path = os.path.join(uploads_dir, filename)
+    file.save(file_path)
 
-    if "excel_file" not in request.files:
-        flash("Geen bestand geüpload", "danger")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_FILE\tERROR\n")
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml"))
+    # Get aanvraag_type from form
+    aanvraag_type = request.form.get('aanvraag_type', 'ZBM').strip().upper()
+    # Patch the Excel file to set aanvraag_type for all rows (in a temp file)
+    import openpyxl
+    import tempfile
+    import subprocess
 
-    f = request.files["excel_file"]
-    if f.filename == "":
-        flash("Geen bestand geselecteerd", "danger")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(f"{datetime.datetime.now().isoformat()}\tNO_FILENAME\tERROR\n")
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml"))
-
-    # Read workbook from uploaded file (file storage provides file-like object)
-    # Read bytes once so we can both parse in-memory and save a temp file
-    content = f.read()
+    import warnings
     try:
-        wb = openpyxl.load_workbook(
-            filename=io.BytesIO(content), read_only=True, data_only=True
-        )
-    except Exception as e:
-        flash("Kon Excel-bestand niet lezen: " + str(e), "danger")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(
-                    f"{datetime.datetime.now().isoformat()}\t{f.filename}\tEXCEL_READ_ERROR: {e}\n"
-                )
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml"))
-
-    sheet = wb.active
-
-    # Read headers from first row for legacy in-process parsing
-    rows = sheet.iter_rows(values_only=True)
-    try:
-        headers = [h if h is not None else "" for h in next(rows)]
-    except StopIteration:
-        flash("Leeg Excel-bestand", "danger")
-        try:
-            with open(log_path, "a", encoding="utf-8") as lf:
-                lf.write(
-                    f"{datetime.datetime.now().isoformat()}\t{f.filename}\tEMPTY_EXCEL\n"
-                )
-        except Exception:
-            pass
-        return redirect(url_for("genereer_xml"))
-
-    # Determine aanvraag type (used by generator output mapping)
-    # `form_aanvraag_type` preserves the raw UI selection (used for envelope sender)
-    form_aanvraag_type = request.form.get("aanvraag_type") or "ZBM"
-    # Map friendly form values to schema-allowed CdBerichtType codes.
-    # ONLY Digipoort gets mapped to OTP3; all other types remain unchanged.
-    aanvraag_map = {
-        "Digipoort": "OTP3",
-    }
-    # Known schema codes which we should accept as-is if present in the generated
-    # message. If the generator wrote one of these codes already (e.g. 'VM' or
-    # 'ZBM'), we won't override it with the selected `aanvraag_type`.
-    _KNOWN_CDBERICHT_TYPES = {
-        "KCC",
-        "OTP1",
-        "OTP3",
-        "RFE",
-        "RFV",
-        "RFX",
-        "VM",
-        "ZBM",
-        "KAAN",
-        "ZBMA",
-    }
-    # `cd_bericht_default` is the schema code we will use for CdBerichtType when
-    # no explicit value is present in the Excel row. ONLY map Digipoort to OTP3;
-    # all other types (ZBM, VM, etc.) keep their original code.
-    cd_bericht_default = aanvraag_map.get(form_aanvraag_type, form_aanvraag_type)
-    # Determine whether to validate records (checkbox on form). Default: True
-    validate_flag = str(request.form.get("validate", "on")).strip().lower() in (
-        "1",
-        "true",
-        "on",
-        "yes",
-    )
-
-    # Attempt to use the in-process Excel->XML generator (tools/generate_from_excel.py)
-    gen = _load_generator_module()
-    if gen is None:
-        # Help the user debug: if the generator isn't loadable we fall back to legacy parsing
-        flash(
-            "In-process generator niet gevonden of niet laadb... Gebruik legacy parser.",
-            "warning",
-        )
-    else:
-        # generator will be used; avoid noisy per-request flashes in the UI
-        pass
-    temp_file_path = None
-    if gen is not None:
-        try:
-            # save uploaded bytes to a tmp file for the generator
-            tf = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-            try:
-                tf.write(content)
-                tf.flush()
-            finally:
-                tf.close()
-            temp_file_path = tf.name
-
-            # read rows using the generator's helper (use cached values when available)
-            # data_only=True prefers stored/calculated values instead of formulas, which
-            # avoids sanitizing useful display values to empty strings.
-            rows_list, formula_count = gen.read_excel_rows(
-                temp_file_path, data_only=True
-            )
-            ns_soap, ns_uwvh, ns_body = gen._namespaces()
-
-            generated = []
-            errors = []
-            # Capture any XSD load error for UI; reset before per-request use
-            global _LAST_XSD_ERROR
-            _LAST_XSD_ERROR = None
-
-            # Use configured output directory
-            out_dir = get_output_directory()
-            out_dir_str = str(out_dir)
-            os.makedirs(out_dir_str, exist_ok=True)
-
-            log_path = str(
-                Path(__file__).parent.parent / "build" / "logs" / "generator_excel.log"
-            )
-
-            # Use bulk when there are multiple records; otherwise create one file per row
-            # Only load XSD/schema if validation is enabled
-            schema = _load_message_xsd() if validate_flag else None
-            # Determine which fields the uploaded Excel provides so we can validate
-            # only against those. `rows_list` is a list of dicts keyed by header
-            # names returned by the in-process generator.
-            excel_headers = []
-            if rows_list:
-                # first row's keys represent the headers (generator normalizes them)
-                excel_headers = list(rows_list[0].keys())
-
-            # Helper to check for presence among synonyms
-            def _record_has_any(rec, names):
-                for n in names:
-                    v = rec.get(n)
-                    if v is not None and str(v).strip() != "":
-                        return True
-                return False
-
-            # Known important fields and common header synonyms
-            important_field_synonyms = {
-                "BSN": ["BSN", "Burgerservicenr", "Burgerservicenr"],
-                "Naam": [
-                    "Achternaam",
-                    "SignificantDeelVanDeAchternaam",
-                    "Naam",
-                    "IndienerNaam",
-                ],
-                "DatEersteAoDag": ["DatEersteAoDag", "DatEersteAoDag"],
-                "Loonheffingennummer": [
-                    "Loonheffingennummer",
-                    "Loonheffingennr",
-                    "Loonheffingennr",
-                ],
-            }
-            if len(rows_list) > 1:
-                bodies = []
-                for idx, rec in enumerate(rows_list, start=2):
-                    try:
-                        rec_norm = _normalize_record_for_generator(rec)
-                        # Skip blank/placeholder rows without reporting errors
-                        if _is_blank_normalized_record(rec_norm):
-                            continue
-                        # Dynamic validation: only enforce important fields that are
-                        # present in the uploaded Excel headers. This makes the
-                        # validation adapt to the sheet the user uploaded.
-                        for imp, syns in important_field_synonyms.items():
-                            if any(h in excel_headers for h in syns):
-                                if not _record_has_any(rec, syns):
-                                    errors.append(
-                                        f"Regel {idx}: {imp} ontbreekt of is ongeldig"
-                                    )
-                                    # skip this record
-                                    continue
-
-                        # record-level validation (BSN, Naam, DatEersteAoDag) if enabled
-                        rec_errs = (
-                            _validate_generator_record(rec_norm)
-                            if validate_flag
-                            else []
-                        )
-                        if rec_errs:
-                            errors.append(f"Regel {idx}: " + "; ".join(rec_errs))
-                            continue
-
-                        msg, msg_aanvraag_type = gen.build_message_element(
-                            rec_norm, ns_body
-                        )
-                        # Handle CdBerichtType: ONLY override with OTP3 if user selected Digipoort.
-                        # For all other types (ZBM, VM, etc.), keep existing valid schema codes.
-                        try:
-                            excel_cd_names = ["CdBerichtType", "aanvraag_type", "Type"]
-                            excel_cd = None
-                            for n in excel_cd_names:
-                                v = rec_norm.get(n)
-                                if v is not None and str(v).strip() != "":
-                                    excel_cd = str(v).strip()
-                                    break
-
-                            # Determine desired code: if Excel has explicit value, use it (mapped if needed)
-                            if excel_cd:
-                                desired = aanvraag_map.get(excel_cd, excel_cd)
-                            else:
-                                desired = cd_bericht_default
-
-                            # Get existing CdBerichtType from generated message
-                            # Child elements use default namespace, must search with namespace
-                            existing = msg.findall("{" + ns_body + "}CdBerichtType")
-                            existing_text = None
-                            if existing and len(existing) > 0:
-                                t = existing[0].text
-                                existing_text = t.strip() if t is not None else None
-
-                            # ONLY override if:
-                            # 1. User selected Digipoort (form_aanvraag_type == "Digipoort"), OR
-                            # 2. Existing value is not a valid schema code, OR
-                            # 3. User form selection differs from existing value (user wants specific type)
-                            should_override = False
-                            if form_aanvraag_type == "Digipoort":
-                                # Always set to OTP3 for Digipoort, regardless of Excel content
-                                desired = "OTP3"
-                                should_override = True
-                            elif (
-                                existing_text
-                                and existing_text not in _KNOWN_CDBERICHT_TYPES
-                            ):
-                                # Override invalid codes with the desired value
-                                should_override = True
-                            elif not existing_text:
-                                # No existing value, set the desired one
-                                should_override = True
-                            elif existing_text != desired:
-                                # User selected a different type than what's in Excel/default
-                                should_override = True
-
-                            if should_override:
-                                if existing:
-                                    for c in existing:
-                                        c.text = desired
-                                else:
-                                    etree.SubElement(
-                                        msg, "{" + ns_body + "}CdBerichtType"
-                                    ).text = desired
-
-                            # Always update aanvraag_type to match final CdBerichtType in XML
-                            final_existing = msg.findall(
-                                "{" + ns_body + "}CdBerichtType"
-                            )
-                            if final_existing and len(final_existing) > 0:
-                                final_text = final_existing[0].text
-                                if final_text and final_text.strip():
-                                    msg_aanvraag_type = final_text.strip()
-                        except Exception:
-                            pass
-
-                        # XSD validation per message if validation is enabled and schema available
-                        if validate_flag and schema is not None:
-                            try:
-                                xml_bytes = etree.tostring(msg, encoding="utf-8")
-                                lmsg = etree.fromstring(xml_bytes)
-                                if not schema.validate(lmsg):
-                                    # collect schema errors
-                                    le = schema.error_log
-                                    msgs = []
-                                    for e in le:
-                                        msgs.append(str(e.message))
-                                    errors.append(
-                                        f"Regel {idx}: XSD fouten: {'; '.join(msgs)}"
-                                    )
-                                    continue
-                            except Exception as ve:
-                                errors.append(f"Regel {idx}: XSD validatiefout: {ve}")
-                                continue
-
-                        bodies.append(msg)
-                        # Store aanvraag_type from first message for bulk filename
-                        if len(bodies) == 1:
-                            bulk_aanvraag_type = msg_aanvraag_type
-                    except Exception as exc:
-                        try:
-                            gen.append_log(
-                                log_path,
-                                f"{datetime.datetime.now().isoformat()}\tERROR_BUILD_MSG\t{exc}",
-                            )
-                        except Exception:
-                            pass
-
-                # Get tester name from session or default
-                tester_name = session.get("user", {}).get("name", "tester")
-                envelope = gen.build_envelope_with_header_and_bodies(
-                    bodies, sender=form_aanvraag_type, tester_name=tester_name
-                )
-                # Use aanvraag_type from first message, or form selection as fallback
-                bulk_type = (
-                    bulk_aanvraag_type
-                    if "bulk_aanvraag_type" in locals()
-                    else form_aanvraag_type
-                )
-                saved = gen.save_envelope(envelope, out_dir_str, "bulk", bulk_type)
-                try:
-                    gen.append_log(
-                        log_path,
-                        f"{datetime.datetime.now().isoformat()}\t{saved}\tSUCCESS\t{len(bodies)}",
-                    )
-                except Exception:
-                    pass
-                generated = [Path(saved).name]
-            else:
-                gen_files = []
-                schema = _load_message_xsd() if validate_flag else None
-                for idx, rec in enumerate(rows_list, start=2):
-                    try:
-                        rec_norm = _normalize_record_for_generator(rec)
-
-                        # Dynamic validation based on the provided headers
-                        for imp, syns in important_field_synonyms.items():
-                            if any(h in excel_headers for h in syns):
-                                if not _record_has_any(rec, syns):
-                                    errors.append(
-                                        f"Regel {idx}: {imp} ontbreekt of is ongeldig"
-                                    )
-                                    # skip this record
-                                    continue
-
-                        rec_errs = (
-                            _validate_generator_record(rec_norm)
-                            if validate_flag
-                            else []
-                        )
-                        if rec_errs:
-                            errors.append(f"Regel {idx}: " + "; ".join(rec_errs))
-                            continue
-
-                        m, msg_aanvraag_type = gen.build_message_element(
-                            rec_norm, ns_body
-                        )
-                        try:
-                            # Handle CdBerichtType: ONLY override with OTP3 if user selected Digipoort.
-                            # For all other types (ZBM, VM, etc.), keep existing valid schema codes.
-                            excel_cd_names = ["CdBerichtType", "aanvraag_type", "Type"]
-                            excel_cd = None
-                            for n in excel_cd_names:
-                                v = rec_norm.get(n)
-                                if v is not None and str(v).strip() != "":
-                                    excel_cd = str(v).strip()
-                                    break
-
-                            # Determine desired code
-                            if excel_cd:
-                                desired = aanvraag_map.get(excel_cd, excel_cd)
-                            else:
-                                desired = cd_bericht_default
-
-                            # Get existing CdBerichtType
-                            # Child elements use default namespace, must search with namespace
-                            existing = m.findall("{" + ns_body + "}CdBerichtType")
-                            existing_text = None
-                            if existing and len(existing) > 0:
-                                t = existing[0].text
-                                existing_text = t.strip() if t is not None else None
-
-                            # ONLY override if:
-                            # 1. User selected Digipoort, OR
-                            # 2. Existing value is not a valid schema code, OR
-                            # 3. User form selection differs from existing value (user wants specific type)
-                            should_override = False
-                            if form_aanvraag_type == "Digipoort":
-                                # Always set to OTP3 for Digipoort, regardless of Excel content
-                                desired = "OTP3"
-                                should_override = True
-                            elif (
-                                existing_text
-                                and existing_text not in _KNOWN_CDBERICHT_TYPES
-                            ):
-                                should_override = True
-                            elif not existing_text:
-                                should_override = True
-                            elif existing_text != desired:
-                                # User selected a different type than what's in Excel/default
-                                should_override = True
-
-                            if should_override:
-                                if existing:
-                                    for c in existing:
-                                        c.text = desired
-                                else:
-                                    etree.SubElement(
-                                        m, "{" + ns_body + "}CdBerichtType"
-                                    ).text = desired
-
-                            # Always update aanvraag_type to match final CdBerichtType in XML
-                            final_existing = m.findall("{" + ns_body + "}CdBerichtType")
-                            if final_existing and len(final_existing) > 0:
-                                final_text = final_existing[0].text
-                                if final_text and final_text.strip():
-                                    msg_aanvraag_type = final_text.strip()
-                        except Exception:
-                            pass
-                        if validate_flag and schema is not None:
-                            try:
-                                xml_bytes = etree.tostring(m, encoding="utf-8")
-                                lmsg = etree.fromstring(xml_bytes)
-                                if not schema.validate(lmsg):
-                                    le = schema.error_log
-                                    msgs = [str(e.message) for e in le]
-                                    errors.append(
-                                        f"Regel {idx}: XSD fouten: {'; '.join(msgs)}"
-                                    )
-                                    continue
-                            except Exception as ve:
-                                errors.append(f"Regel {idx}: XSD validatiefout: {ve}")
-                                continue
-                        # Get tester name from session or default
-                        tester_name = session.get("user", {}).get("name", "tester")
-                        env = gen.build_envelope_with_header_and_bodies(
-                            [m], sender=form_aanvraag_type, tester_name=tester_name
-                        )
-                        bsn = rec_norm.get("BSN") or f"row{idx}"
-                        safe_bsn = str(bsn).replace(" ", "_")
-                        saved = gen.save_envelope(
-                            env, out_dir_str, safe_bsn, msg_aanvraag_type
-                        )
-                        try:
-                            gen.append_log(
-                                log_path,
-                                f"{datetime.datetime.now().isoformat()}\t{saved}\tSUCCESS",
-                            )
-                        except Exception:
-                            pass
-                        gen_files.append(Path(saved).name)
-                    except Exception as exc:
-                        try:
-                            gen.append_log(
-                                log_path,
-                                f"{datetime.datetime.now().isoformat()}\tERROR_SAVE\t{exc}",
-                            )
-                        except Exception:
-                            pass
-                generated = gen_files
-
-                # (XSD loader error already reset earlier for the request)
-
-            # Attempt to remove temp file
-            try:
-                if temp_file_path:
-                    os.unlink(temp_file_path)
-            except Exception:
-                pass
-
-            # If generator produced files, create a ZIP like the original flow and render results
-            bulk_zip_name = None
-            if generated:
-                try:
-                    ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-                    bulk_zip_name = f"bulk_{form_aanvraag_type}_{ts}.zip"
-                    DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
-                    zip_path = DOWNLOADS_DIR / bulk_zip_name
-                    from zipfile import ZIP_DEFLATED as _ZIP_DEF
-                    from zipfile import ZipFile as _ZipFile
-
-                    with _ZipFile(str(zip_path), "w", _ZIP_DEF) as zf:
-                        for fn in generated:
-                            # Search in output directory
-                            p = out_dir / fn
-                            if p.exists():
-                                zf.write(str(p), arcname=fn)
-                except Exception:
-                    bulk_zip_name = None
-
-            yaml_candidate = (
-                Path(__file__).parent.parent / "docs" / "excel_datasets.yml"
-            )
-            datasets = load_datasets_yaml(yaml_candidate)
-            success_rate = None
-            total_tests = 0
-            last_status = None
-            last_time = None
-            bulk_results = {"generated": generated, "errors": errors}
-            # Pass any XSD loader error message to the template so we can show an inline warning
-            xsd_error = _LAST_XSD_ERROR
-            return render_template(
-                "genereer_xml.html",
-                xml_path=None,
-                excel_records=datasets,
-                total_tests=total_tests,
-                last_test_status=last_status,
-                last_test_time=last_time,
-                success_rate=success_rate,
-                bulk_results=bulk_results,
-                bulk_zip=bulk_zip_name,
-                xsd_error=xsd_error,
-            )
-        except Exception:
-            # fall through to original in-Python mapping fallback
-            try:
-                if temp_file_path:
-                    os.unlink(temp_file_path)
-            except Exception:
-                pass
-            pass
-
-    # By default, we map normalized header names -> indices
-
-    # Check for client-provided mapping indices (mapping_bsn etc.). If provided, we will use indices
-    mapping = {}
-    mapping_keys = [
-        "bsn",
-        "geboortedatum",
-        "naam",
-        "dateersteaodag",
-        "inddirecteuitkering",
-        "cdredenaangifteao",
-        "cdredenziekmelding",
-        "indwerkdagopzaterdag",
-        "indwerkdagopzondag",
-    ]
-    for k in mapping_keys:
-        mv = request.form.get(f"mapping_{k}")
-        if mv is not None and mv != "":
-            try:
-                mapping[k] = int(mv)
-            except Exception:
-                mapping[k] = None
-
-    generated = []
-    errors = []
-    aanvraag_type = request.form.get("aanvraag_type") or "ZBM"
-
-    # detect workbook date mode
-    try:
-        date1904 = bool(getattr(wb.properties, "date1904", False))
-    except Exception:
-        date1904 = False
-
-    row_index = 1
-    for row in rows:
-        row_index += 1
-        # If mapping is provided, pick values by index, otherwise try to find by normalized header names
-        r = {}
-        if mapping:
-            for mk in mapping:
-                idx = mapping.get(mk)
-                if idx is None:
-                    r[mk] = None
-                else:
-                    try:
-                        r[mk] = row[idx] if idx < len(row) else None
-                    except Exception:
-                        r[mk] = None
-        else:
-            # normalize header keys for fallback mapping
-            def norm(h):
-                return (
-                    (str(h).strip().lower().replace(" ", "").replace("_", ""))
-                    if h is not None
-                    else ""
-                )
-
-            header_norm = {i: norm(headers[i]) for i in range(len(headers))}
-            for i, val in enumerate(row):
-                key = header_norm.get(i, "")
-                if key:
-                    r[key] = val
-
-        # map to required keys
-        data = {}
-        # Accept several aliases for BSN
-        bsn_val = None
-        for candidate in (
-            "bsn",
-            "burgerservicenr",
-            "burgerservicenummer",
-            "burgerservicenr",
-        ):
-            if r.get(candidate) is not None:
-                bsn_val = r.get(candidate)
+        wb = openpyxl.load_workbook(file_path)
+        ws = wb.active
+        if ws is None:
+            flash('Het geüploade Excel-bestand bevat geen werkblad of is ongeldig.', 'danger')
+            return redirect(request.referrer or url_for('genereer_xml'))
+        # Always set aanvraag_type for all rows, even if column exists
+        header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=False))
+        header_names = [cell.value for cell in header_row]
+        type_col = None
+        for idx, name in enumerate(header_names):
+            if name and str(name).strip().lower() in ['cdberichttype', 'aanvraag_type', 'type']:
+                type_col = idx
                 break
-        data["BSN"] = str(bsn_val).strip() if bsn_val is not None else ""
+        if type_col is None:
+            # Add aanvraag_type as new column
+            ws.cell(row=1, column=len(header_names)+1, value='CdBerichtType')
+            type_col = len(header_names)
+        # Overwrite aanvraag_type for all data rows
+        for i, row in enumerate(ws.iter_rows(min_row=2, max_row=ws.max_row), start=2):
+            ws.cell(row=i, column=type_col+1, value=aanvraag_type)
+        # Save to a temp file, suppressing openpyxl UserWarnings
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
+            patched_excel_path = tmp.name
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            wb.save(patched_excel_path)
+    except Exception as exc:
+        flash(f'Fout bij verwerken van het Excel-bestand: {exc}', 'danger')
+        return redirect(request.referrer or url_for('genereer_xml'))
 
-        # Name: accept direct 'naam' or compose from first name + last name
-        naam_val = None
-        if r.get("naam") is not None:
-            naam_val = r.get("naam")
-        else:
-            first = (
-                r.get("voornaam")
-                or r.get("eerstevoornaam")
-                or r.get("voorletters")
-                or ""
-            )
-            last = r.get("achternaam") or r.get("significantdeelvandeachternaam") or ""
-            combined = f"{first} {last}".strip()
-            if combined:
-                naam_val = combined
-        data["Naam"] = str(naam_val).strip() if naam_val is not None else ""
-
-        gebo_val = r.get("geboortedatum")
-        if gebo_val is None:
-            data["Geb_datum"] = ""
-        elif isinstance(gebo_val, int | float) or (
-            isinstance(gebo_val, str) and gebo_val.isdigit()
-        ):
-            data["Geb_datum"] = excel_serial_to_yyyymmdd(gebo_val, date1904=date1904)
-        else:
-            data["Geb_datum"] = _format_date_yyyymmdd(gebo_val)
-
-        # Melding Ziekte fields
-        dae_val = r.get("dateersteaodag")
-        if dae_val is None:
-            data["DatEersteAoDag"] = ""
-        elif isinstance(dae_val, int | float) or (
-            isinstance(dae_val, str) and dae_val.isdigit()
-        ):
-            data["DatEersteAoDag"] = excel_serial_to_yyyymmdd(
-                dae_val, date1904=date1904
-            )
-        else:
-            data["DatEersteAoDag"] = _format_date_yyyymmdd(dae_val)
-        v = r.get("inddirecteuitkering")
-        data["IndDirecteUitkering"] = str(v).strip() if v is not None else ""
-        v = r.get("cdredenaangifteao")
-        data["CdRedenAangifteAo"] = str(v).strip() if v is not None else ""
-        v = r.get("cdredenziekmelding")
-        data["CdRedenZiekmelding"] = str(v).strip() if v is not None else ""
-        v = r.get("indwerkdagopzaterdag")
-        data["IndWerkdagOpZaterdag"] = str(v).strip() if v is not None else ""
-        v = r.get("indwerkdagopzondag")
-        data["IndWerkdagOpZondag"] = str(v).strip() if v is not None else ""
-
-        # Basic validation
-        if not data["BSN"] or not data["Naam"]:
-            errors.append(f"Regel {row_index}: ontbrekende BSN of Naam; overslaan")
-            continue
-
-        unique_suffix = (
-            datetime.datetime.now().strftime("%Y%m%d%H%M%S") + f"_{row_index}"
-        )
-        data["CdBerichtType"] = aanvraag_type
-        data["BronApplicatie"] = aanvraag_type
-        tree = fill_xml_template(None, data, unique_suffix)
-        root = tree.getroot()
-        # XSD validation for legacy flow
-        schema = _load_message_xsd()
-        if schema is not None:
-            try:
-                xml_bytes = etree.tostring(root, encoding="utf-8")
-                lroot = etree.fromstring(xml_bytes)
-                if not schema.validate(lroot):
-                    le = schema.error_log
-                    msgs = [str(e.message) for e in le]
-                    errors.append(f"Regel {row_index}: XSD fouten: {'; '.join(msgs)}")
-                    continue
-            except Exception as ve:
-                errors.append(f"Regel {row_index}: XSD validatiefout: {ve}")
-                continue
-
-        def add_or_set(tag, val):
-            if val is None or val == "":
-                return
-            for elem in root.iter(tag):
-                elem.text = str(val)
-            if not any(True for _ in root.iter(tag)):
-                etree.SubElement(root, tag).text = str(val)
-
-        add_or_set("DatEersteAoDag", data.get("DatEersteAoDag"))
-        add_or_set("IndDirecteUitkering", data.get("IndDirecteUitkering"))
-        add_or_set("CdRedenAangifteAo", data.get("CdRedenAangifteAo"))
-        add_or_set("CdRedenZiekmelding", data.get("CdRedenZiekmelding"))
-        add_or_set("IndWerkdagOpZaterdag", data.get("IndWerkdagOpZaterdag"))
-        add_or_set("IndWerkdagOpZondag", data.get("IndWerkdagOpZondag"))
-
-        filename = f"aanvraag_{aanvraag_type}_{unique_suffix}.xml"
-        try:
-            save_xml(tree, aanvraag_type, filename)
-            generated.append(filename)
-        except Exception as e:
-            errors.append(f"Regel {row_index}: fout bij opslaan {e}")
-
-    # Close workbook
+    # Call the Excel-to-XML generator script
+    generator_path = os.path.join(os.path.dirname(__file__), '..', 'tools', 'generate_from_excel.py')
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
+    os.makedirs(output_dir, exist_ok=True)
+    python_exe = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.venv', 'Scripts', 'python.exe'))
+    import sys
     try:
-        wb.close()
-    except Exception:
-        pass
-
-    # If we generated files, create a ZIP archive for convenience
-    bulk_zip_name = None
-    if generated:
+        print(f"[DEBUG] Calling generator: {python_exe} {generator_path} --input {patched_excel_path} --outdir {output_dir} --mode single", file=sys.stderr)
+        result = subprocess.run([
+            python_exe,
+            generator_path,
+            '--input', patched_excel_path,
+            '--outdir', output_dir,
+            '--mode', 'single'
+        ], capture_output=True, text=True, check=True)
+        print(f"[DEBUG] Generator stdout: {result.stdout}", file=sys.stderr)
+        print(f"[DEBUG] Generator stderr: {result.stderr}", file=sys.stderr)
+        flash(f'Excel-bestand succesvol geüpload en {aanvraag_type} XML-bestanden gegenereerd.', 'success')
+    except subprocess.CalledProcessError as e:
+        print(f"[DEBUG] Generator failed: {e.stderr}\n{e.stdout}", file=sys.stderr)
+        flash(f'Fout bij genereren van XML: {e.stderr}\n{e.stdout}', 'danger')
+    finally:
         try:
-            from zipfile import ZIP_DEFLATED, ZipFile
-
-            ts = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-            bulk_zip_name = f"bulk_{aanvraag_type}_{ts}.zip"
-            # Create zip in central DOWNLOADS_DIR so download route can serve it
-            DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
-            zip_path = DOWNLOADS_DIR / bulk_zip_name
-            with ZipFile(str(zip_path), "w", ZIP_DEFLATED) as zf:
-                for fn in generated:
-                    # Search in output directory
-                    p = get_output_directory() / fn
-                    if p.exists():
-                        zf.write(str(p), arcname=fn)
-            # Also include zip name in generated list for template convenience
+            os.remove(patched_excel_path)
         except Exception:
-            bulk_zip_name = None
+            pass
+    # Log the files found after upload
+    try:
+        files = os.listdir(output_dir)
+        print(f"[DEBUG] Files in output_dir after upload: {files}", file=sys.stderr)
+    except Exception as e:
+        print(f"[DEBUG] Could not list files in output_dir: {e}", file=sys.stderr)
+    return redirect(url_for('genereer_xml'))
 
-    # Render same template with summary
-    yaml_candidate = Path(__file__).parent.parent / "docs" / "excel_datasets.yml"
-    datasets = load_datasets_yaml(yaml_candidate)
-    # reuse tile data
-    success_rate = None
-
-    # Ensure these dashboard variables exist for the render context
-    total_tests = 0
-    last_status = None
-    last_time = None
-
-    bulk_results = {"generated": generated, "errors": errors}
-    return render_template(
-        "genereer_xml.html",
-        xml_path=None,
-        excel_records=datasets,
-        total_tests=total_tests,
-        last_test_status=last_status,
-        last_test_time=last_time,
-        success_rate=success_rate,
-        bulk_results=bulk_results,
-        bulk_zip=bulk_zip_name,
-    )
-
-
-# --- ROUTES die bovenaan stonden, nu correct na app-definitie ---
 @app.route("/genereer_xml/fragment")
 def genereer_xml_fragment():
     """Fragment van de resultatenlijst voor AJAX refresh."""
+    zip_limits = {
+        'max_files': 50,
+        'max_size_mb': 100
+    }
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
     generated = []
-    try:
-        out_dir = get_output_directory()
-        if out_dir.exists():
-            for f in out_dir.glob("*.xml"):
+    if os.path.exists(output_dir):
+        for fname in sorted(os.listdir(output_dir), reverse=True):
+            if fname.endswith('.xml'):
+                fpath = os.path.join(output_dir, fname)
                 try:
-                    generated.append(
-                        {
-                            "tijdstip": datetime.datetime.fromtimestamp(
-                                f.stat().st_mtime
-                            ).isoformat(),
-                            "filename": f.name,
-                            "output_path": str(f),
-                            "size": f.stat().st_size,
-                        }
-                    )
+                    tijdstip = datetime.datetime.fromtimestamp(os.path.getmtime(fpath)).isoformat()
+                    size = os.path.getsize(fpath)
+                    generated.append({
+                        'filename': fname,
+                        'tijdstip': tijdstip,
+                        'size': size
+                    })
                 except Exception:
                     continue
-        generated = sorted(
-            generated, key=lambda x: x.get("tijdstip") or "", reverse=True
-        )
-    except Exception:
-        generated = []
-    events_file = Path(__file__).parent / "xml_events.jsonl"
-    success_rate = _get_success_rate(events_file)
-    zip_limits = {
-        "max_files": ZIP_MAX_FILES,
-        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
-        "max_file_bytes": ZIP_MAX_FILE_SIZE,
-    }
     return render_template(
         "genereer_xml.html",
-        generated=generated,
         zip_limits=zip_limits,
-        success_rate=success_rate,
-        fragment_only=True,
+        generated=generated,
+        fragment_only=True
     )
 
-
-@app.route("/genereer_xml_json/fragment")
-def genereer_json_fragment():
-    """Fragment van de resultatenlijst voor AJAX refresh (JSON workflow)."""
-    generated = []
+# --- Placeholder API endpoints for frontend JS ---
+@app.route('/api/test/laatste')
+def api_test_laatste():
+    out_dir = get_output_directory()
     try:
-        out_dir = get_output_directory()
-        if out_dir.exists():
-            for f in out_dir.glob("*.xml"):
+        xml_files = [f for f in os.listdir(out_dir) if f.endswith('.xml')]
+        if not xml_files:
+            print("[api_test_laatste] No XML files found.")
+            return jsonify({"error": "Geen testresultaten gevonden"}), 404
+        latest_file = max(xml_files, key=lambda f: os.path.getmtime(os.path.join(out_dir, f)))
+        file_path = os.path.join(out_dir, latest_file)
+        timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+        size = os.path.getsize(file_path)
+        result = {"filename": latest_file, "timestamp": timestamp, "size": size}
+        # print(f"[api_test_laatste] Returning: {result}")
+        return jsonify(result)
+    except Exception as e:
+        # print(f"[api_test_laatste] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/xml-stats')
+def api_xml_stats():
+    out_dir = get_output_directory()
+    try:
+        xml_files = [f for f in os.listdir(out_dir) if f.endswith('.xml')]
+        # Aggregate by date
+        daily = {}
+        for f in xml_files:
+            file_path = os.path.join(out_dir, f)
+            dt = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).date().isoformat()
+            if dt not in daily:
+                daily[dt] = {"datum": dt, "totaal": 0, "geslaagd": 0, "gefaald": 0}
+            daily[dt]["totaal"] += 1
+            daily[dt]["geslaagd"] += 1  # For now, all are 'geslaagd'
+            # If you want to mark some as failed, adjust here
+        # Calculate success percentage
+        aggregated = []
+        for dt in sorted(daily.keys()):
+            d = daily[dt]
+            totaal = d["totaal"]
+            geslaagd = d["geslaagd"]
+            gefaald = d["gefaald"]
+            succes_percentage = int(round((geslaagd / totaal) * 100)) if totaal > 0 else 0
+            d["succes_percentage"] = succes_percentage
+            aggregated.append(d)
+        result = {"aggregated": aggregated}
+        # print(f"[api_xml_stats] Returning: {result}")
+        return jsonify(result)
+    except Exception as e:
+        # print(f"[api_xml_stats] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/xml/throughput')
+def api_xml_throughput():
+    out_dir = get_output_directory()
+    try:
+        xml_files = [f for f in os.listdir(out_dir) if f.endswith('.xml')]
+        daily = {}
+        for f in xml_files:
+            file_path = os.path.join(out_dir, f)
+            dt = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).date().isoformat()
+            if dt not in daily:
+                daily[dt] = {"datum": dt, "totaal": 0, "geslaagd": 0, "gefaald": 0}
+            daily[dt]["totaal"] += 1
+            daily[dt]["geslaagd"] += 1  # For now, all are 'geslaagd'
+            # If you want to mark some as failed, adjust here
+        aggregated = []
+        for dt in sorted(daily.keys()):
+            d = daily[dt]
+            totaal = d["totaal"]
+            geslaagd = d["geslaagd"]
+            gefaald = d["gefaald"]
+            succes_percentage = int(round((geslaagd / totaal) * 100)) if totaal > 0 else 0
+            d["succes_percentage"] = succes_percentage
+            aggregated.append(d)
+        result = {"aggregated": aggregated}
+        # print(f"[api_xml_throughput] Returning: {result}")
+        return jsonify(result)
+    except Exception as e:
+        # print(f"[api_xml_throughput] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/test/totaal')
+def api_test_totaal():
+    out_dir = get_output_directory()
+    try:
+        xml_files = [f for f in os.listdir(out_dir) if f.endswith('.xml')]
+        result = {"totaal": len(xml_files)}
+        # print(f"[api_test_totaal] Returning: {result}")
+        return jsonify(result)
+    except Exception as e:
+        # print(f"[api_test_totaal] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/test/historie')
+def api_test_historie():
+    out_dir = get_output_directory()
+    try:
+        xml_files = [f for f in os.listdir(out_dir) if f.endswith('.xml')]
+        historie = []
+        for f in sorted(xml_files, key=lambda x: os.path.getmtime(os.path.join(out_dir, x)), reverse=True):
+            file_path = os.path.join(out_dir, f)
+            historie.append({
+                "filename": f,
+                "timestamp": datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat(),
+                "size": os.path.getsize(file_path)
+            })
+        result = {"historie": historie}
+        # print(f"[api_test_historie] Returning: {result}")
+        return jsonify(result)
+    except Exception as e:
+        # print(f"[api_test_historie] Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# --- Helper to get the output directory ---
+def get_output_directory():
+    # Adjust this path as needed for your project
+    return os.path.join(os.path.dirname(__file__), '..', 'build')
+
+# --- Preview helper ---
+def _safe_preview_content(content, max_chars=2000):
+    # Return a safe, truncated preview for display
+    if not isinstance(content, str):
+        try:
+            content = content.decode("utf-8", errors="replace")
+        except Exception:
+            content = str(content)
+    preview = content[:max_chars]
+    if len(content) > max_chars:
+        preview += "\n... (afgekapt)"
+    return escape(preview)
+
+# --- Voorvertoning endpoint ---
+@app.route("/resultaten/preview/<filename>")
+def resultaten_preview(filename):
+    # Only allow .xml files, prevent path traversal
+    if not filename.endswith(".xml") or "/" in filename or ".." in filename:
+        return jsonify({"error": "Ongeldige bestandsnaam"}), 400
+    out_dir = get_output_directory()
+    file_path = os.path.join(out_dir, filename)
+    if not os.path.exists(file_path) or not os.path.isfile(file_path):
+        return jsonify({"error": "Bestand niet gevonden"}), 404
+    try:
+        size = os.path.getsize(file_path)
+        tijdstip = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
+            content = f.read()
+        preview = _safe_preview_content(content, max_chars=2000)
+        return jsonify({
+            "filename": filename,
+            "size": size,
+            "tijdstip": tijdstip,
+            "preview": preview
+        })
+    except Exception as e:
+        return jsonify({"error": f"Fout bij lezen: {e}"}), 500
+
+# --- Main frontend routes ---
+@app.route("/")
+def home():
+    return render_template("dashboard.html")
+
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
+@app.route("/genereer_xml")
+def genereer_xml():
+    # Provide default context variables expected by the template
+    zip_limits = {
+        'max_files': 50,  # adjust as needed
+        'max_size_mb': 100
+    }
+    # Always refresh the results list on page load
+    output_dir = os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
+    generated = []
+    if os.path.exists(output_dir):
+        for fname in sorted(os.listdir(output_dir), reverse=True):
+            if fname.endswith('.xml'):
+                fpath = os.path.join(output_dir, fname)
                 try:
-                    generated.append(
-                        {
-                            "tijdstip": datetime.datetime.fromtimestamp(
-                                f.stat().st_mtime
-                            ).isoformat(),
-                            "filename": f.name,
-                            "output_path": str(f),
-                            "size": f.stat().st_size,
-                        }
-                    )
+                    tijdstip = datetime.datetime.fromtimestamp(os.path.getmtime(fpath)).isoformat()
+                    size = os.path.getsize(fpath)
+                    generated.append({
+                        'filename': fname,
+                        'tijdstip': tijdstip,
+                        'size': size
+                    })
                 except Exception:
                     continue
-        generated = sorted(
-            generated, key=lambda x: x.get("tijdstip") or "", reverse=True
-        )
-    except Exception:
-        generated = []
-    events_file = Path(__file__).parent / "xml_events.jsonl"
-    success_rate = _get_success_rate(events_file)
-    zip_limits = {
-        "max_files": ZIP_MAX_FILES,
-        "max_total_bytes": ZIP_MAX_TOTAL_SIZE,
-        "max_file_bytes": ZIP_MAX_FILE_SIZE,
-    }
-    return render_template(
-        "genereer_json.html",
-        generated=generated,
-        zip_limits=zip_limits,
-        success_rate=success_rate,
-        fragment_only=True,
-    )
+    return render_template("genereer_xml.html", zip_limits=zip_limits, generated=generated)
 
+@app.route("/genereer_json")
+def genereer_json():
+    zip_limits = {
+        'max_files': 50,  # adjust as needed
+        'max_size_mb': 100
+    }
+    generated = []  # or load actual generated files if available
+    return render_template("genereer_json.html", zip_limits=zip_limits, generated=generated)
+
+@app.route("/historie")
+def historie():
+    return render_template("historie.html")
+
+@app.route("/instellingen/")
+def instellingen():
+    return render_template("instellingen.html")
+
+@app.route("/datasets")
+def datasets():
+    return render_template("datasets.html")
+
+@app.route("/logs")
+def logs():
+    return render_template("logs.html")
 
 @app.route("/faq")
 def faq():
-    """FAQ & uitlegpagina."""
     return render_template("faq.html")
 
+@app.route("/documentatie")
+def documentatie():
+    return render_template("documentatie.html")
 
-@app.route("/upload_xml_validatie", methods=["POST"])
-def upload_xml_validatie():
-    if "xmlfile" not in request.files:
-        flash("Geen bestand geüpload", "danger")
-        return redirect(url_for("index"))
-    bestand = request.files["xmlfile"]
-    if bestand.filename == "":
-        flash("Geen bestand geselecteerd", "danger")
-        return redirect(url_for("index"))
+@app.route("/design_preview")
+def design_preview():
+    return render_template("design_preview.html")
+
+@app.route("/login")
+def login():
+    return render_template("login.html")
+
+@app.route("/configuratie")
+def configuratie():
+    return render_template("configuratie.html")
+
+# --- Favicon handler ---
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
+if __name__ == "__main__":
     try:
-        content = bestand.read()
-        doc = etree.parse(io.BytesIO(content))
-        xsd_path = (
-            Path(__file__).parent.parent
-            / "docs"
-            / "UwvZwMeldingInternBody-v0428-b01.xsd"
-        )
-        if xsd_path.exists():
-            schema_doc = etree.parse(str(xsd_path))
-            try:
-                schema = etree.XMLSchema(schema_doc)
-                if schema.validate(doc):
-                    flash(
-                        f'Bestand "{bestand.filename}" is geldig en voldoet aan het XSD.',
-                        "success",
-                    )
-                else:
-                    fouten = schema.error_log
-                    flash("XML voldoet niet aan het XSD: " + str(fouten), "danger")
-            except Exception as ex:
-                flash(f"XSD validatie mislukt: {ex}", "danger")
-        else:
-            flash(
-                "XSD niet gevonden; alleen syntactische XML-validatie uitgevoerd.",
-                "warning",
-            )
+        app.run(debug=True)
     except Exception as e:
-        flash("Fout bij valideren XML: " + str(e), "danger")
-    return redirect(url_for("index"))
-
-
-def _read_xml_events(limit: int | None = None):
-    """Read `web/xml_events.jsonl` and return a list of event dicts (newest first)."""
-    events_file = Path(__file__).parent / "xml_events.jsonl"
-    if not events_file.exists():
-        return []
-    out = []
-    try:
-        with open(events_file, encoding="utf-8") as fh:
-            for line in fh:
-                try:
-                    import json as _json
-
-                    ev = _json.loads(line)
-                    out.append(ev)
-                except Exception:
-                    continue
-    except Exception:
-        return []
-    # sort newest first by tijdstip if present
-    try:
-        out.sort(key=lambda e: e.get("tijdstip") or e.get("datum") or "", reverse=True)
-    except Exception:
-        pass
-    if limit is not None:
-        return out[:limit]
-    return out
-
-
-@app.route("/api/xml/events")
-def api_xml_events():
-    """Return events for a given date (query param `date=YYYY-MM-DD`)."""
-    dateq = request.args.get("date")
-    evs = _read_xml_events()
-    if dateq:
-        filtered = [
-            e
-            for e in evs
-            if (
-                e.get("tijdstip", "").startswith(dateq)
-                or e.get("datum", "").startswith(dateq)
-            )
-        ]
-    else:
-        filtered = evs
-    return jsonify({"events": filtered}), 200
-
-
-@app.route("/api/xml/throughput")
-@app.route("/api/xml-stats")
-def api_xml_throughput():
-    """Return aggregated throughput per day for the last `days` days (default 14).
-
-    Response shape: {"aggregated": [ {datum, totaal, geslaagd, gefaald, succes_percentage}, ... ] }
-    """
-    try:
-        days = int(request.args.get("days", "14"))
-    except Exception:
-        days = 14
-    events = _read_xml_events()
-    # build counts per date
-    from collections import defaultdict
-
-    counts = defaultdict(lambda: {"totaal": 0, "geslaagd": 0, "gefaald": 0})
-    for e in events:
-        tijd = e.get("tijdstip") or e.get("datum") or ""
-        if not tijd:
-            continue
-        date = tijd[:10]
-        counts[date]["totaal"] += 1
-        if e.get("success") in (True, "True", "true", 1):
-            counts[date]["geslaagd"] += 1
-        else:
-            counts[date]["gefaald"] += 1
-
-    # build ordered list for the requested range (oldest -> newest)
-    import datetime as _dt
-
-    today = _dt.date.today()
-    days_list = [today - _dt.timedelta(days=i) for i in range(days - 1, -1, -1)]
-    aggregated = []
-    for d in days_list:
-        key = d.isoformat()
-        vals = counts.get(key, {"totaal": 0, "geslaagd": 0, "gefaald": 0})
-        totaal = vals.get("totaal", 0)
-        geslaagd = vals.get("geslaagd", 0)
-        gefaald = vals.get("gefaald", 0)
-        succes_pct = None
-        if totaal > 0:
-            try:
-                succes_pct = round((geslaagd / totaal) * 100, 2)
-            except Exception:
-                succes_pct = None
-        aggregated.append(
-            {
-                "datum": key,
-                "totaal": totaal,
-                "geslaagd": geslaagd,
-                "gefaald": gefaald,
-                "succes_percentage": succes_pct,
-            }
-        )
-    return jsonify({"aggregated": aggregated}), 200
-
-
-@app.route("/api/test/historie")
-def api_test_historie():
-    # return recent events as an array for the dashboard
-    hist = _read_xml_events(limit=200)
-    # normalize fields expected by the JS
-    norm = []
-    for e in hist:
-        norm.append(
-            {
-                "tijdstip": e.get("tijdstip") or e.get("datum") or e.get("time") or "",
-                "filename": e.get("filename")
-                or e.get("output_path")
-                or e.get("bestandsnaam")
-                or "",
-                "size": e.get("size") or 0,
-                "success": e.get("success") in (True, "True", "true", 1),
-            }
-        )
-    return jsonify(norm), 200
-
-
-@app.route("/api/test/laatste")
-def api_test_laatste():
-    hist = _read_xml_events(limit=1)
-    if not hist:
-        return jsonify({}), 200
-    e = hist[0]
-    status = "Geslaagd" if e.get("success") in (True, "True", "true", 1) else "Gefaald"
-    return (
-        jsonify({"status": status, "datum": e.get("tijdstip") or e.get("datum")}),
-        200,
-    )
-
-
-@app.route("/api/test/totaal")
-def api_test_totaal():
-    hist = _read_xml_events()
-    return jsonify({"totaal": len(hist)}), 200
-
-
-@app.route("/api/test/uitvoeren", methods=["POST"])
-def api_test_uitvoeren():
-    """Simulate a test execution and return a minimal result object suitable for the UI.
-
-    This intentionally does not run real tests; it returns a synthetic success
-    response so the dashboard UX can be exercised locally.
-    """
-    import datetime as _dt
-
-    result = {
-        "success": True,
-        "tijdstip": _dt.datetime.now().isoformat(),
-        "uitvoer": "Simulated test run (local)",
-        "foutmeldingen": "",
-    }
-    return jsonify(result), 200
-
-
-def get_output_directory():
-    """Lees uitvoermap uit instellingen.json, of gebruik fallback."""
-    try:
-        settings_path = base / "instellingen.json"
-        if settings_path.exists():
-            with open(settings_path, encoding="utf-8") as f:
-                settings = json.load(f)
-            output_dir = settings.get("output_directory")
-            if output_dir:
-                # Ondersteun relatieve en absolute paden
-                p = Path(output_dir)
-                if not p.is_absolute():
-                    p = base.parent / output_dir
-                return p
-    except Exception:
-        pass
-    # Fallback: oude mapping
-    return base.parent / "uzs_filedrop" / "UZI-GAP3" / "UZSx_ACC1" / "v0428"
-
-
-def get_output_directory_json():
-    """Lees uitvoermap voor JSON-gegenereerde bestanden uit instellingen.json."""
-    try:
-        settings_path = base / "instellingen.json"
-        if settings_path.exists():
-            with open(settings_path, encoding="utf-8") as f:
-                settings = json.load(f)
-            output_dir = settings.get("output_directory_json")
-            if output_dir:
-                p = Path(output_dir)
-                if not p.is_absolute():
-                    p = base.parent / output_dir
-                return p
-    except Exception:
-        pass
-    # Fallback: aparte JSON map
-    return base.parent / "uzs_filedrop" / "UZI-GAP3" / "UZSx_ACC1" / "json_output"
+        import traceback
+        print("\n--- FLASK STARTUP ERROR ---")
+        traceback.print_exc()
+        print("--- END ERROR ---\n")
+        raise

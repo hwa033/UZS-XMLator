@@ -144,7 +144,10 @@
         <!-- Results Panel -->
         <section class="main-panel card mb-4 app-panel" id="results-panel">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-3">
+                <div class="d-flex justify-content-end mb-3 gap-2">
+                    <button id="refresh-results-btn" class="btn btn-sm btn-outline-secondary" type="button" title="Ververs lijst">
+                        <i class="bi bi-arrow-clockwise"></i> Ververs lijst
+                    </button>
                     <button id="download-selected-btn" class="btn btn-sm btn-outline-primary" disabled
                             title="Max {{ zip_limits.max_files }} bestanden per download">
                         <span id="zipSpinner" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="display:none;"></span>
@@ -167,7 +170,7 @@
                         <div class="col-md-7">
                             <div class="list-group" id="generatedList">
                                 {% for file in generated %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center generated-item" data-filename="{{ file.filename }}">
+                            <div class="list-group-item d-flex justify-content-between align-items-center generated-item py-2" style="min-height:36px;" data-filename="{{ file.filename }}">
                                 <div class="d-flex align-items-center gap-3">
                                     <div class="form-check">
                                         <input class="form-check-input generated-select" type="checkbox" id="gen-select-{{ loop.index }}" data-file="{{ file.filename }}">
@@ -226,6 +229,14 @@ document.addEventListener('DOMContentLoaded', function () {
         checkboxes.forEach(cb => {
             const item = cb.closest('.generated-item');
             if (item) item.classList.toggle('selected', cb.checked);
+        });
+    }
+
+    // Refresh button handler
+    const refreshBtn = document.getElementById('refresh-results-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function () {
+            refreshResultsList();
         });
     }
 

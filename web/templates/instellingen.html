@@ -9,7 +9,7 @@
         <p class="text-muted small mb-0">Systeembeheer en administratieve taken</p>
     </div>
     <div class="d-flex align-items-center gap-2">
-        <a href="{{ url_for('index') }}" class="btn btn-outline-light">Terug</a>
+        <a href="{{ url_for('home') }}" class="btn btn-outline-light">Terug</a>
     </div>
 </section>
 
@@ -22,7 +22,7 @@
                 </div>
                 <div class="card-body">
                     <p>Beheer en upload Excel datasets voor XML generatie.</p>
-                    <a href="{{ url_for('instellingen.datasets') }}" class="btn btn-outline-primary">Beheer Datasets</a>
+                    <a href="{{ url_for('datasets') }}" class="btn btn-outline-primary">Beheer Datasets</a>
                 </div>
             </div>
         </div>
@@ -34,7 +34,7 @@
                 </div>
                 <div class="card-body">
                     <p>Bekijk historie van gegenereerde XML-bestanden.</p>
-                    <a href="{{ url_for('instellingen.historie') }}" class="btn btn-outline-success">Bekijk Historie</a>
+                    <a href="{{ url_for('historie') }}" class="btn btn-outline-success">Bekijk Historie</a>
                 </div>
             </div>
         </div>
@@ -46,7 +46,8 @@
                 </div>
                 <div class="card-body">
                     <p>Bekijk en beheer testhistorie en resultaten.</p>
-                    <a href="{{ url_for('resultaten_pagina') }}" class="btn btn-outline-warning">Bekijk Resultaten</a>
+                    <!-- Resultaten-pagina bestaat niet, knop tijdelijk verborgen -->
+
                 </div>
             </div>
         </div>
@@ -58,7 +59,7 @@
                 </div>
                 <div class="card-body">
                     <p>Beheer systeeminstellingen, logging en onderhoud.</p>
-                    <a href="{{ url_for('instellingen.configuratie') }}" class="btn btn-outline-danger">Configuratie</a>
+                    <a href="{{ url_for('configuratie') }}" class="btn btn-outline-danger">Configuratie</a>
                 </div>
             </div>
         </div>
@@ -70,7 +71,7 @@
                 </div>
                 <div class="card-body">
                     <p>Handleidingen en gebruikersinformatie.</p>
-                    <a href="{{ url_for('instellingen.documentatie') }}" class="btn btn-outline-info">Bekijk Documentatie</a>
+                    <a href="{{ url_for('documentatie') }}" class="btn btn-outline-info">Bekijk Documentatie</a>
                 </div>
             </div>
         </div>
@@ -81,7 +82,7 @@
                 </div>
                 <div class="card-body">
                     <p>Bekijk recente logregels van uploads en generator.</p>
-                    <a href="{{ url_for('instellingen.logs') }}" class="btn btn-outline-secondary">Bekijk Logs</a>
+                    <a href="{{ url_for('logs') }}" class="btn btn-outline-secondary">Bekijk Logs</a>
                 </div>
             </div>
         </div>

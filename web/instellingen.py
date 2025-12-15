@@ -1,3 +1,23 @@
+import json
+import os
+from pathlib import Path
+
+from flask import (
+    Blueprint,
+    flash,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
+from werkzeug.utils import secure_filename
+
+
+instellingen_bp = Blueprint("instellingen", __name__, template_folder="templates")
+
+SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "instellingen.json")
+
+
 @instellingen_bp.route("/logs")
 def logs():
     """Bekijk recente logbestanden (alleen voor admins)."""
@@ -23,25 +43,6 @@ def logs():
                 lines = ["[Fout bij lezen van logbestand]"]
         logs.append({"title": title, "lines": lines})
     return render_template("logs.html", logs=logs)
-
-
-import json
-import os
-from pathlib import Path
-
-from flask import (
-    Blueprint,
-    flash,
-    redirect,
-    render_template,
-    request,
-    url_for,
-)
-from werkzeug.utils import secure_filename
-
-instellingen_bp = Blueprint("instellingen", __name__, template_folder="templates")
-
-SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "instellingen.json")
 
 
 @instellingen_bp.route("/")

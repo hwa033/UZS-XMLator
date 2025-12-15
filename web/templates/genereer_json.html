@@ -208,7 +208,10 @@
         <!-- Results Panel -->
         <section class="main-panel card mb-4 app-panel" id="results-panel">
             <div class="card-body">
-                <div class="d-flex justify-content-end mb-3">
+                <div class="d-flex justify-content-end mb-3 gap-2">
+                    <button id="refresh-results-btn" class="btn btn-sm btn-outline-secondary" type="button" title="Ververs lijst">
+                        <i class="bi bi-arrow-clockwise"></i> Ververs lijst
+                    </button>
                     <button id="download-selected-btn" class="btn btn-sm btn-outline-primary" disabled
                             title="Max {{ zip_limits.max_files }} bestanden per download">
                         <span id="zipSpinner" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="display:none;"></span>
@@ -291,6 +294,14 @@ document.addEventListener('DOMContentLoaded', function () {
         checkboxes.forEach(cb => {
             const item = cb.closest('.generated-item');
             if (item) item.classList.toggle('selected', cb.checked);
+        });
+    }
+
+    // Refresh button handler
+    const refreshBtn = document.getElementById('refresh-results-btn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function () {
+            refreshResultsList();
         });
     }
 
