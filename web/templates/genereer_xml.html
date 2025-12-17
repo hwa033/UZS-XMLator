@@ -11,23 +11,58 @@
         <section class="hero mb-4">
             <div>
                 <h1 class="mb-0">Excel XMLator</h1>
-                <p class="page-subtitle mb-0">Upload een Excel-bestand om meerdere aanvragen in één keer te genereren</p>
+                <p class="page-subtitle mb-0">Upload een Excel-bestand met aanvraagdata om XML-bestanden in bulk te genereren</p>
             </div>
         </section>
 
         <!-- Upload Form Panel -->
         <section class="main-panel card mb-4 app-panel">
             <div class="card-body">
+
+
+                <!-- Excel Format Help (Collapsible) -->
+                <div class="collapse mb-3" id="excelFormatHelp">
+                    <div class="card border-primary">
+                        <div class="card-body">
+                            <h6 class="card-title text-primary"><i class="bi bi-info-circle"></i> Excel Formaat voorbeelden</h6>
+                            <p class="small mb-2">Upload een Excel-bestand (.xlsx of .xls) met de volgende kolommen:</p>
+                            
+                            <div class="mb-3">
+                                <strong class="small">Voorbeeld: Ziekmelding (ZBM)</strong>
+                                <pre class="bg-light p-2 rounded small mb-0" style="max-height: 200px; overflow-y: auto;">BSN | Voorletters | Achternaam | Geboortedatum | Geslacht | DatumAangifte | DatumVanaf | Werkgevereigenrisicodrager
+123456789 | J | Jansen | 1990-01-15 | M | 2024-01-10 | 2024-01-08 | Ja</pre>
+                            </div>
+
+                            <div class="mb-3">
+                                <strong class="small">Voorbeeld: Voortzetting Melding (VM)</strong>
+                                <pre class="bg-light p-2 rounded small mb-0" style="max-height: 200px; overflow-y: auto;">BSN | Voorletters | Achternaam | Geboortedatum | Geslacht | DatumAangifte | DatumVanaf
+987654321 | M | Bakker | 1985-05-20 | V | 2024-02-15 | 2024-02-10</pre>
+                            </div>
+
+                            <div>
+                                <strong class="small">Voorbeeld: Digipoort (OTP3)</strong>
+                                <pre class="bg-light p-2 rounded small mb-0" style="max-height: 200px; overflow-y: auto;">BSN | Voorletters | Achternaam | Geboortedatum | Geslacht | DatumAangifte | DatumVanaf
+456789123 | A | de Vries | 1992-11-30 | M | 2024-03-05 | 2024-03-01</pre>
+                            </div>
+
+                            <p class="small text-muted mt-3 mb-0">
+                                <i class="bi bi-lightbulb"></i> <strong>Tip:</strong> Het type aanvraag wordt geselecteerd via het dropdown-menu hieronder. 
+                                De generator zal voor elke rij in het Excel-bestand een apart XML-bestand aanmaken.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <form id="excel-upload-form" action="{{ url_for('upload_excel') }}" method="post" enctype="multipart/form-data">
                     <div class="row g-3">
                         <div class="col-md-7">
                             <label for="excel_file" class="form-label">Excel-bestand</label>
                             <input type="file" name="excel_file" id="excel_file" accept=".xlsx,.xls" class="form-control" required>
-                            <div class="form-text small">Ondersteunde formaten: .xlsx, .xls</div>
+                            <div class="form-text small">Ondersteund formaat: .xlsx, .xls (max 10 MB)</div>
                         </div>
                         <div class="col-md-5">
-                            <label for="aanvraag_type_bulk" class="form-label">Type aanvraag</label>
-                            <select name="aanvraag_type" id="aanvraag_type_bulk" class="form-select">
+                            <label for="aanvraag_type_excel" class="form-label">Type aanvraag</label>
+                            <select name="aanvraag_type" id="aanvraag_type_excel" class="form-select">
                                 <option value="ZBM">ZBM - Ziekmelding</option>
                                 <option value="VM">VM - Voortzetting</option>
                                 <option value="Digipoort">Digipoort (OTP3)</option>
@@ -37,8 +72,8 @@
                     <div class="row g-3 mt-2">
                         <div class="col-md-7">
                             <div class="form-check">
-                                <input class="form-check-input" type="checkbox" value="on" id="validate_check" name="validate" checked data-bs-toggle="tooltip" data-bs-placement="right" title="Indien aangevinkt wordt elk bestand gecontroleerd op een geldig BSN en gevalideerd tegen het XSD-schema.">
-                                <label class="form-check-label" for="validate_check">
+                                <input class="form-check-input" type="checkbox" value="on" id="validate_check_excel" name="validate" checked data-bs-toggle="tooltip" data-bs-placement="right" title="Indien aangevinkt wordt elk bestand gecontroleerd op een geldig BSN en gevalideerd tegen het XSD-schema.">
+                                <label class="form-check-label" for="validate_check_excel">
                                     Valideer (BSN/XSD)
                                     <span tabindex="0" data-bs-toggle="tooltip" title="Indien aangevinkt wordt elk bestand gecontroleerd op een geldig BSN en gevalideerd tegen het XSD-schema.">
                                         <i class="bi bi-info-circle text-muted small"></i>
@@ -60,15 +95,21 @@
                             </div>
                         </div>
                         <div class="col-md-5 d-flex flex-column align-items-end">
-                            <button type="submit" class="btn btn-outline-primary px-4" id="excel-upload-btn">
-                                Genereer XML
-                            </button>
+                            <div class="d-flex gap-2 align-items-center">
+                                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#excelFormatHelp">
+                                    <i class="bi bi-question-circle"></i> Formaat voorbeeld
+                                </button>
+                                <button type="submit" class="btn btn-outline-primary px-4" id="excel-upload-btn">
+                                    Genereer XML
+                                </button>
+                            </div>
                             <div class="w-100 mt-2" id="excel-upload-progress-wrap" style="display:none;">
                                 <div class="progress">
                                     <div id="excel-upload-progress" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width:0%">0%</div>
                                 </div>
                             </div>
                         </div>
+                    </div>
                     <script>
                     // Upload voortgangsbalk voor Excel upload
                     document.addEventListener('DOMContentLoaded', function () {
@@ -82,6 +123,7 @@
                                 const data = new FormData(form);
                                 const xhr = new XMLHttpRequest();
                                 xhr.open('POST', form.action, true);
+                                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                                 xhr.upload.onprogress = function (evt) {
                                     if (evt.lengthComputable) {
                                         const percent = Math.round((evt.loaded / evt.total) * 100);
@@ -103,32 +145,32 @@
                                     if (xhr.readyState === 4) {
                                         if (xhr.status >= 200 && xhr.status < 400) {
                                             // Succesvol, ververs alleen de resultatenlijst
-                                            refreshResultsList();
+                                            console.log('Upload succesvol, status:', xhr.status);
+                                            try {
+                                                const resp = JSON.parse(xhr.responseText);
+                                                if (resp.message) {
+                                                    console.log(resp.message);
+                                                }
+                                            } catch (e) {
+                                                console.log('Response is geen JSON, waarschijnlijk een redirect');
+                                            }
+                                            if (window.refreshResultsList) window.refreshResultsList();
                                         } else {
-                                            alert('Upload mislukt: ' + xhr.statusText);
+                                            console.error('Upload gefaald:', xhr.status, xhr.responseText);
+                                            try {
+                                                const resp = JSON.parse(xhr.responseText);
+                                                alert('Upload mislukt: ' + (resp.error || xhr.statusText));
+                                            } catch (e) {
+                                                alert('Upload mislukt: ' + xhr.statusText);
+                                            }
                                         }
                                     }
-                                // Automatische refresh van resultatenlijst na upload
-                                function refreshResultsList() {
-                                    fetch(window.location.pathname + '/fragment')
-                                        .then(resp => resp.text())
-                                        .then(html => {
-                                            const parser = new DOMParser();
-                                            const doc = parser.parseFromString(html, 'text/html');
-                                            const newResults = doc.getElementById('results-panel');
-                                            const oldResults = document.getElementById('results-panel');
-                                            if (newResults && oldResults) {
-                                                oldResults.innerHTML = newResults.innerHTML;
-                                            }
-                                        });
-                                }
                                 };
                                 xhr.send(data);
                             });
                         }
                     });
                     </script>
-                    </div>
                 </form>
             </div>
         </section>
@@ -141,275 +183,21 @@
             </div>
         </section>
 
-        <!-- Results Panel -->
-        <section class="main-panel card mb-4 app-panel" id="results-panel">
-            <div class="card-body">
-                <div class="d-flex justify-content-end mb-3 gap-2">
-                    <button id="refresh-results-btn" class="btn btn-sm btn-outline-secondary" type="button" title="Ververs lijst">
-                        <i class="bi bi-arrow-clockwise"></i> Ververs lijst
-                    </button>
-                    <button id="download-selected-btn" class="btn btn-sm btn-outline-primary" disabled
-                            title="Max {{ zip_limits.max_files }} bestanden per download">
-                        <span id="zipSpinner" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="display:none;"></span>
-                        <span id="zipProgressWrap" style="display:none; min-width:80px;">
-                            <span id="zipProgressText" class="small text-primary">0%</span>
-                        </span>
-                        <i class="bi bi-download"></i> Download geselecteerd
-                    </button>
-                </div>
-
-                {% if generated and generated|length > 0 %}
-                    <div class="mb-3">
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" id="select-all-generated">
-                            <label class="form-check-label small text-muted" for="select-all-generated">Selecteer alles</label>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-7">
-                            <div class="list-group" id="generatedList">
-                                {% for file in generated %}
-                            <div class="list-group-item d-flex justify-content-between align-items-center generated-item py-2" style="min-height:36px;" data-filename="{{ file.filename }}">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input generated-select" type="checkbox" id="gen-select-{{ loop.index }}" data-file="{{ file.filename }}">
-                                    </div>
-                                    <div class="generated-clickable" style="cursor:pointer;">
-                                        <div class="fw-bold text-truncate" style="max-width:480px;">{{ file.filename }}</div>
-                                        <div class="small text-muted">{{ file.tijdstip }} — {{ file.size }} B</div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_generated', filename=file.filename) }}" title="Download"><i class="bi bi-download"></i></a>
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    <div class="col-md-5">
-                        <div class="card border-light bg-light">
-                            <div class="card-body" id="previewPane">
-                                <h6 class="card-title">Voorvertoning</h6>
-                                <div id="previewMeta" class="small text-muted mb-2">Klik op een bestand voor preview</div>
-                                <pre id="previewContent" style="max-height:400px; overflow:auto; white-space:pre-wrap; background:#fff; padding:12px; border:1px solid #e9ecef; border-radius:4px;"></pre>
-                                <div class="mt-2 d-flex justify-content-end">
-                                    <a id="previewDownloadLink" class="btn btn-sm btn-outline-primary" href="#" style="display:none;"><i class="bi bi-download"></i> Download</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% else %}
-                <div class="text-center py-5 text-muted">
-                    <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                    <p>Nog geen bestanden gegenereerd. Upload een Excel-bestand hierboven om te beginnen.</p>
-                </div>
-            {% endif %}
-            </div>
-        </section>
+        <!-- Results Panel (shared partial) -->
+        {% include '_results_panel.html' %}
     </div>
 </div>
+{% endif %}
 
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/results_panel.js') }}"></script>
 <script>
-// Selection and download handler
 document.addEventListener('DOMContentLoaded', function () {
-    const list = document.getElementById('generatedList');
-    const downloadBtn = document.getElementById('download-selected-btn');
-    const selectAll = document.getElementById('select-all-generated');
-    const previewMeta = document.getElementById('previewMeta');
-    const previewContent = document.getElementById('previewContent');
-    const previewDownloadLink = document.getElementById('previewDownloadLink');
-    const zipSpinner = document.getElementById('zipSpinner');
-
-    function updateSelectionState() {
-        const checkboxes = Array.from(document.querySelectorAll('.generated-select'));
-        const anyChecked = checkboxes.some(cb => cb.checked);
-        if (downloadBtn) downloadBtn.disabled = !anyChecked;
-        checkboxes.forEach(cb => {
-            const item = cb.closest('.generated-item');
-            if (item) item.classList.toggle('selected', cb.checked);
-        });
-    }
-
-    // Refresh button handler
-    const refreshBtn = document.getElementById('refresh-results-btn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', function () {
-            refreshResultsList();
-        });
-    }
-
-    if (list) {
-        list.addEventListener('change', function (ev) {
-            if (ev.target && ev.target.classList.contains('generated-select')) updateSelectionState();
-        });
-    }
-
-    if (selectAll) {
-        selectAll.addEventListener('change', function () {
-            const checkboxes = Array.from(document.querySelectorAll('.generated-select'));
-            checkboxes.forEach(cb => cb.checked = selectAll.checked);
-            updateSelectionState();
-        });
-    }
-
-    async function downloadSelectedAsZip(filenames) {
-        try {
-            if (zipSpinner) zipSpinner.style.display = '';
-            const zipProgressWrap = document.getElementById('zipProgressWrap');
-            const zipProgressText = document.getElementById('zipProgressText');
-            if (zipProgressWrap && zipProgressText) {
-                zipProgressWrap.style.display = '';
-                zipProgressText.textContent = '0%';
-            }
-            const resp = await fetch('/resultaten/download-zip', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filenames: filenames })
-            });
-            if (!resp.ok) {
-                alert('Fout bij maken van ZIP: ' + await resp.text());
-                return;
-            }
-            // Simuleer voortgang tijdens het downloaden van de blob
-            const reader = resp.body.getReader();
-            const contentLength = +resp.headers.get('Content-Length') || 0;
-            let received = 0;
-            let chunks = [];
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-                received += value.length;
-                if (zipProgressText && contentLength) {
-                    const percent = Math.round((received / contentLength) * 100);
-                    zipProgressText.textContent = percent + '%';
-                }
-            }
-            if (zipProgressText) zipProgressText.textContent = '100%';
-            const blob = new Blob(chunks);
-            let zipName = 'selected_files.zip';
-            const cd = resp.headers.get('Content-Disposition');
-            if (cd) {
-                const m = cd.match(/filename\*=UTF-8''([^;\n\r]+)/) || cd.match(/filename="?([^";]+)"?/);
-                if (m && m[1]) zipName = decodeURIComponent(m[1]);
-            }
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = zipName;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 30000);
-        } catch (err) {
-            alert('Fout bij downloaden: ' + err);
-        } finally {
-            if (zipSpinner) zipSpinner.style.display = 'none';
-            const zipProgressWrap = document.getElementById('zipProgressWrap');
-            if (zipProgressWrap) zipProgressWrap.style.display = 'none';
-        }
-    }
-
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', function () {
-            const checked = Array.from(document.querySelectorAll('.generated-select:checked'));
-            const filenames = checked.map(cb => cb.getAttribute('data-file')).filter(Boolean);
-            if (filenames.length > 0) downloadSelectedAsZip(filenames);
-        });
-    }
-
-    // Preview handling
-    if (list) {
-        list.addEventListener('click', async function (ev) {
-            const target = ev.target;
-            const item = target.closest('.generated-item');
-            if (!item || target.tagName === 'INPUT' || target.closest('a')) return;
-            const fn = item.getAttribute('data-filename');
-            if (!fn) return;
-            try {
-                const resp = await fetch('/resultaten/preview/' + encodeURIComponent(fn));
-                if (!resp.ok) {
-                    previewMeta.textContent = 'Kon preview niet laden.';
-                    previewContent.textContent = '';
-                    previewDownloadLink.style.display = 'none';
-                    return;
-                }
-                const j = await resp.json();
-                previewMeta.textContent = `${j.filename} — ${j.size} B — ${j.tijdstip}`;
-                previewContent.textContent = j.preview || '(Leeg)';
-                previewDownloadLink.href = '/resultaten/download/' + encodeURIComponent(j.filename);
-                previewDownloadLink.style.display = '';
-            } catch (err) {
-                previewMeta.textContent = 'Fout bij laden preview.';
-                previewContent.textContent = '';
-                previewDownloadLink.style.display = 'none';
-            }
-        });
-    }
-
-    updateSelectionState();
+  // Init results panel
+  if (typeof initResultsPanelHandlers === 'function') {
+    initResultsPanelHandlers();
+  }
 });
 </script>
-
-        </div>
-    </div>
-</div>
-{% else %}
-    <!-- Alleen het resultatenpanel voor fragment -->
-    <section class="main-panel card mb-4 app-panel" id="results-panel">
-        <div class="card-body">
-            {% if generated and generated|length > 0 %}
-                <div class="mb-3">
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="checkbox" id="select-all-generated">
-                        <label class="form-check-label small text-muted" for="select-all-generated">Selecteer alles</label>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-7">
-                        <div class="list-group" id="generatedList">
-                            {% for file in generated %}
-                        <div class="list-group-item d-flex justify-content-between align-items-center generated-item" data-filename="{{ file.filename }}">
-                            <div class="d-flex align-items-center gap-3">
-                                <div class="form-check">
-                                    <input class="form-check-input generated-select" type="checkbox" id="gen-select-{{ loop.index }}" data-file="{{ file.filename }}">
-                                </div>
-                                <div class="generated-clickable" style="cursor:pointer;">
-                                    <div class="fw-bold text-truncate" style="max-width:480px;">{{ file.filename }}</div>
-                                    <div class="small text-muted">{{ file.tijdstip }} — {{ file.size }} B</div>
-                                </div>
-                            </div>
-                            <div>
-                                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_generated', filename=file.filename) }}" title="Download"><i class="bi bi-download"></i></a>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="col-md-5">
-                    <div class="card border-light bg-light">
-                        <div class="card-body" id="previewPane">
-                            <h6 class="card-title">Voorvertoning</h6>
-                            <div id="previewMeta" class="small text-muted mb-2">Klik op een bestand voor preview</div>
-                            <pre id="previewContent" style="max-height:400px; overflow:auto; white-space:pre-wrap; background:#fff; padding:12px; border:1px solid #e9ecef; border-radius:4px;"></pre>
-                            <div class="mt-2 d-flex justify-content-end">
-                                <a id="previewDownloadLink" class="btn btn-sm btn-outline-primary" href="#" style="display:none;"><i class="bi bi-download"></i> Download</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        {% else %}
-            <div class="text-center py-5 text-muted">
-                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
-                <p>Nog geen bestanden gegenereerd. Upload een Excel-bestand hierboven om te beginnen.</p>
-            </div>
-        {% endif %}
-        </div>
-    </section>
-{% endif %}
 {% endblock %}
-
+{% endblock %}

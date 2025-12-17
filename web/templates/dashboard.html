@@ -161,3 +161,50 @@
     </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    // Load KPI data from API endpoints
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load throughput stats
+        fetch('/api/xml/throughput')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Fout bij laden throughput:', data.error);
+                    return;
+                }
+                // Update tiles with stats
+                document.getElementById('total-tests').textContent = data.total || 0;
+                
+                // Calculate success rate
+                const total = data.by_status.SUCCESS + data.by_status.VALIDATION_ERROR + data.by_status.ERROR;
+                const successRate = total > 0 ? Math.round((data.by_status.SUCCESS / total) * 100) : 0;
+                document.getElementById('success-rate').textContent = successRate + '%';
+                
+                console.log('Throughput stats:', data);
+            })
+            .catch(error => console.error('Error fetching throughput:', error));
+        
+        // Load latest errors
+        fetch('/api/xml/latest-errors')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Fout bij laden errors:', data.error);
+                    return;
+                }
+                // Update recent activity with errors
+                const activityDiv = document.getElementById('recent-activity');
+                if (data.errors && data.errors.length > 0) {
+                    const errorHTML = data.errors.slice(-5).map(err => 
+                        `<div class="mb-1"><small><strong>${err.filename || 'Batch'}:</strong> ${err.status} - ${err.error_msg || 'No message'}</small></div>`
+                    ).join('');
+                    activityDiv.innerHTML = errorHTML;
+                }
+                console.log('Latest errors:', data);
+            })
+            .catch(error => console.error('Error fetching errors:', error));
+    });
+</script>
+{% endblock %}

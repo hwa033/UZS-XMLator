@@ -4,17 +4,17 @@
     <uwvh:UwvMLHeader xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202">
       <RouteInformatie>
         <Bron>
-          <ApplicatieNaam>ZBM</ApplicatieNaam>
-          <DatTijdVersturenBericht>2025-12-12T10:28:50.730231+01:00</DatTijdVersturenBericht>
+          <ApplicatieNaam>Digipoort</ApplicatieNaam>
+          <DatTijdVersturenBericht>2025-12-16T15:03:42.494161+01:00</DatTijdVersturenBericht>
         </Bron>
         <Bestemming>
           <ApplicatieNaam>UZS</ApplicatieNaam>
         </Bestemming>
-        <GegevensUitwisselingsnr>GegUitNr-fa7dd67c</GegevensUitwisselingsnr>
+        <GegevensUitwisselingsnr>GegUitNr-c882d591</GegevensUitwisselingsnr>
         <RefnrGegevensUitwisselingsExtern>NOCOREFLEX</RefnrGegevensUitwisselingsExtern>
       </RouteInformatie>
       <BerichtIdentificatie>
-        <BerichtReferentienr>tester_20251212092850</BerichtReferentienr>
+        <BerichtReferentienr>tester_20251216140342</BerichtReferentienr>
         <BerichtType>
           <BerichtNaam>UwvZwMeldingInternBody</BerichtNaam>
           <VersieMajor>04</VersieMajor>
@@ -23,11 +23,11 @@
           <CommunicatieType>Melding</CommunicatieType>
           <CommunicatieElement>Melding</CommunicatieElement>
         </BerichtType>
-        <DatTijdAanmaakBericht>2025-12-12T10:28:50.730331+01:00</DatTijdAanmaakBericht>
+        <DatTijdAanmaakBericht>2025-12-16T15:03:42.494306+01:00</DatTijdAanmaakBericht>
         <IndTestbericht>2</IndTestbericht>
       </BerichtIdentificatie>
       <Transactie>
-        <TransactieReferentienr>TraRef-4882b30d</TransactieReferentienr>
+        <TransactieReferentienr>TraRef-1117bc32</TransactieReferentienr>
         <Volgordenr>1</Volgordenr>
         <IndLaatsteBericht>1</IndLaatsteBericht>
       </Transactie>
@@ -35,7 +35,7 @@
   </SOAP-ENV:Header>
   <SOAP-ENV:Body>
     <UwvZwMeldingInternBody xmlns="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428">
-      <CdBerichtType>ZBM</CdBerichtType>
+      <CdBerichtType>OTP3</CdBerichtType>
       <IndAlleenControleUzs>2</IndAlleenControleUzs>
       <Ketenpartij>
         <FiscaalNr>136910038</FiscaalNr>
@@ -53,8 +53,6 @@
       </Ketenpartij>
       <NatuurlijkPersoon>
         <Burgerservicenr>555501759</Burgerservicenr>
-        <Geboortedat>19801205</Geboortedat>
-        <SignificantDeelVanDeAchternaam>Simeunović of Uluaĝ</SignificantDeelVanDeAchternaam>
       </NatuurlijkPersoon>
       <Contactgegevens/>
       <MeldingZiekte>

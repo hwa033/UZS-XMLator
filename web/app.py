@@ -1,14 +1,40 @@
 
 # --- Imports (must be at the very top) ---
 import os
+import sys
 import datetime
 from flask import Flask, jsonify, render_template, request, send_from_directory, redirect, flash, url_for
 from markupsafe import escape
 from werkzeug.utils import secure_filename
+from flask import Response
+import io
+import json
+import zipfile
 
 # --- Flask app instance (must be at top level) ---
 app = Flask(__name__)
-app.secret_key = 'change-this-to-a-very-secret-key-1234'
+
+# Security: Environment-based secret key with production guard
+FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
+SECRET_KEY = os.environ.get('U_XMLATOR_SECRET')
+
+if FLASK_ENV == 'production' and not SECRET_KEY:
+    raise SystemExit(
+        'ERROR: U_XMLATOR_SECRET environment variable must be set when FLASK_ENV=production.\n'
+        'Example (PowerShell): $env:U_XMLATOR_SECRET = "your-secret-key-here"'
+    )
+
+app.secret_key = SECRET_KEY or 'change-this-to-a-very-secret-key-1234'
+
+# Session cookie security settings
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('U_XMLATOR_COOKIE_SECURE', '1') == '1'
+app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('U_XMLATOR_SAMESITE', 'Lax')
+app.config['PERMANENT_SESSION_LIFETIME'] = int(os.environ.get('U_XMLATOR_SESSION_SECONDS', '604800'))
+
+# Size guard for uploads (10 MB default) and allowed extensions
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+ALLOWED_EXTENSIONS = {'.xlsx', '.xls'}
 
 # --- Download generated XML file endpoint ---
 @app.route('/resultaten/download/<filename>')
@@ -17,13 +43,99 @@ def download_generated(filename):
     if not filename.endswith('.xml') or '/' in filename or '..' in filename:
         flash('Ongeldige bestandsnaam.', 'danger')
         return redirect(request.referrer or url_for('genereer_xml'))
-    output_dir = os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
-    file_path = os.path.join(output_dir, filename)
-    if not os.path.exists(file_path):
-        flash('Bestand niet gevonden.', 'danger')
-        return redirect(request.referrer or url_for('genereer_xml'))
-    return send_from_directory(output_dir, filename, as_attachment=True)
-app.secret_key = 'change-this-to-a-very-secret-key-1234'
+    
+    # Search in all output directories
+    directories = [
+        get_output_directory('ZBM'),
+        get_output_directory('Digipoort'),
+        get_output_directory()  # Default/backwards compatible
+    ]
+    
+    print(f"[DEBUG] Looking for file: {filename}", file=sys.stderr)
+    for output_dir in directories:
+        print(f"[DEBUG] Checking directory: {output_dir}", file=sys.stderr)
+        if os.path.exists(output_dir):
+            file_path = os.path.join(output_dir, filename)
+            print(f"[DEBUG] Looking for: {file_path}, exists: {os.path.exists(file_path)}", file=sys.stderr)
+            if os.path.exists(file_path):
+                print(f"[DEBUG] Found file, sending from: {output_dir}", file=sys.stderr)
+                return send_from_directory(output_dir, filename, as_attachment=True)
+    
+    print(f"[DEBUG] File not found in any directory", file=sys.stderr)
+    flash('Bestand niet gevonden.', 'danger')
+    return redirect(request.referrer or url_for('genereer_xml'))
+
+# --- Delete selected generated XML files ---
+@app.route('/resultaten/delete-selected', methods=['POST'])
+def delete_selected_files():
+    try:
+        data = request.get_json(silent=True) or {}
+        filenames = data.get('filenames') or []
+        if not isinstance(filenames, list) or not filenames:
+            return jsonify({'error': 'Geen bestanden geselecteerd'}), 400
+        # Validate each filename and delete
+        out_dir = get_output_directory() if 'get_output_directory' in globals() else os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
+        deleted = []
+        failed = []
+        for fn in filenames:
+            if not isinstance(fn, str) or '/' in fn or '..' in fn or not fn.endswith('.xml'):
+                failed.append(fn)
+                continue
+            fp = os.path.join(out_dir, fn)
+            if not os.path.exists(fp) or not os.path.isfile(fp):
+                failed.append(fn)
+                continue
+            try:
+                os.remove(fp)
+                deleted.append(fn)
+            except Exception as e:
+                failed.append(fn)
+                print(f"[ERROR] Failed to delete {fn}: {e}", file=sys.stderr)
+        return jsonify({
+            'success': True,
+            'deleted': len(deleted),
+            'failed': len(failed),
+            'deleted_files': deleted
+        })
+    except Exception as e:
+        return jsonify({'error': f'Fout bij verwijderen: {e}'}), 500
+
+
+
+@app.route('/resultaten/download-zip', methods=['POST'])
+def download_generated_zip():
+    try:
+        data = request.get_json(silent=True) or {}
+        filenames = data.get('filenames') or []
+        if not isinstance(filenames, list) or not filenames:
+            return jsonify({'error': 'Geen bestanden geselecteerd'}), 400
+        # Validate each filename
+        safe_files = []
+        out_dir = get_output_directory() if 'get_output_directory' in globals() else os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
+        for fn in filenames:
+            if not isinstance(fn, str) or '/' in fn or '..' in fn or not fn.endswith('.xml'):
+                return jsonify({'error': f'Ongeldige bestandsnaam: {fn}'}), 400
+            fp = os.path.join(out_dir, fn)
+            if not os.path.exists(fp) or not os.path.isfile(fp):
+                return jsonify({'error': f'Bestand niet gevonden: {fn}'}), 404
+            safe_files.append((fn, fp))
+        # Build ZIP in memory
+        mem = io.BytesIO()
+        with zipfile.ZipFile(mem, mode='w', compression=zipfile.ZIP_DEFLATED) as zf:
+            for name, path in safe_files:
+                zf.write(path, arcname=name)
+        mem.seek(0)
+        zip_bytes = mem.getvalue()
+        ts = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        zip_name = f"uwv_xmlator_selectie_{ts}.zip"
+        headers = {
+            'Content-Type': 'application/zip',
+            'Content-Disposition': f"attachment; filename*=UTF-8''{zip_name}",
+            'Content-Length': str(len(zip_bytes))
+        }
+        return Response(zip_bytes, headers=headers)
+    except Exception as e:
+        return jsonify({'error': f'Fout bij maken van ZIP: {e}'}), 500
 
 # --- JSON upload endpoint for genereer_json.html ---
 @app.route('/upload_json', methods=['POST'])
@@ -42,8 +154,28 @@ def upload_json():
 @app.route('/upload_excel', methods=['POST'])
 def upload_excel():
     file = request.files.get('excel_file')
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    print(f"[DEBUG] upload_excel called, is_ajax={is_ajax}, file={file}", file=sys.stderr)
     if not file:
-        flash('Geen bestand geüpload.', 'danger')
+        msg = 'Geen bestand geüpload.'
+        if is_ajax:
+            return jsonify({'success': False, 'error': msg}), 400
+        flash(msg, 'danger')
+        return redirect(request.referrer or url_for('genereer_xml'))
+    # Validate extension
+    _, ext = os.path.splitext(file.filename or '')
+    if ext.lower() not in ALLOWED_EXTENSIONS:
+        msg = 'Ongeldig bestandstype; alleen .xlsx en .xls zijn toegestaan.'
+        if is_ajax:
+            return jsonify({'success': False, 'error': msg}), 400
+        flash(msg, 'danger')
+        return redirect(request.referrer or url_for('genereer_xml'))
+    # Optional: content length guard
+    if request.content_length and request.content_length > app.config['MAX_CONTENT_LENGTH']:
+        msg = f'Bestand te groot (max {app.config["MAX_CONTENT_LENGTH"] // (1024*1024)} MB).'
+        if is_ajax:
+            return jsonify({'success': False, 'error': msg}), 400
+        flash(msg, 'danger')
         return redirect(request.referrer or url_for('genereer_xml'))
     # Save the uploaded file to uploads directory
     uploads_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads')
@@ -65,7 +197,10 @@ def upload_excel():
         wb = openpyxl.load_workbook(file_path)
         ws = wb.active
         if ws is None:
-            flash('Het geüploade Excel-bestand bevat geen werkblad of is ongeldig.', 'danger')
+            msg = 'Het geüploade Excel-bestand bevat geen werkblad of is ongeldig.'
+            if is_ajax:
+                return jsonify({'success': False, 'error': msg}), 400
+            flash(msg, 'danger')
             return redirect(request.referrer or url_for('genereer_xml'))
         # Always set aanvraag_type for all rows, even if column exists
         header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=False))
@@ -89,15 +224,19 @@ def upload_excel():
             warnings.simplefilter("ignore")
             wb.save(patched_excel_path)
     except Exception as exc:
-        flash(f'Fout bij verwerken van het Excel-bestand: {exc}', 'danger')
+        msg = f'Fout bij verwerken van het Excel-bestand: {exc}'
+        if is_ajax:
+            return jsonify({'success': False, 'error': msg}), 400
+        flash(msg, 'danger')
         return redirect(request.referrer or url_for('genereer_xml'))
 
     # Call the Excel-to-XML generator script
     generator_path = os.path.join(os.path.dirname(__file__), '..', 'tools', 'generate_from_excel.py')
-    output_dir = os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
+    # Use type-specific output directory
+    output_dir = get_output_directory(aanvraag_type)
     os.makedirs(output_dir, exist_ok=True)
-    python_exe = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.venv', 'Scripts', 'python.exe'))
-    import sys
+    python_exe = os.environ.get('PYTHON_EXE', sys.executable)
+    
     try:
         print(f"[DEBUG] Calling generator: {python_exe} {generator_path} --input {patched_excel_path} --outdir {output_dir} --mode single", file=sys.stderr)
         result = subprocess.run([
@@ -109,15 +248,36 @@ def upload_excel():
         ], capture_output=True, text=True, check=True)
         print(f"[DEBUG] Generator stdout: {result.stdout}", file=sys.stderr)
         print(f"[DEBUG] Generator stderr: {result.stderr}", file=sys.stderr)
-        flash(f'Excel-bestand succesvol geüpload en {aanvraag_type} XML-bestanden gegenereerd.', 'success')
+        
+        # Generation completed successfully
+        msg = f'Excel-bestand succesvol geüpload en {aanvraag_type} XML-bestanden gegenereerd.'
+        
+        if is_ajax:
+            return jsonify({
+                'success': True,
+                'message': msg
+            }), 200
+        flash(msg, 'success')
     except subprocess.CalledProcessError as e:
         print(f"[DEBUG] Generator failed: {e.stderr}\n{e.stdout}", file=sys.stderr)
-        flash(f'Fout bij genereren van XML: {e.stderr}\n{e.stdout}', 'danger')
+        msg = f'Fout bij genereren van XML: {e.stderr}\n{e.stdout}'
+        if is_ajax:
+            return jsonify({'success': False, 'error': msg}), 400
+        flash(msg, 'danger')
+    except Exception as e:
+        # Catch other failures such as missing python executable or script errors
+        print(f"[DEBUG] Generator unexpected error: {e}", file=sys.stderr)
+        msg = f'Fout bij genereren van XML: {e}'
+        if is_ajax:
+            return jsonify({'success': False, 'error': msg}), 400
+        flash(msg, 'danger')
     finally:
-        try:
-            os.remove(patched_excel_path)
-        except Exception:
-            pass
+        for path in (patched_excel_path, file_path):
+            try:
+                if path and os.path.exists(path):
+                    os.remove(path)
+            except Exception:
+                pass
     # Log the files found after upload
     try:
         files = os.listdir(output_dir)
@@ -133,28 +293,36 @@ def genereer_xml_fragment():
         'max_files': 50,
         'max_size_mb': 100
     }
-    output_dir = os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
-    generated = []
-    if os.path.exists(output_dir):
-        for fname in sorted(os.listdir(output_dir), reverse=True):
-            if fname.endswith('.xml'):
-                fpath = os.path.join(output_dir, fname)
-                try:
-                    tijdstip = datetime.datetime.fromtimestamp(os.path.getmtime(fpath)).isoformat()
-                    size = os.path.getsize(fpath)
-                    generated.append({
-                        'filename': fname,
-                        'tijdstip': tijdstip,
-                        'size': size
-                    })
-                except Exception:
-                    continue
-    return render_template(
-        "genereer_xml.html",
+    generated, total_count = list_generated_files(limit=25, prune=True)
+    from flask import make_response
+    html = render_template(
+        "_results_panel.html",
         zip_limits=zip_limits,
         generated=generated,
-        fragment_only=True
+        total_count=total_count
     )
+    print("[DEBUG] /genereer_xml/fragment generated files:", [f['filename'] for f in generated])
+    resp = make_response(html)
+    return resp
+
+# Generic resultaten fragment (shared by pages)
+@app.route("/resultaten/fragment")
+def resultaten_fragment():
+    zip_limits = {
+        'max_files': 50,
+        'max_size_mb': 100
+    }
+    generated, total_count = list_generated_files(limit=25, prune=True)
+    from flask import make_response
+    html = render_template(
+        "_results_panel.html",
+        zip_limits=zip_limits,
+        generated=generated,
+        total_count=total_count
+    )
+    return make_response(html)
+    print("[DEBUG] /genereer_xml/fragment HTML snippet:\n", html[:500], '...')
+    return make_response(html)
 
 # --- Placeholder API endpoints for frontend JS ---
 @app.route('/api/test/laatste')
@@ -208,36 +376,6 @@ def api_xml_stats():
         # print(f"[api_xml_stats] Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/xml/throughput')
-def api_xml_throughput():
-    out_dir = get_output_directory()
-    try:
-        xml_files = [f for f in os.listdir(out_dir) if f.endswith('.xml')]
-        daily = {}
-        for f in xml_files:
-            file_path = os.path.join(out_dir, f)
-            dt = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).date().isoformat()
-            if dt not in daily:
-                daily[dt] = {"datum": dt, "totaal": 0, "geslaagd": 0, "gefaald": 0}
-            daily[dt]["totaal"] += 1
-            daily[dt]["geslaagd"] += 1  # For now, all are 'geslaagd'
-            # If you want to mark some as failed, adjust here
-        aggregated = []
-        for dt in sorted(daily.keys()):
-            d = daily[dt]
-            totaal = d["totaal"]
-            geslaagd = d["geslaagd"]
-            gefaald = d["gefaald"]
-            succes_percentage = int(round((geslaagd / totaal) * 100)) if totaal > 0 else 0
-            d["succes_percentage"] = succes_percentage
-            aggregated.append(d)
-        result = {"aggregated": aggregated}
-        # print(f"[api_xml_throughput] Returning: {result}")
-        return jsonify(result)
-    except Exception as e:
-        # print(f"[api_xml_throughput] Error: {e}")
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/api/test/totaal')
 def api_test_totaal():
     out_dir = get_output_directory()
@@ -270,48 +408,74 @@ def api_test_historie():
         # print(f"[api_test_historie] Error: {e}")
         return jsonify({"error": str(e)}), 500
 
+
+
 # --- Helper to get the output directory ---
-def get_output_directory():
-    # Adjust this path as needed for your project
-    return os.path.join(os.path.dirname(__file__), '..', 'build')
+def get_output_directory(aanvraag_type=None):
+    """
+    Get output directory for generated files.
+    If aanvraag_type is provided, returns type-specific path according to docs:
+    - ZBM/VM: uzs_filedrop/UZI-GAP3/UZSx_ACC1/v0428
+    - Digipoort/OTP3: uzs_filedrop/UZI-GAP3/UZSx_ACC1/UwvZwMelding_MQ_V0428
+    If aanvraag_type is None, returns default build/excel_generated (for backwards compatibility)
+    """
+    base = os.path.join(os.path.dirname(__file__), '..')
+    
+    if aanvraag_type:
+        atype = str(aanvraag_type).upper()
+        if atype in ['ZBM', 'VM']:
+            return os.path.join(base, 'uzs_filedrop', 'UZI-GAP3', 'UZSx_ACC1', 'v0428')
+        elif atype in ['DIGIPOORT', 'OTP3']:
+            return os.path.join(base, 'uzs_filedrop', 'UZI-GAP3', 'UZSx_ACC1', 'UwvZwMelding_MQ_V0428')
+    
+    # Default: backwards compatible path
+    return os.path.join(base, 'build', 'excel_generated')
 
-# --- Preview helper ---
-def _safe_preview_content(content, max_chars=2000):
-    # Return a safe, truncated preview for display
-    if not isinstance(content, str):
+# --- Helper: list generated files (optionally prune oldest beyond limit) ---
+def list_generated_files(limit=25, prune=False):
+    # Scan all output directories (ZBM/VM, Digipoort, and backwards-compatible default)
+    directories = [
+        get_output_directory('ZBM'),
+        get_output_directory('Digipoort'),
+        get_output_directory()  # Default/backwards compatible
+    ]
+    files_with_time = []
+    for out_dir in directories:
+        if os.path.exists(out_dir):
+            for fname in os.listdir(out_dir):
+                if fname.endswith('.xml'):
+                    fpath = os.path.join(out_dir, fname)
+                    try:
+                        mtime = os.path.getmtime(fpath)
+                        files_with_time.append((fname, fpath, mtime))
+                    except Exception:
+                        continue
+    # Sort newest first
+    files_with_time.sort(key=lambda x: x[2], reverse=True)
+    total_count = len(files_with_time)
+    if prune and total_count > limit:
+        # delete oldest beyond limit
+        for fname, fpath, _ in files_with_time[limit:]:
+            try:
+                os.remove(fpath)
+            except Exception as e:
+                print(f"[WARN] kon {fname} niet verwijderen: {e}", file=sys.stderr)
+        files_with_time = files_with_time[:limit]
+        total_count = len(files_with_time)
+    generated = []
+    for fname, fpath, mtime in files_with_time[:limit]:
         try:
-            content = content.decode("utf-8", errors="replace")
+            tijdstip = datetime.datetime.fromtimestamp(mtime).isoformat()
+            size = os.path.getsize(fpath)
+            generated.append({
+                'filename': fname,
+                'tijdstip': tijdstip,
+                'size': size
+            })
         except Exception:
-            content = str(content)
-    preview = content[:max_chars]
-    if len(content) > max_chars:
-        preview += "\n... (afgekapt)"
-    return escape(preview)
+            continue
+    return generated, total_count
 
-# --- Voorvertoning endpoint ---
-@app.route("/resultaten/preview/<filename>")
-def resultaten_preview(filename):
-    # Only allow .xml files, prevent path traversal
-    if not filename.endswith(".xml") or "/" in filename or ".." in filename:
-        return jsonify({"error": "Ongeldige bestandsnaam"}), 400
-    out_dir = get_output_directory()
-    file_path = os.path.join(out_dir, filename)
-    if not os.path.exists(file_path) or not os.path.isfile(file_path):
-        return jsonify({"error": "Bestand niet gevonden"}), 404
-    try:
-        size = os.path.getsize(file_path)
-        tijdstip = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).isoformat()
-        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
-            content = f.read()
-        preview = _safe_preview_content(content, max_chars=2000)
-        return jsonify({
-            "filename": filename,
-            "size": size,
-            "tijdstip": tijdstip,
-            "preview": preview
-        })
-    except Exception as e:
-        return jsonify({"error": f"Fout bij lezen: {e}"}), 500
 
 # --- Main frontend routes ---
 @app.route("/")
@@ -330,23 +494,8 @@ def genereer_xml():
         'max_size_mb': 100
     }
     # Always refresh the results list on page load
-    output_dir = os.path.join(os.path.dirname(__file__), '..', 'build', 'excel_generated')
-    generated = []
-    if os.path.exists(output_dir):
-        for fname in sorted(os.listdir(output_dir), reverse=True):
-            if fname.endswith('.xml'):
-                fpath = os.path.join(output_dir, fname)
-                try:
-                    tijdstip = datetime.datetime.fromtimestamp(os.path.getmtime(fpath)).isoformat()
-                    size = os.path.getsize(fpath)
-                    generated.append({
-                        'filename': fname,
-                        'tijdstip': tijdstip,
-                        'size': size
-                    })
-                except Exception:
-                    continue
-    return render_template("genereer_xml.html", zip_limits=zip_limits, generated=generated)
+    generated, total_count = list_generated_files(limit=25, prune=True)
+    return render_template("genereer_xml.html", zip_limits=zip_limits, generated=generated, total_count=total_count)
 
 @app.route("/genereer_json")
 def genereer_json():
@@ -365,9 +514,6 @@ def historie():
 def instellingen():
     return render_template("instellingen.html")
 
-@app.route("/datasets")
-def datasets():
-    return render_template("datasets.html")
 
 @app.route("/logs")
 def logs():

@@ -82,28 +82,10 @@ function flashMessage(msg) {
 }
 
 async function fetchAndShowDrilldown(dateQ) {
-    try {
-        const resp = await fetch(`/api/xml/events?date=${encodeURIComponent(dateQ)}`);
-        if (!resp.ok) throw new Error('API error');
-        const body = await resp.json();
-        const events = body.events || [];
-        const container = document.getElementById('chart-drilldown');
-        if (!container) return;
-        if (events.length === 0) {
-            container.innerHTML = `<div class="small text-muted">Geen events gevonden voor ${dateQ}</div>`;
-            return;
-        }
-        let html = `<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Tijdstip</th><th>Bestand</th><th>Succes</th><th>Size</th></tr></thead><tbody>`;
-        events.forEach(ev => {
-            const t = ev.tijdstip || ev.timestamp || ''; const fn = ev.filename || ev.output_path || ''; const ok = ev.success ? 'Ja' : 'Nee'; const size = ev.size ? `${ev.size} B` : '-';
-            html += `<tr><td>${t}</td><td>${fn}</td><td>${ok}</td><td>${size}</td></tr>`;
-        });
-        html += `</tbody></table></div>`;
-        container.innerHTML = html;
-        container.scrollIntoView({behavior:'smooth', block:'start'});
-    } catch (err) {
-        console.error('Drilldown failed', err);
-        alert('Fout bij ophalen drilldown-gegevens.');
+    // Drilldown endpoint verwijderd; toon melding
+    const container = document.getElementById('chart-drilldown');
+    if (container) {
+        container.innerHTML = `<div class="small text-muted">Geen details beschikbaar (drilldown uitgeschakeld).</div>`;
     }
 }
 // Update recente activiteit sectie
@@ -266,15 +248,14 @@ async function runTests() {
 
 // Haal dashboard-statistieken op en update UI-secties
 async function updateDashboardStats() {
-    // Fuller updater: fetch tiles, last test, throughput and recent activity
+    // Fuller updater: fetch tiles and last test (throughput endpoints removed)
     try {
         showChartLoading(true);
 
-        // Parallel fetches for tiles / last test / totals / throughput
-        const [laatsteResp, totaalResp, throughputResp] = await Promise.allSettled([
+        // Parallel fetches for tiles / last test / totals
+        const [laatsteResp, totaalResp] = await Promise.allSettled([
             fetch('/api/test/laatste'),
-            fetch('/api/test/totaal'),
-            fetch(`/api/xml/throughput?days=${chartRangeDays}`)
+            fetch('/api/test/totaal')
         ]);
 
         // Templates
@@ -299,40 +280,6 @@ async function updateDashboardStats() {
                 if (el) el.textContent = tt.totaal || 0;
             }
         } catch (e) { console.debug('totaal tests update failed', e); }
-
-        // Throughput / chart update
-        try {
-            if (throughputResp.status === 'fulfilled' && throughputResp.value.ok) {
-                const body = await throughputResp.value.json();
-                const payload = Array.isArray(body) ? body : (body && Array.isArray(body.aggregated) ? body.aggregated : []);
-                if (payload.length > 0) {
-                    // reuse existing chart updater
-                    try { 
-                        // Call fetchAndUpdateChart to keep single-source-of-truth
-                        await fetchAndUpdateChart();
-                    } catch (e) { console.debug('fetchAndUpdateChart failed', e); }
-                    // Compute overall success rate across the returned period and update tile if present
-                    try {
-                        const totalAcross = payload.reduce((acc, it) => acc + (it.totaal || 0), 0);
-                        const successAcross = payload.reduce((acc, it) => acc + (it.geslaagd || 0), 0);
-                        const successEl = document.getElementById('success-rate');
-                        if (successEl) {
-                            if (totalAcross > 0) {
-                                const pct = Math.round((successAcross / totalAcross) * 100);
-                                successEl.textContent = pct + '%';
-                            } else {
-                                // leave server-rendered value or show placeholder
-                                // do not overwrite with 0 unless explicitly known
-                            }
-                        }
-                    } catch (e) { console.debug('updating success-rate tile failed', e); }
-                } else {
-                    showChartNoData('Geen gegevens beschikbaar voor de geselecteerde periode.');
-                }
-            } else {
-                showChartError('Kon throughput data niet laden');
-            }
-        } catch (e) { console.debug('throughput update failed', e); }
 
         // Recent activity: fall back to fetching historie and update result page tiles if present
         try {
@@ -386,9 +333,12 @@ async function updateDashboardStats() {
                         return;
                     }
                 });
+                // Chart endpoints removed from dashboard; ensure loader hides
+                showChartLoading(false);
                 _uzs_delegation_attached = true;
             }
         } catch (e) { console.debug('delegation attach failed', e); }
+                showChartLoading(false);
 
         // Basic alerts: check latest day failure percentage and throughput drop
         try {
@@ -581,17 +531,8 @@ async function fetchAndUpdateChart() {
     let payload = null;
 
     try {
-        // The backend exposes `/api/xml/throughput` which returns
-        // { aggregated: [ { datum, totaal, geslaagd, gefaald, succes_percentage }, ... ] }
-        // Prefer newer `/api/xml-stats` if available, fall back to `/api/xml/throughput`
-        let resp = null;
-        try {
-            resp = await fetch(`/api/xml-stats?days=${chartRangeDays}`, { signal });
-            if (!resp.ok) throw new Error('not-found');
-        } catch (e) {
-            // fallback
-            resp = await fetch(`/api/xml/throughput?days=${chartRangeDays}`, { signal });
-        }
+        // Use `/api/xml-stats` (throughput endpoints removed)
+        const resp = await fetch(`/api/xml-stats?days=${chartRangeDays}`, { signal });
         clearTimeout(timeoutId);
         if (!resp.ok) throw new Error(`API responded with status ${resp.status}`);
         const body = await resp.json();

@@ -38,6 +38,51 @@ docker run -d --name xml-automation -p 127.0.0.1:5000:5000 \
 ```
 
 Then configure the organisation's reverse proxy to forward traffic to `127.0.0.1:5000` and perform TLS termination there.
+Minimal run — no TLS, no nginx (testers use server IP)
+------------------------------------------------------
+Fastest way to get testers on the app without domains or certificates.
+
+```bash
+# From repo root on a Linux server
+scripts/deploy_minimal_docker.sh
+```
+
+This builds and runs a single container exposing `http://<server-ip>:5000` and persists output into:
+- uzs_filedrop/UZI-GAP3/UZSx_ACC1/v0428
+- uzs_filedrop/UZI-GAP3/UZSx_ACC1/UwvZwMelding_MQ_V0428
+- build/excel_generated
+
+Stop/update:
+```bash
+docker stop xmlator ; docker rm xmlator
+scripts/deploy_minimal_docker.sh
+```
+
+Option 3 — Windows standalone EXE (PyInstaller)
+------------------------------------------------
+Build a single-file EXE on a Windows machine (Python required only for build), then copy to a Windows test server (no Python needed there).
+
+1) Build on a Windows box:
+```powershell
+# from repo root
+scripts/build_windows_exe.ps1
+```
+This produces `dist/xmlator.exe`.
+
+2) Copy to the Windows test server:
+  - `dist/xmlator.exe`
+  - Optionally `docs/` (XSDs) and `uzs_filedrop/` (to keep outputs together)
+
+3) Run on the server (no Python required):
+```powershell
+# in the folder containing xmlator.exe
+set FLASK_ENV=production
+set U_XMLATOR_SECRET=some-long-secret
+xmlator.exe --host 0.0.0.0 --port 5000
+```
+Testers connect to: http://<server-ip>:5000
+
+Stop: Ctrl+C
 
 Health & readiness
 ------------------

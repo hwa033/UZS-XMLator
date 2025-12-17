@@ -5,16 +5,16 @@
       <RouteInformatie>
         <Bron>
           <ApplicatieNaam>VM</ApplicatieNaam>
-          <DatTijdVersturenBericht>2025-12-12T10:29:01.765374+01:00</DatTijdVersturenBericht>
+          <DatTijdVersturenBericht>2025-12-16T15:25:42.574694+01:00</DatTijdVersturenBericht>
         </Bron>
         <Bestemming>
           <ApplicatieNaam>UZS</ApplicatieNaam>
         </Bestemming>
-        <GegevensUitwisselingsnr>GegUitNr-31de01b1</GegevensUitwisselingsnr>
+        <GegevensUitwisselingsnr>GegUitNr-41d7baeb</GegevensUitwisselingsnr>
         <RefnrGegevensUitwisselingsExtern>NOCOREFLEX</RefnrGegevensUitwisselingsExtern>
       </RouteInformatie>
       <BerichtIdentificatie>
-        <BerichtReferentienr>tester_20251212092901</BerichtReferentienr>
+        <BerichtReferentienr>tester_20251216142542</BerichtReferentienr>
         <BerichtType>
           <BerichtNaam>UwvZwMeldingInternBody</BerichtNaam>
           <VersieMajor>04</VersieMajor>
@@ -23,11 +23,11 @@
           <CommunicatieType>Melding</CommunicatieType>
           <CommunicatieElement>Melding</CommunicatieElement>
         </BerichtType>
-        <DatTijdAanmaakBericht>2025-12-12T10:29:01.765467+01:00</DatTijdAanmaakBericht>
+        <DatTijdAanmaakBericht>2025-12-16T15:25:42.575021+01:00</DatTijdAanmaakBericht>
         <IndTestbericht>2</IndTestbericht>
       </BerichtIdentificatie>
       <Transactie>
-        <TransactieReferentienr>TraRef-be035d72</TransactieReferentienr>
+        <TransactieReferentienr>TraRef-aaad68e5</TransactieReferentienr>
         <Volgordenr>1</Volgordenr>
         <IndLaatsteBericht>1</IndLaatsteBericht>
       </Transactie>
@@ -53,8 +53,6 @@
       </Ketenpartij>
       <NatuurlijkPersoon>
         <Burgerservicenr>555501759</Burgerservicenr>
-        <Geboortedat>19801205</Geboortedat>
-        <SignificantDeelVanDeAchternaam>Simeunović of Uluaĝ</SignificantDeelVanDeAchternaam>
       </NatuurlijkPersoon>
       <Contactgegevens/>
       <MeldingZiekte>

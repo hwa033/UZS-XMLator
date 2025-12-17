@@ -1,5 +1,18 @@
 # XML Automatisering Framework
 
+## 🎉 Wat is er nieuw? (December 2024)
+
+✨ **Optionele Features Geïmplementeerd:**
+- 📊 **Dashboard KPI's** - Realtime statistieken van XML generatie
+- 📋 **Excel Datasets Dropdown** - Selecteer pre-configured testdata (2437 datasets)
+- ✅ **XSD Validatie** - Automatische validatie van gegenereerde XML
+- 📈 **Event Logging** - Volg alle XML generatie events in `build/logs/xml_events.jsonl`
+- 🔌 **KPI API Endpoints** - `/api/xml/throughput`, `/api/xml/events`, `/api/xml/latest-errors`
+
+**Status:** ✅ 100% Compleet - Productie-klaar!
+
+---
+
 ## 🚀 Snel aan de slag
 
 # XML Automatisering
@@ -13,9 +26,15 @@ Doelgroepen: testers, ontwikkelaars en beheerders die testberichten willen maken
 ## Inhoud van deze map
 
 - `web/` – de Flask webapplicatie: `app.py`, templates en statische bestanden (CSS/JS).
--- `docs/` – documentatie en voorbeeld XSD/XML-bestanden.
+- `docs/` – documentatie en voorbeeld XSD/XML-bestanden.
+  - `DEVELOPER_REFERENCE.md` ⭐ NEW - Developer quick reference
+  - `OPTIONELE_FEATURES_IMPLEMENTATIE.md` ⭐ NEW - Optional features details
+  - `VOORTGANG_IMPLEMENTATIE.md` - Progress tracking
+  - `SESSION_2_SUMMARY.md` ⭐ NEW - Implementation summary
 - `uzs_filedrop/` – voorbeeld output-mappen (waar gegenereerde XML-bestanden terechtkomen).
+- `build/logs/` – event logging voor KPI dashboard
 - `tests.robot` – Robot Framework tests.
+- `test_kpi_integration.py` ⭐ NEW - Integration tests for KPI features
 - `requirements.txt` – Python afhankelijkheden.
 
 ---
@@ -40,6 +59,12 @@ pip install -r requirements.txt
 pip install -r requirements-dev.txt
 ```
 
+4. ⭐ **NEW** - Installeer lxml voor XSD validatie (optioneel):
+
+```powershell
+pip install lxml
+```
+
 ---
 
 ## Starten van de webapp
@@ -47,6 +72,12 @@ pip install -r requirements-dev.txt
 In de projectroot:
 
 ```powershell
+# Development
+python -m web.app
+
+# Production (met environment variables)
+$env:U_XMLATOR_SECRET = "your_secret_key_here"
+$env:FLASK_ENV = "production"
 python -m web.app
 ```
 

@@ -677,7 +677,9 @@ def main():
         bodies = [m for (_, m, _) in messages]
         # Use first message's type for bulk filename, or default to BULK
         bulk_type = messages[0][2] if messages else "BULK"
-        envelope = build_envelope_with_header_and_bodies(bodies)
+        # Map aanvraag_type to sender application name (per docs: Digipoort sample uses Digipoort; otherwise use the aanvraag type)
+        sender = "Digipoort" if bulk_type == "OTP3" else bulk_type
+        envelope = build_envelope_with_header_and_bodies(bodies, sender=sender)
         saved = save_envelope(envelope, out_dir, "bulk", bulk_type)
         append_log(
             log_path,
@@ -693,7 +695,9 @@ def main():
         # single mode: one envelope per message
         for idx, (rec, m, aanvraag_type) in enumerate(messages, start=1):
             try:
-                env = build_envelope_with_header_and_bodies([m])
+                # Map aanvraag_type to sender application name (per docs: Digipoort sample uses Digipoort; otherwise use the aanvraag type)
+                sender = "Digipoort" if aanvraag_type == "OTP3" else aanvraag_type
+                env = build_envelope_with_header_and_bodies([m], sender=sender)
                 bsn = rec.get("BSN") or f"row{idx}"
                 safe_bsn = str(bsn).replace(" ", "_")
                 saved = save_envelope(env, out_dir, safe_bsn, aanvraag_type)

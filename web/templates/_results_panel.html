@@ -1,0 +1,61 @@
+{# Results Panel Fragment #}
+<section class="main-panel card mb-4 app-panel" id="results-panel">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="text-muted small">
+                {% if total_count is defined %}
+                    Toont {{ generated|length }} van {{ total_count }} bestand(en)
+                {% endif %}
+            </div>
+            <div class="d-flex gap-2">
+                <button id="refresh-results-btn" class="btn btn-sm btn-outline-primary" type="button" title="Ververs lijst" style="opacity:1;cursor:pointer;">
+                    <i class="bi bi-arrow-clockwise"></i> Ververs
+                </button>
+                <button id="delete-selected-btn" class="btn btn-sm btn-outline-danger" disabled
+                        title="Verwijder geselecteerde bestanden">
+                    <span id="deleteSpinner" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="display:none;"></span>
+                    <i class="bi bi-trash"></i> Verwijder geselecteerd
+                </button>
+                <button id="download-selected-btn" class="btn btn-sm btn-outline-primary" disabled
+                        title="Max {{ zip_limits.max_files }} bestanden per download">
+                    <span id="zipSpinner" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" style="display:none;"></span>
+                    <span id="zipProgressWrap" style="display:none; min-width:80px;">
+                        <span id="zipProgressText" class="small text-primary">0%</span>
+                    </span>
+                    <i class="bi bi-download"></i> Download geselecteerd
+                </button>
+            </div>
+        </div>
+        {% if generated and generated|length > 0 %}
+            <div class="mb-3">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" id="select-all-generated">
+                    <label class="form-check-label small text-muted" for="select-all-generated">Selecteer alles</label>
+                </div>
+            </div>
+            <div class="list-group" id="generatedList">
+                {% for file in generated %}
+                <div class="list-group-item d-flex justify-content-between align-items-center generated-item py-2" style="min-height:36px;" data-filename="{{ file.filename }}">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input generated-select" type="checkbox" id="gen-select-{{ loop.index }}" data-file="{{ file.filename }}">
+                        </div>
+                        <div>
+                            <div class="fw-bold text-truncate" style="max-width:600px;">{{ file.filename }}</div>
+                            <div class="small text-muted">{{ file.tijdstip }} — {{ file.size }} B</div>
+                        </div>
+                    </div>
+                    <div>
+                        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('download_generated', filename=file.filename) }}" title="Download"><i class="bi bi-download"></i></a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                <p>Nog geen bestanden gegenereerd. Upload een Excel-bestand hierboven om te beginnen.</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
