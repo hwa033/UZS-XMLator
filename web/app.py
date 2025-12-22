@@ -9,6 +9,15 @@ import zipfile
 
 app = Flask(__name__)
 
+# Laad configuratie uit instellingen.json
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'instellingen.json')
+try:
+    with open(CONFIG_PATH) as f:
+        CONFIG = json.load(f)
+except Exception as e:
+    print(f"Waarschuwing: Kon configuratie niet laden ({CONFIG_PATH}): {e}", file=sys.stderr)
+    CONFIG = {'omgeving': 'UZSTA_OMG', 'filedrop_locaties': {}}
+
 # Beveiligingsinstellingen
 FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
 SECRET_KEY = os.environ.get('U_XMLATOR_SECRET')
@@ -27,17 +36,46 @@ app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'.xlsx', '.xls'}
 
 
-def get_output_directory(aanvraag_type=None):
-    """Bepaal uitvoermap voor gegenereerde bestanden."""
+def get_output_directory(aanvraag_type=None, omgeving=None):
+    """
+    Bepaal uitvoermap voor gegenereerde bestanden op basis van berichttype en omgeving.
+    
+    aanvraag_type: OTP3, ZBM, VM
+    omgeving: UZSTA_OMG, UZSA_ACC1, UZSC_ACC1, UZSD_ACC1, UZSP_ACC1 (default uit config)
+    """
+    if omgeving is None:
+        omgeving = CONFIG.get('omgeving', 'UZSTA_OMG')
+    
+    filedrop_locaties = CONFIG.get('filedrop_locaties', {})
+    
+    if aanvraag_type and omgeving in filedrop_locaties:
+        berichttype = str(aanvraag_type).upper()
+        omg_map = filedrop_locaties[omgeving]
+        
+        # Kijk voor exact match
+        if berichttype in omg_map:
+            path = omg_map[berichttype]
+            os.makedirs(path, exist_ok=True)
+            return path
+        
+        # Fallback: ZBM/VM gebruiken dezelfde locatie
+        if berichttype in ['ZBM', 'VM']:
+            for key in ['ZBM', 'VM']:
+                if key in omg_map:
+                    path = omg_map[key]
+                    os.makedirs(path, exist_ok=True)
+                    return path
+        
+        # Fallback: OTP3/Digipoort gebruiken dezelfde locatie
+        if berichttype in ['DIGIPOORT', 'OTP3']:
+            for key in ['OTP3', 'DIGIPOORT']:
+                if key in omg_map:
+                    path = omg_map[key]
+                    os.makedirs(path, exist_ok=True)
+                    return path
+    
+    # Fallback naar lokale directory (voor dev/test)
     base = os.path.join(os.path.dirname(__file__), '..')
-    
-    if aanvraag_type:
-        atype = str(aanvraag_type).upper()
-        if atype in ['ZBM', 'VM']:
-            return os.path.join(base, 'uzs_filedrop', 'UZI-GAP3', 'UZSx_ACC1', 'v0428')
-        elif atype in ['DIGIPOORT', 'OTP3']:
-            return os.path.join(base, 'uzs_filedrop', 'UZI-GAP3', 'UZSx_ACC1', 'UwvZwMelding_MQ_V0428')
-    
     return os.path.join(base, 'build', 'excel_generated')
 
 
