@@ -20,9 +20,13 @@ Copy-Item ".\dist\xmlator.exe" "$TargetDir\"
 Write-Host "Copying support folders..." -ForegroundColor Cyan
 Copy-Item ".\docs" "$TargetDir\" -Recurse -Force
 Copy-Item ".\uzs_filedrop" "$TargetDir\" -Recurse -Force
+Copy-Item ".\web\instellingen.json" "$TargetDir\"
 
 Write-Host "Creating output directories..." -ForegroundColor Cyan
 New-Item -ItemType Directory -Force -Path "$TargetDir\build\excel_generated" | Out-Null
+
+Write-Host "Updating instellingen.json for deployment..." -ForegroundColor Cyan
+# Let user choose environment or use default UZSTA_OMG
 
 Write-Host "Creating run script for target server..." -ForegroundColor Cyan
 @"
