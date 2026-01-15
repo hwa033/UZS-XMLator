@@ -17,25 +17,12 @@
     <div class="row">
         <div class="col-md-6 mb-4">
             <div class="card shadow-sm">
-                <div class="card-header bg-success text-white">
-                    <strong>XML Geschiedenis</strong>
-                </div>
-                <div class="card-body">
-                    <p>Bekijk historie van gegenereerde XML-bestanden.</p>
-                    <a href="{{ url_for('historie') }}" class="btn btn-outline-success">Bekijk Historie</a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6 mb-4">
-            <div class="card shadow-sm">
                 <div class="card-header bg-warning text-dark">
                     <strong>Testresultaten</strong>
                 </div>
                 <div class="card-body">
                     <p>Bekijk en beheer testhistorie en resultaten.</p>
-                    <!-- Resultaten-pagina bestaat niet, knop tijdelijk verborgen -->
-
+                    <a href="{{ url_for('home') }}" class="btn btn-outline-warning">Open dashboard</a>
                 </div>
             </div>
         </div>
@@ -47,7 +34,7 @@
                 </div>
                 <div class="card-body">
                     <p>Beheer systeeminstellingen, logging en onderhoud.</p>
-                    <a href="{{ url_for('configuratie') }}" class="btn btn-outline-danger">Configuratie</a>
+                    <a href="{{ url_for('instellingen.configuratie') }}" class="btn btn-outline-danger">Configuratie</a>
                 </div>
             </div>
         </div>
@@ -59,7 +46,7 @@
                 </div>
                 <div class="card-body">
                     <p>Handleidingen en gebruikersinformatie.</p>
-                    <a href="{{ url_for('documentatie') }}" class="btn btn-outline-info">Bekijk Documentatie</a>
+                    <a href="{{ url_for('instellingen.documentatie') }}" class="btn btn-outline-info">Bekijk Documentatie</a>
                 </div>
             </div>
         </div>
@@ -70,7 +57,7 @@
                 </div>
                 <div class="card-body">
                     <p>Bekijk recente logregels van uploads en generator.</p>
-                    <a href="{{ url_for('logs') }}" class="btn btn-outline-secondary">Bekijk Logs</a>
+                    <a href="{{ url_for('instellingen.logs') }}" class="btn btn-outline-secondary">Bekijk Logs</a>
                 </div>
             </div>
         </div>

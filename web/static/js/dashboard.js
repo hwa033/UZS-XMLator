@@ -253,9 +253,10 @@ async function updateDashboardStats() {
         showChartLoading(true);
 
         // Parallel fetches for tiles / last test / totals
-        const [laatsteResp, totaalResp] = await Promise.allSettled([
+        const [laatsteResp, totaalResp, errorsResp] = await Promise.allSettled([
             fetch('/api/test/laatste'),
-            fetch('/api/test/totaal')
+            fetch('/api/test/totaal'),
+            fetch('/api/xml/latest-errors')
         ]);
 
         // Templates
@@ -281,13 +282,27 @@ async function updateDashboardStats() {
             }
         } catch (e) { console.debug('totaal tests update failed', e); }
 
-        // Recent activity: fall back to fetching historie and update result page tiles if present
+        // Recent activity: combine errors + recent files
         try {
             const histResp = await fetch('/api/test/historie');
-            if (histResp.ok) {
-                const historie = await histResp.json();
-                const histArray = Array.isArray(historie) ? historie : [];
-                updateRecentActivity(histArray);
+            const hist = histResp.ok ? await histResp.json() : [];
+            const histArray = Array.isArray(hist) ? hist : [];
+            
+            // Fetch errors and prepend to activity
+            let combinedActivity = [];
+            if (errorsResp.status === 'fulfilled' && errorsResp.value.ok) {
+                const errs = await errorsResp.value.json();
+                if (Array.isArray(errs) && errs.length > 0) {
+                    combinedActivity = errs.slice(0, 3).map(e => ({
+                        bestandsnaam: e.filename || 'Error',
+                        tijdstip: e.tijdstip,
+                        status: '❌ ' + (e.type === 'generation_error' ? 'Gen error' : 'Exception'),
+                        type: 'Error'
+                    }));
+                }
+            }
+            combinedActivity = combinedActivity.concat(histArray.slice(0, 2));
+            updateRecentActivity(combinedActivity);
                 // Update Resultaten page tiles if present
                 try {
                     const elCount = document.getElementById('res-total-generated');
@@ -305,10 +320,16 @@ async function updateDashboardStats() {
                         if (elLastTime) elLastTime.textContent = latest.tijdstip || latest.datum || '';
                     }
                 } catch (inner) { console.debug('result tiles update failed', inner); }
-            } else {
-                updateRecentActivity([]);
-            }
         } catch (e) { console.debug('recent activity fetch failed', e); updateRecentActivity([]); }
+
+        // Errors count tile
+        try {
+            if (errorsResp.status === 'fulfilled' && errorsResp.value.ok) {
+                const errs = await errorsResp.value.json();
+                const errCountEl = document.getElementById('error-count');
+                if (errCountEl) errCountEl.textContent = Array.isArray(errs) ? errs.length : 0;
+            }
+        } catch (e) { console.debug('errors tile update failed', e); }
 
         // Attach delegation for stat-card menu actions (copy/drilldown)
         try {
@@ -338,7 +359,6 @@ async function updateDashboardStats() {
                 _uzs_delegation_attached = true;
             }
         } catch (e) { console.debug('delegation attach failed', e); }
-                showChartLoading(false);
 
         // Basic alerts: check latest day failure percentage and throughput drop
         try {

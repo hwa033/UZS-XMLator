@@ -73,39 +73,85 @@ def configuratie():
         with open(SETTINGS_FILE, encoding="utf-8") as f:
             settings = json.load(f)
 
+    # Options for environments
+    env_options = [
+        "UZSA_ACC1",
+        "UZSC_ACC1",
+        "UZSD_ACC1",
+        "UZSP_ACC1",
+        "UZSTA_OMG",
+    ]
+
     if request.method == "POST":
-        # Update instellingen
-        settings["upload_max_size_mb"] = int(request.form.get("upload_max_size_mb", 16))
+        errors = []
+
+        def _as_int(field, default, min_value=1):
+            raw = request.form.get(field, "").strip()
+            if not raw:
+                return default, f"{field} mag niet leeg zijn"
+            try:
+                val = int(raw)
+                if val < min_value:
+                    return default, f"{field} moet >= {min_value}"
+                return val, None
+            except ValueError:
+                return default, f"{field} moet een getal zijn"
+
+        upload_max_size_mb, err = _as_int("upload_max_size_mb", settings.get("upload_max_size_mb", 16))
+        if err:
+            errors.append(err)
+
+        file_retention_days, err = _as_int("file_retention_days", settings.get("file_retention_days", 30))
+        if err:
+            errors.append(err)
+
+        settings["upload_max_size_mb"] = upload_max_size_mb
+        settings["file_retention_days"] = file_retention_days
+        settings["omgeving"] = request.form.get(
+            "omgeving", settings.get("omgeving", "UZSTA_OMG")
+        )
         settings["xsd_path"] = request.form.get(
             "xsd_path", settings.get("xsd_path", "")
-        )
-        settings["log_level"] = request.form.get(
-            "log_level", settings.get("log_level", "INFO")
-        )
-        settings["output_directory"] = request.form.get(
-            "output_directory", settings.get("output_directory", "")
-        )
-        settings["auto_validate"] = request.form.get("auto_validate") == "on"
-        settings["default_test_indicator"] = request.form.get(
-            "default_test_indicator", settings.get("default_test_indicator", "2")
-        )
-        settings["default_fiscaal_nr"] = request.form.get(
-            "default_fiscaal_nr", settings.get("default_fiscaal_nr", "")
-        )
-        settings["default_loonheffing_nr"] = request.form.get(
-            "default_loonheffing_nr", settings.get("default_loonheffing_nr", "")
-        )
-        settings["file_retention_days"] = int(
-            request.form.get(
-                "file_retention_days", settings.get("file_retention_days", 30)
-            )
-        )
+        ).strip()
+        # Optional: update filedrop paths for selected environment
+        fp_otp3 = request.form.get("otp3_path", "").strip()
+        fp_zbm = request.form.get("zbm_path", "").strip()
+        fp_vm = request.form.get("vm_path", "").strip()
+        
+        # Valideer paden (waarschuwing als niet bereikbaar, maar niet blokkeren)
+        for label, path in [("OTP3", fp_otp3), ("ZBM", fp_zbm), ("VM", fp_vm)]:
+            if path:
+                drive, _ = os.path.splitdrive(path)
+                if drive and not os.path.exists(drive + os.path.sep):
+                    flash(f"Waarschuwing: Drive {drive} voor {label} niet beschikbaar; pad wordt wel opgeslagen.", "warning")
+                elif not os.path.exists(path):
+                    flash(f"Info: Pad voor {label} bestaat nog niet maar wordt opgeslagen (kan later worden aangemaakt).", "info")
+        
+        if settings.get("filedrop_locaties") is None or not isinstance(settings.get("filedrop_locaties"), dict):
+            settings["filedrop_locaties"] = {}
+        env_map = settings["filedrop_locaties"].get(settings["omgeving"], {})
+        if fp_otp3:
+            env_map["OTP3"] = fp_otp3
+        if fp_zbm:
+            env_map["ZBM"] = fp_zbm
+        if fp_vm:
+            env_map["VM"] = fp_vm
+        settings["filedrop_locaties"][settings["omgeving"]] = env_map
+
+        if errors:
+            for e in errors:
+                flash(e, "danger")
+            # Prepare current env paths for template
+            env_paths = settings.get("filedrop_locaties", {}).get(settings.get("omgeving", "UZSTA_OMG"), {})
+            return render_template("configuratie.html", settings=settings, env_options=env_options, env_paths=env_paths)
+
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
         flash("Instellingen opgeslagen", "success")
         return redirect(url_for("instellingen.configuratie"))
 
-    return render_template("configuratie.html", settings=settings)
+    env_paths = settings.get("filedrop_locaties", {}).get(settings.get("omgeving", "UZSTA_OMG"), {})
+    return render_template("configuratie.html", settings=settings, env_options=env_options, env_paths=env_paths)
 
 
 

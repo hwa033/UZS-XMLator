@@ -7,16 +7,40 @@ import io
 import json
 import zipfile
 
+from .instellingen import instellingen_bp
+import json
+
 app = Flask(__name__)
 
 # Laad configuratie uit instellingen.json
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'instellingen.json')
-try:
-    with open(CONFIG_PATH) as f:
-        CONFIG = json.load(f)
-except Exception as e:
-    print(f"Waarschuwing: Kon configuratie niet laden ({CONFIG_PATH}): {e}", file=sys.stderr)
-    CONFIG = {'omgeving': 'UZSTA_OMG', 'filedrop_locaties': {}}
+def _load_config():
+    defaults = {
+        'omgeving': 'UZSTA_OMG',
+        'filedrop_locaties': {},
+        'upload_max_size_mb': 10,
+        'xsd_path': 'docs/UwvZwMeldingInternBody-v0428-b01.xsd',
+        'log_level': 'INFO',
+        'output_directory': '',
+        'auto_validate': False,
+        'default_test_indicator': '2',
+        'default_fiscaal_nr': '',
+        'default_loonheffing_nr': '',
+        'file_retention_days': 30,
+    }
+    try:
+        with open(CONFIG_PATH) as f:
+            data = json.load(f)
+            if not isinstance(data, dict):
+                return defaults
+            merged = defaults.copy()
+            merged.update(data)
+            return merged
+    except Exception as e:
+        print(f"Waarschuwing: Kon configuratie niet laden ({CONFIG_PATH}): {e}", file=sys.stderr)
+        return defaults
+
+CONFIG = _load_config()
 
 # Beveiligingsinstellingen
 FLASK_ENV = os.environ.get('FLASK_ENV', 'development')
@@ -32,8 +56,58 @@ app.secret_key = SECRET_KEY or 'verander-dit-naar-een-lang-geheim-1234'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('U_XMLATOR_COOKIE_SECURE', '1') == '1'
 app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('U_XMLATOR_SAMESITE', 'Lax')
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = max(1, int(CONFIG.get('upload_max_size_mb', 10))) * 1024 * 1024
 ALLOWED_EXTENSIONS = {'.xlsx', '.xls'}
+
+# Register blueprints
+app.register_blueprint(instellingen_bp, url_prefix='/instellingen')
+
+
+def _error_log_path():
+    base = os.path.join(os.path.dirname(__file__), '..')
+    logdir = os.path.join(base, 'build', 'logs')
+    try:
+        os.makedirs(logdir, exist_ok=True)
+    except Exception:
+        pass
+    return os.path.join(logdir, 'xmlator_errors.jsonl')
+
+
+def _append_error_log(entry: dict):
+    try:
+        p = _error_log_path()
+        entry = dict(entry or {})
+        if 'tijdstip' not in entry:
+            entry['tijdstip'] = datetime.datetime.now().isoformat()
+        with open(p, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+def _read_error_log(max_items: int = 20):
+    try:
+        p = _error_log_path()
+        if not os.path.exists(p):
+            return []
+        lines = []
+        with open(p, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                lines.append(line)
+        items = []
+        for s in reversed(lines):
+            try:
+                items.append(json.loads(s))
+            except Exception:
+                continue
+            if len(items) >= max_items:
+                break
+        return items
+    except Exception:
+        return []
 
 
 def get_output_directory(aanvraag_type=None, omgeving=None):
@@ -43,40 +117,60 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     aanvraag_type: OTP3, ZBM, VM
     omgeving: UZSTA_OMG, UZSA_ACC1, UZSC_ACC1, UZSD_ACC1, UZSP_ACC1 (default uit config)
     """
+    # Lokale fallback voor dev/test
+    base = os.path.join(os.path.dirname(__file__), '..')
+    fallback_dir = os.path.join(base, 'build', 'excel_generated')
+
+    # Laad actuele configuratie
+    cfg = _load_config()
+    # Omgeving uit config indien niet expliciet opgegeven
     if omgeving is None:
-        omgeving = CONFIG.get('omgeving', 'UZSTA_OMG')
-    
-    filedrop_locaties = CONFIG.get('filedrop_locaties', {})
-    
+        omgeving = cfg.get('omgeving', 'UZSTA_OMG')
+
+    filedrop_locaties = cfg.get('filedrop_locaties', {})
+
+    # Helper: probeer pad te gebruiken/aan te maken, anders None teruggeven
+    def _try_use(path: str):
+        try:
+            # Controleer of drive beschikbaar is (Windows): bv. 'D:\\'
+            drive, _ = os.path.splitdrive(path)
+            if drive and not os.path.exists(drive + os.path.sep):
+                return None
+            os.makedirs(path, exist_ok=True)
+            return path
+        except Exception as e:
+            print(f"[WAARSCHUWING] Kan uitvoermap niet aanmaken ({path}): {e}", file=sys.stderr)
+            return None
+
     if aanvraag_type and omgeving in filedrop_locaties:
         berichttype = str(aanvraag_type).upper()
         omg_map = filedrop_locaties[omgeving]
-        
-        # Kijk voor exact match
+
+        # 1) Exacte match
         if berichttype in omg_map:
-            path = omg_map[berichttype]
-            os.makedirs(path, exist_ok=True)
-            return path
-        
-        # Fallback: ZBM/VM gebruiken dezelfde locatie
+            chosen = _try_use(omg_map[berichttype])
+            if chosen:
+                return chosen
+
+        # 2) ZBM/VM delen locatie
         if berichttype in ['ZBM', 'VM']:
             for key in ['ZBM', 'VM']:
                 if key in omg_map:
-                    path = omg_map[key]
-                    os.makedirs(path, exist_ok=True)
-                    return path
-        
-        # Fallback: OTP3/Digipoort gebruiken dezelfde locatie
+                    chosen = _try_use(omg_map[key])
+                    if chosen:
+                        return chosen
+
+        # 3) OTP3/DIGIPOORT delen locatie
         if berichttype in ['DIGIPOORT', 'OTP3']:
             for key in ['OTP3', 'DIGIPOORT']:
                 if key in omg_map:
-                    path = omg_map[key]
-                    os.makedirs(path, exist_ok=True)
-                    return path
-    
-    # Fallback naar lokale directory (voor dev/test)
-    base = os.path.join(os.path.dirname(__file__), '..')
-    return os.path.join(base, 'build', 'excel_generated')
+                    chosen = _try_use(omg_map[key])
+                    if chosen:
+                        return chosen
+
+    # 4) Fallback naar lokale directory (voor dev/test)
+    os.makedirs(fallback_dir, exist_ok=True)
+    return fallback_dir
 
 
 def list_generated_files(limit=25, prune=False):
@@ -179,22 +273,45 @@ def delete_selected_files():
         if not isinstance(filenames, list) or not filenames:
             return jsonify({'error': 'Geen bestanden geselecteerd'}), 400
         
-        out_dir = get_output_directory()
+        # Gebruik exact dezelfde directories als list_generated_files() doet
+        directories = [
+            get_output_directory('ZBM'),
+            get_output_directory('Digipoort'),
+            get_output_directory()
+        ]
+        
+        # Bouw een mapping van bestandsnaam → volledig pad door alle dirs te scannen
+        file_map = {}
+        for out_dir in directories:
+            if os.path.exists(out_dir):
+                for fname in os.listdir(out_dir):
+                    if fname.endswith('.xml'):
+                        fpath = os.path.join(out_dir, fname)
+                        if os.path.isfile(fpath):
+                            file_map[fname] = fpath
+        
         deleted = 0
+        missing = []
         
         for fn in filenames:
             if not isinstance(fn, str) or '/' in fn or '..' in fn or not fn.endswith('.xml'):
                 continue
-            fp = os.path.join(out_dir, fn)
-            if os.path.exists(fp) and os.path.isfile(fp):
-                try:
-                    os.remove(fp)
-                    deleted += 1
-                except Exception:
-                    pass
+            
+            if fn not in file_map:
+                missing.append(fn)
+                continue
+            
+            fpath = file_map[fn]
+            try:
+                os.remove(fpath)
+                deleted += 1
+            except Exception as e:
+                print(f"[WAARSCHUWING] Kon {fpath} niet verwijderen: {e}", file=sys.stderr)
+                missing.append(fn)
         
-        return jsonify({'success': True, 'deleted': deleted})
+        return jsonify({'success': True, 'deleted': deleted, 'missing': missing})
     except Exception as e:
+        print(f"[FOUT] delete_selected_files: {e}", file=sys.stderr)
         return jsonify({'error': f'Fout bij verwijderen: {e}'}), 500
 
 
@@ -260,6 +377,10 @@ def upload_excel():
         flash(msg, 'danger')
         return redirect(request.referrer or url_for('genereer_xml'))
     
+    # Herlaad settings voor runtime wijzigingen
+    cfg = _load_config()
+    app.config['MAX_CONTENT_LENGTH'] = max(1, int(cfg.get('upload_max_size_mb', 10))) * 1024 * 1024
+
     if request.content_length and request.content_length > app.config['MAX_CONTENT_LENGTH']:
         msg = f'Bestand te groot (max {app.config["MAX_CONTENT_LENGTH"] // (1024*1024)} MB).'
         if is_ajax:
@@ -326,18 +447,36 @@ def upload_excel():
             '--outdir', output_dir,
             '--mode', 'single'
         ], capture_output=True, text=True, check=True)
-        
+
         msg = f'Excel-bestand succesvol geüpload en {aanvraag_type} XML-bestanden gegenereerd.'
-        
+
         if is_ajax:
             return jsonify({'success': True, 'message': msg}), 200
         flash(msg, 'success')
     except subprocess.CalledProcessError as e:
+        _append_error_log({
+            'type': 'generation_error',
+            'aanvraag_type': aanvraag_type,
+            'omgeving': CONFIG.get('omgeving', ''),
+            'output_dir': output_dir,
+            'stderr': e.stderr,
+            'stdout': e.stdout,
+            'returncode': e.returncode,
+            'filename': orig_filename
+        })
         msg = f'Fout bij genereren van XML: {e.stderr or e.stdout}'
         if is_ajax:
             return jsonify({'success': False, 'error': msg}), 400
         flash(msg, 'danger')
     except Exception as e:
+        _append_error_log({
+            'type': 'generation_exception',
+            'aanvraag_type': aanvraag_type,
+            'omgeving': CONFIG.get('omgeving', ''),
+            'output_dir': output_dir,
+            'error': str(e),
+            'filename': orig_filename
+        })
         msg = f'Fout bij genereren van XML: {e}'
         if is_ajax:
             return jsonify({'success': False, 'error': msg}), 400
@@ -371,6 +510,174 @@ def ready():
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
+
+
+###########
+# Dashboard API — echte data op basis van gegenereerde XML-bestanden
+###########
+
+def _collect_output_directories():
+    # Verzamel de relevante directories om te scannen
+    dirs = []
+    try:
+        dirs.append(get_output_directory('ZBM'))
+    except Exception:
+        pass
+    try:
+        dirs.append(get_output_directory('OTP3'))
+    except Exception:
+        pass
+    try:
+        dirs.append(get_output_directory())
+    except Exception:
+        pass
+    # Unique & bestaand
+    unique = []
+    for d in dirs:
+        if d and d not in unique and os.path.exists(d):
+            unique.append(d)
+    return unique
+
+
+def _scan_files(max_items=None):
+    """Scan alle uitvoerdirectories en retourneer lijst met dicts per bestand."""
+    result = []
+    for d in _collect_output_directories():
+        try:
+            for fname in os.listdir(d):
+                if not fname.lower().endswith('.xml'):
+                    continue
+                fpath = os.path.join(d, fname)
+                try:
+                    mtime = os.path.getmtime(fpath)
+                    size = os.path.getsize(fpath)
+                except Exception:
+                    continue
+                # Heuristische type-detectie op basis van pad
+                lowerp = d.lower()
+                if 'uwvzwmelding_mq_v0428'.lower() in lowerp:
+                    btype = 'OTP3'
+                elif os.path.sep + 'v0428' + os.path.sep in d:
+                    btype = 'ZBM/VM'
+                else:
+                    btype = 'Onbekend'
+                result.append({
+                    'filename': fname,
+                    'path': fpath,
+                    'mtime': mtime,
+                    'tijdstip': datetime.datetime.fromtimestamp(mtime).isoformat(),
+                    'size': size,
+                    'type': btype,
+                    'status': 'Geslaagd'
+                })
+        except Exception:
+            continue
+    # Nieuwste eerst
+    result.sort(key=lambda x: x['mtime'], reverse=True)
+    if max_items is not None:
+        return result[:max_items]
+    return result
+
+
+@app.route('/api/test/laatste')
+def api_test_laatste():
+    try:
+        files = _scan_files(max_items=1)
+        if files:
+            latest = files[0]
+            return jsonify({'status': latest.get('status', 'Geslaagd'), 'datum': latest.get('tijdstip')})
+        else:
+            return jsonify({'status': 'Geen data', 'datum': ''})
+    except Exception as e:
+        return jsonify({'status': 'Onbekend', 'datum': '', 'error': str(e)})
+
+
+@app.route('/api/test/totaal')
+def api_test_totaal():
+    try:
+        total = len(_scan_files())
+        return jsonify({'totaal': total})
+    except Exception as e:
+        return jsonify({'totaal': 0, 'error': str(e)})
+
+
+@app.route('/api/test/historie')
+def api_test_historie():
+    try:
+        files = _scan_files(max_items=50)
+        # Map naar eenvoudiger payload
+        payload = [{
+            'bestandsnaam': f['filename'],
+            'tijdstip': f['tijdstip'],
+            'size': f['size'],
+            'status': f['status'],
+            'type': f['type']
+        } for f in files]
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify([])
+
+
+def _aggregate_by_day(days: int = 14):
+    import math
+    now = datetime.datetime.now()
+    start = now - datetime.timedelta(days=days - 1)
+    # Maak emmers per dag
+    buckets = {}
+    for i in range(days):
+        d = (start + datetime.timedelta(days=i)).date().isoformat()
+        buckets[d] = {'datum': d, 'totaal': 0, 'geslaagd': 0, 'gefaald': 0}
+    for f in _scan_files():
+        dt = datetime.datetime.fromtimestamp(f['mtime']).date().isoformat()
+        if dt in buckets:
+            buckets[dt]['totaal'] += 1
+            buckets[dt]['geslaagd'] += 1
+    # Verrijk met succes_percentage en sorteer oplopend op datum
+    out = []
+    for d in sorted(buckets.keys()):
+        row = buckets[d]
+        total = row['totaal']
+        geslaagd = row['geslaagd']
+        if total > 0:
+            sp = round(100.0 * (geslaagd / total), 2)
+        else:
+            sp = None
+        row['succes_percentage'] = sp
+        out.append(row)
+    return out
+
+
+@app.route('/api/xml/throughput')
+def api_xml_throughput():
+    try:
+        days = int(request.args.get('days', 14))
+    except Exception:
+        days = 14
+    try:
+        return jsonify({'aggregated': _aggregate_by_day(days)})
+    except Exception as e:
+        return jsonify({'aggregated': []})
+
+
+@app.route('/api/xml/latest-errors')
+def api_xml_latest_errors():
+    try:
+        items = _read_error_log(max_items=20)
+        return jsonify(items)
+    except Exception:
+        return jsonify([])
+
+
+@app.route('/api/xml-stats')
+def api_xml_stats():
+    try:
+        days = int(request.args.get('days', 14))
+    except Exception:
+        days = 14
+    try:
+        return jsonify({'aggregated': _aggregate_by_day(days)})
+    except Exception as e:
+        return jsonify({'aggregated': []})
 
 
 if __name__ == "__main__":

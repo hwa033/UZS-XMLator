@@ -1,5 +1,12 @@
 // Shared Results Panel handlers and refresh
 (function() {
+  function freshElement(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const clone = el.cloneNode(true);
+    el.replaceWith(clone);
+    return clone;
+  }
   function updateSelectionState() {
     const downloadBtn = document.getElementById('download-selected-btn');
     const deleteBtn = document.getElementById('delete-selected-btn');
@@ -89,11 +96,11 @@
 
   window.initResultsPanelHandlers = function initResultsPanelHandlers() {
     const list = document.getElementById('generatedList');
-    const downloadBtn = document.getElementById('download-selected-btn');
-    const deleteBtn = document.getElementById('delete-selected-btn');
-    const selectAll = document.getElementById('select-all-generated');
+    const downloadBtn = freshElement('download-selected-btn');
+    const deleteBtn = freshElement('delete-selected-btn');
+    const selectAll = freshElement('select-all-generated');
 
-    const refreshBtn = document.getElementById('refresh-results-btn');
+    const refreshBtn = freshElement('refresh-results-btn');
     if (refreshBtn) {
       refreshBtn.addEventListener('click', function () {
         window.refreshResultsList();
@@ -105,10 +112,6 @@
         const checked = Array.from(document.querySelectorAll('.generated-select:checked'));
         const filenames = checked.map(cb => cb.getAttribute('data-file')).filter(Boolean);
         if (filenames.length === 0) return;
-        
-        if (!confirm(`Weet je zeker dat je ${filenames.length} bestand(en) wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.`)) {
-          return;
-        }
         
         const deleteSpinner = document.getElementById('deleteSpinner');
         if (deleteSpinner) deleteSpinner.style.display = '';
@@ -122,7 +125,10 @@
         .then(resp => resp.json())
         .then(data => {
           if (data.success) {
-            alert(`${data.deleted} bestand(en) succesvol verwijderd.`);
+            // Geen alert; stil vernieuwen met optionele toast
+            if (window.flashMessage) {
+              window.flashMessage(`${data.deleted} bestand(en) verwijderd.`);
+            }
             if (window.refreshResultsList) window.refreshResultsList();
           } else {
             alert('Fout bij verwijderen: ' + (data.error || 'Onbekende fout'));

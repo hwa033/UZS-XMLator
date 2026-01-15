@@ -1,0 +1,70 @@
+{% extends '_base.html' %}
+
+{% block title %}Systeemconfiguratie{% endblock %}
+
+{% block content %}
+<section class="hero mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <h1 class="h4 mb-0">Systeemconfiguratie</h1>
+        <p class="text-muted small mb-0">Pas de basisinstellingen aan en sla ze op.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('instellingen.dashboard') }}" class="btn btn-outline-light">Terug</a>
+    </div>
+</section>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="post">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Omgeving</label>
+                    <select class="form-select" name="omgeving">
+                        {% for omg in env_options %}
+                        <option value="{{ omg }}" {% if settings.omgeving==omg %}selected{% endif %}>{{ omg }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Max upload (MB)</label>
+                    <input type="number" class="form-control" name="upload_max_size_mb" min="1" value="{{ settings.upload_max_size_mb }}">
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">XSD pad</label>
+                    <input type="text" class="form-control" name="xsd_path" value="{{ settings.xsd_path }}">
+                </div>
+            </div>
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">Opslaan</button>
+                <a href="{{ url_for('instellingen.dashboard') }}" class="btn btn-link">Annuleren</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm mt-3">
+    <div class="card-body">
+        <h6 class="card-title">Filedrop locaties voor geselecteerde omgeving</h6>
+        <form method="post">
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <label class="form-label">OTP3/Digipoort pad</label>
+                    <input type="text" class="form-control" name="otp3_path" value="{{ env_paths['OTP3'] if env_paths and 'OTP3' in env_paths else '' }}" placeholder="D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\<OMGEVING>\\UwvZwMelding_MQ_V0428">
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">ZBM pad</label>
+                    <input type="text" class="form-control" name="zbm_path" value="{{ env_paths['ZBM'] if env_paths and 'ZBM' in env_paths else '' }}" placeholder="D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\<OMGEVING>\\v0428\\UwvZwMelding">
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label">VM pad</label>
+                    <input type="text" class="form-control" name="vm_path" value="{{ env_paths['VM'] if env_paths and 'VM' in env_paths else '' }}" placeholder="D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\<OMGEVING>\\v0428\\UwvZwMelding">
+                </div>
+            </div>
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary">Opslaan</button>
+            </div>
+        </form>
+        <p class="text-muted small mt-2 mb-0">Tip: OTP3 gebruikt MQ-pad; ZBM en VM delen doorgaans hetzelfde v0428-pad.</p>
+    </div>
+</div>
+{% endblock %}
