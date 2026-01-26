@@ -4,14 +4,19 @@
 
 ### Paths in `web/instellingen.json`
 - **Network shares** (`D:\GUP\UZS\filedrop\...`): Ensure mounted at container start.
-- **Docker**: Use volume mounts to override; avoid hardcoding UNC paths.
+- **Portable override**: Set `XMLATOR_FILEDROP_BASE` (e.g., `/data/filedrop` or `Z:\UZS\filedrop`). Any configured path starting with the default base is rewritten to your override at runtime.
+- **Docker**: Mount the filedrop root and set `XMLATOR_FILEDROP_BASE=/app/filedrop`.
 - **Example override**:
   ```yaml
   # docker-compose.yml
-  volumes:
-    - /mnt/filedrop/UZSTA_OMG:/app/filedrop
+  services:
+    xmlator:
+      environment:
+        - XMLATOR_FILEDROP_BASE=/app/filedrop
+      volumes:
+        - /mnt/filedrop:/app/filedrop
   ```
-  Then update config via web UI to use `/app/filedrop`.
+  Existing config paths will be rewritten from `D:\GUP\UZS\filedrop` to `/app/filedrop` at runtime.
 
 ### File Retention
 - Auto-cleanup runs on each file list operation.

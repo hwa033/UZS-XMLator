@@ -151,8 +151,24 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
 
     filedrop_locaties = cfg.get("filedrop_locaties", {})
 
+    # Optional override for filedrop base path (e.g., set XMLATOR_FILEDROP_BASE=/data/filedrop)
+    default_filedrop_base = r"D:\\GUP\\UZS\\filedrop"
+    override_filedrop_base = os.environ.get("XMLATOR_FILEDROP_BASE")
+
+    def _normalize(path: str) -> str:
+        # Expand env vars and user home, then apply optional base override
+        expanded = os.path.expanduser(os.path.expandvars(path))
+        if override_filedrop_base:
+            norm_expanded = expanded.replace("\\", "/")
+            norm_default = default_filedrop_base.replace("\\", "/")
+            norm_override = override_filedrop_base.replace("\\", "/")
+            if norm_expanded.startswith(norm_default):
+                expanded = norm_override + norm_expanded[len(norm_default):]
+        return os.path.normpath(expanded)
+
     # Helper: probeer pad te gebruiken/aan te maken, anders None teruggeven
     def _try_use(path: str):
+        path = _normalize(path)
         try:
             # Controleer of drive beschikbaar is (Windows): bv. 'D:\\'
             drive, _ = os.path.splitdrive(path)
