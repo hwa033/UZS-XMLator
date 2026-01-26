@@ -1,4 +1,4 @@
-from web.utils import extract_excel_cd, decide_cd_override
+from web.utils import decide_cd_override, extract_excel_cd
 
 
 def test_extract_excel_cd_from_keys():

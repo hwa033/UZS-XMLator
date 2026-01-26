@@ -1,6 +1,6 @@
 import sys
-import pathlib
 from pathlib import Path
+
 repo_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo_root))
 from web.app import _load_generator_module
@@ -16,6 +16,7 @@ rows, formula_count = gen.read_excel_rows(str(repo_root / 'docs' / 'Input XML el
 print('Rows read:', len(rows), 'formulas:', formula_count)
 # normalize rows using app helper
 from web.app import _normalize_record_for_generator
+
 norm_rows = [_normalize_record_for_generator(r) for r in rows]
 print('First normalized row sample keys:', list(norm_rows[0].keys())[:10])
 

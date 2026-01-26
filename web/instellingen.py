@@ -10,8 +10,6 @@ from flask import (
     request,
     url_for,
 )
-from werkzeug.utils import secure_filename
-
 
 instellingen_bp = Blueprint("instellingen", __name__, template_folder="templates")
 
@@ -117,7 +115,7 @@ def configuratie():
         fp_otp3 = request.form.get("otp3_path", "").strip()
         fp_zbm = request.form.get("zbm_path", "").strip()
         fp_vm = request.form.get("vm_path", "").strip()
-        
+
         # Valideer paden (waarschuwing als niet bereikbaar, maar niet blokkeren)
         for label, path in [("OTP3", fp_otp3), ("ZBM", fp_zbm), ("VM", fp_vm)]:
             if path:
@@ -126,7 +124,7 @@ def configuratie():
                     flash(f"Waarschuwing: Drive {drive} voor {label} niet beschikbaar; pad wordt wel opgeslagen.", "warning")
                 elif not os.path.exists(path):
                     flash(f"Info: Pad voor {label} bestaat nog niet maar wordt opgeslagen (kan later worden aangemaakt).", "info")
-        
+
         if settings.get("filedrop_locaties") is None or not isinstance(settings.get("filedrop_locaties"), dict):
             settings["filedrop_locaties"] = {}
         env_map = settings["filedrop_locaties"].get(settings["omgeving"], {})

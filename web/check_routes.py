@@ -1,7 +1,5 @@
 import importlib.util
 from pathlib import Path
-from types import ModuleType
-from typing import Optional
 
 spec = importlib.util.spec_from_file_location(
     "wapp", str(Path(__file__).parent / "app.py")

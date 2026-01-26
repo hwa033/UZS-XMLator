@@ -1,9 +1,11 @@
 import sys
 from pathlib import Path
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from web.app import app
 import io
+
+from web.app import app
 
 c = app.test_client()
 
@@ -36,6 +38,7 @@ if r.is_json:
 
 # Check generated files
 import os
+
 out_dir = ROOT / 'build' / 'excel_generated'
 recent_files = []
 for fname in os.listdir(out_dir):
@@ -49,7 +52,7 @@ print("\n=== Recent files (laatste 5) ===")
 for fname, _ in recent_files[:5]:
     print(fname)
     # Check CdBerichtType and ApplicatieNaam in file
-    with open(out_dir / fname, 'r', encoding='utf-8') as f:
+    with open(out_dir / fname, encoding='utf-8') as f:
         content = f.read()
         if '<CdBerichtType>' in content:
             start = content.find('<CdBerichtType>') + len('<CdBerichtType>')

@@ -1,7 +1,7 @@
 import datetime
 import json
 from pathlib import Path
-from typing import Any, Dict, cast
+from typing import Any, cast
 
 from lxml import etree
 
@@ -94,7 +94,7 @@ def fill_xml_template(
     NS_UWVH = "http://schemas.uwv.nl/UwvML/Header-v0202"
     NS_BODY = "http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"
 
-    nsmap: Dict[Any, str] = {"SOAP-ENV": NS_SOAP, "uwvh": NS_UWVH, None: NS_BODY}
+    nsmap: dict[Any, str] = {"SOAP-ENV": NS_SOAP, "uwvh": NS_UWVH, None: NS_BODY}
     envelope = etree.Element(etree.QName(NS_SOAP, "Envelope"), nsmap=cast(dict, nsmap))
     header = etree.SubElement(envelope, etree.QName(NS_SOAP, "Header"))
     uwv_header = etree.SubElement(header, etree.QName(NS_UWVH, "UwvMLHeader"))

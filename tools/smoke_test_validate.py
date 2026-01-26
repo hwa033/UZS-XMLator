@@ -1,5 +1,6 @@
-import sys
 import pathlib
+import sys
+
 # Ensure repository root is on sys.path so `web` package is importable
 repo_root = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(repo_root))
@@ -34,7 +35,6 @@ bodies, errors, bulk = validate_normalized_rows_for_generator(
 print('errors:', errors)
 print('bulk:', bulk)
 if bodies:
-    from lxml import etree
     elem = bodies[0].find('{' + ns_body + '}CdBerichtType')
     print('CdBerichtType element text:', elem.text if elem is not None else None)
     sys.exit(0)
