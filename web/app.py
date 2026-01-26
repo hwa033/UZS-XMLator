@@ -102,6 +102,13 @@ def openapi_spec():
     return send_from_directory(docs_dir, "openapi.yaml", mimetype="application/yaml")
 
 
+@app.route("/api/docs")
+def swagger_ui():
+    """Serve Swagger UI backed by /api/openapi.yaml."""
+    docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
+    return send_from_directory(docs_dir, "swagger.html", mimetype="text/html")
+
+
 def _append_error_log(entry: dict):
     try:
         p = _error_log_path()
@@ -170,7 +177,7 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
             norm_default = default_filedrop_base.replace("\\", "/")
             norm_override = override_filedrop_base.replace("\\", "/")
             if norm_expanded.startswith(norm_default):
-                expanded = norm_override + norm_expanded[len(norm_default):]
+                expanded = norm_override + norm_expanded[len(norm_default) :]
         return os.path.normpath(expanded)
 
     # Helper: probeer pad te gebruiken/aan te maken, anders None teruggeven
