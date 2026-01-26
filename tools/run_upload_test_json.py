@@ -5,7 +5,7 @@ from pathlib import Path
 
 # Ensure project root is importable
 ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT))  # noqa: E402
 
 from web.app import app
 
@@ -17,7 +17,7 @@ payload = {
     "Achternaam": "Test",
     "Geboortedatum": "1980-01-01",
     "DatumAangifte": "2025-12-05",
-    "DatumVanaf": "2025-12-01"
+    "DatumVanaf": "2025-12-01",
 }
 
 content = json.dumps(payload).encode("utf-8")

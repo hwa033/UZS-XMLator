@@ -36,7 +36,7 @@ def logs():
                     from collections import deque
 
                     lines = list(deque(f, 100))
-                    lines = [l.rstrip("\n") for l in lines]
+                    lines = [line.rstrip("\n") for line in lines]
             except Exception:
                 lines = ["[Fout bij lezen van logbestand]"]
         logs.append({"title": title, "lines": lines})
@@ -95,11 +95,15 @@ def configuratie():
             except ValueError:
                 return default, f"{field} moet een getal zijn"
 
-        upload_max_size_mb, err = _as_int("upload_max_size_mb", settings.get("upload_max_size_mb", 16))
+        upload_max_size_mb, err = _as_int(
+            "upload_max_size_mb", settings.get("upload_max_size_mb", 16)
+        )
         if err:
             errors.append(err)
 
-        file_retention_days, err = _as_int("file_retention_days", settings.get("file_retention_days", 30))
+        file_retention_days, err = _as_int(
+            "file_retention_days", settings.get("file_retention_days", 30)
+        )
         if err:
             errors.append(err)
 
@@ -121,11 +125,19 @@ def configuratie():
             if path:
                 drive, _ = os.path.splitdrive(path)
                 if drive and not os.path.exists(drive + os.path.sep):
-                    flash(f"Waarschuwing: Drive {drive} voor {label} niet beschikbaar; pad wordt wel opgeslagen.", "warning")
+                    flash(
+                        f"Waarschuwing: Drive {drive} voor {label} niet beschikbaar; pad wordt wel opgeslagen.",
+                        "warning",
+                    )
                 elif not os.path.exists(path):
-                    flash(f"Info: Pad voor {label} bestaat nog niet maar wordt opgeslagen (kan later worden aangemaakt).", "info")
+                    flash(
+                        f"Info: Pad voor {label} bestaat nog niet maar wordt opgeslagen (kan later worden aangemaakt).",
+                        "info",
+                    )
 
-        if settings.get("filedrop_locaties") is None or not isinstance(settings.get("filedrop_locaties"), dict):
+        if settings.get("filedrop_locaties") is None or not isinstance(
+            settings.get("filedrop_locaties"), dict
+        ):
             settings["filedrop_locaties"] = {}
         env_map = settings["filedrop_locaties"].get(settings["omgeving"], {})
         if fp_otp3:
@@ -140,19 +152,30 @@ def configuratie():
             for e in errors:
                 flash(e, "danger")
             # Prepare current env paths for template
-            env_paths = settings.get("filedrop_locaties", {}).get(settings.get("omgeving", "UZSTA_OMG"), {})
-            return render_template("configuratie.html", settings=settings, env_options=env_options, env_paths=env_paths)
+            env_paths = settings.get("filedrop_locaties", {}).get(
+                settings.get("omgeving", "UZSTA_OMG"), {}
+            )
+            return render_template(
+                "configuratie.html",
+                settings=settings,
+                env_options=env_options,
+                env_paths=env_paths,
+            )
 
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
         flash("Instellingen opgeslagen", "success")
         return redirect(url_for("instellingen.configuratie"))
 
-    env_paths = settings.get("filedrop_locaties", {}).get(settings.get("omgeving", "UZSTA_OMG"), {})
-    return render_template("configuratie.html", settings=settings, env_options=env_options, env_paths=env_paths)
-
-
-
+    env_paths = settings.get("filedrop_locaties", {}).get(
+        settings.get("omgeving", "UZSTA_OMG"), {}
+    )
+    return render_template(
+        "configuratie.html",
+        settings=settings,
+        env_options=env_options,
+        env_paths=env_paths,
+    )
 
 
 @instellingen_bp.route("/documentatie")

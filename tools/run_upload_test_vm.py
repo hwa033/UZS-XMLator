@@ -4,7 +4,7 @@ from pathlib import Path
 
 # Ensure project root is importable
 ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT))  # noqa: E402
 
 from web.app import app
 

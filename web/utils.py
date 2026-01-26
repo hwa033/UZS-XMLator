@@ -360,8 +360,17 @@ def validate_normalized_rows_for_generator(
 
     def is_blank(rec: dict) -> bool:
         try:
-            s = lambda v: v is None or str(v).strip() in ("", "0", "None")
-            keys = [rec.get("BSN"), rec.get("Naam"), rec.get("Achternaam"), rec.get("Loonheffingennummer"), rec.get("IBAN")]
+
+            def s(v):
+                return v is None or str(v).strip() in ("", "0", "None")
+
+            keys = [
+                rec.get("BSN"),
+                rec.get("Naam"),
+                rec.get("Achternaam"),
+                rec.get("Loonheffingennummer"),
+                rec.get("IBAN"),
+            ]
             return all(s(k) for k in keys)
         except Exception:
             return False
@@ -378,8 +387,14 @@ def validate_normalized_rows_for_generator(
                 errs.append("ontbrekende BSN")
             naam = rec.get("Naam")
             if not naam or str(naam).strip() == "":
-                first = rec.get("EersteVoornaam") or rec.get("Voornaam") or rec.get("Voorletters")
-                last = rec.get("Achternaam") or rec.get("SignificantDeelVanDeAchternaam")
+                first = (
+                    rec.get("EersteVoornaam")
+                    or rec.get("Voornaam")
+                    or rec.get("Voorletters")
+                )
+                last = rec.get("Achternaam") or rec.get(
+                    "SignificantDeelVanDeAchternaam"
+                )
                 if not (first or last):
                     errs.append("ontbrekende Naam")
             dae = rec.get("DatEersteAoDag")
@@ -403,7 +418,11 @@ def validate_normalized_rows_for_generator(
             )
 
             desired, should_override = decide_cd_override(
-                existing_text, excel_cd, form_aanvraag_type, cd_bericht_default, _KNOWN_CDBERICHT_TYPES
+                existing_text,
+                excel_cd,
+                form_aanvraag_type,
+                cd_bericht_default,
+                _KNOWN_CDBERICHT_TYPES,
             )
 
             if should_override:
@@ -412,7 +431,9 @@ def validate_normalized_rows_for_generator(
                 if existing:
                     existing[0].text = desired
                 else:
-                    etree.SubElement(msg, "{" + ns_body + "}CdBerichtType").text = desired
+                    etree.SubElement(msg, "{" + ns_body + "}CdBerichtType").text = (
+                        desired
+                    )
                 msg_aanvraag_type = desired
 
             # final check
