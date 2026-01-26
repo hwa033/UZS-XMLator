@@ -48,7 +48,8 @@ def read_input(input_path: str | None = None) -> list[dict[str, str]]:
             return list(reader)
 
     raise ValueError(
-        "Unsupported input format. Provide a .json or .csv file, or omit the argument to use sample data."
+        "Unsupported input format. Provide a .json or .csv file, "
+        "or omit the argument to use sample data."
     )
 
 
@@ -109,7 +110,8 @@ def _indent(elem: ET.Element, level: int = 0) -> None:
 
 
 def save_and_log(element: ET.Element, out_dir: str = "output") -> str:
-    """Save the XML Element to a timestamped file under out_dir and append a small log entry.
+    """Save the XML Element to a timestamped file under out_dir and append
+    a small log entry.
 
     Returns the path to the saved XML file.
     """

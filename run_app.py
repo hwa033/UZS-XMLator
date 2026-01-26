@@ -43,13 +43,15 @@ def main():
     # If --reload requested, use Flask built-in reloader (development only)
     if args.reload:
         print(
-            f"Starting in development mode with reloader on http://{args.host}:{args.port} (debug=True)"
+            f"Starting in development mode with reloader on "
+            f"http://{args.host}:{args.port} (debug=True)"
         )
         # debug=True enables the reloader; it should ONLY be used for development
         app.run(host=args.host, port=args.port, debug=True)
         return
 
-    # Production-like run: prefer waitress if available, otherwise run Flask without reloader
+    # Production-like run: prefer waitress if available, otherwise run Flask
+    # without reloader
     try:
         try:
             from waitress import serve
@@ -61,7 +63,8 @@ def main():
             serve(app, host=args.host, port=args.port)
         else:
             print(
-                "waitress niet geïnstalleerd; fallback naar Flask dev-server (debug=False)"
+                "waitress niet geïnstalleerd; fallback naar Flask dev-server "
+                "(debug=False)"
             )
             app.run(host=args.host, port=args.port, debug=False)
     except KeyboardInterrupt:

@@ -73,7 +73,8 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python extract_body_from_soap.py <input_soap_xml> [output_xml]")
         print(
-            "\nExtracts UwvZwMeldingInternBody from SOAP envelope for direct system upload."
+            "\nExtracts UwvZwMeldingInternBody from SOAP envelope for direct "
+            "system upload."
         )
         sys.exit(1)
 

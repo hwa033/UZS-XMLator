@@ -126,12 +126,14 @@ def configuratie():
                 drive, _ = os.path.splitdrive(path)
                 if drive and not os.path.exists(drive + os.path.sep):
                     flash(
-                        f"Waarschuwing: Drive {drive} voor {label} niet beschikbaar; pad wordt wel opgeslagen.",
+                        f"Waarschuwing: Drive {drive} voor {label} niet beschikbaar; "
+                        f"pad wordt wel opgeslagen.",
                         "warning",
                     )
                 elif not os.path.exists(path):
                     flash(
-                        f"Info: Pad voor {label} bestaat nog niet maar wordt opgeslagen (kan later worden aangemaakt).",
+                        f"Info: Pad voor {label} bestaat nog niet maar wordt opgeslagen"
+                        f" (kan later worden aangemaakt).",
                         "info",
                     )
 

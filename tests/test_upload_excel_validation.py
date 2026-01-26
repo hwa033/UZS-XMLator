@@ -5,7 +5,8 @@ from web.utils import validate_normalized_rows_for_generator
 
 class DummyGen:
     def build_message_element(self, rec, ns_body):
-        # create a minimal message element with optional Burgerservicenr and CdBerichtType
+        # create a minimal message element with optional Burgerservicenr
+        # and CdBerichtType
         m = etree.Element("{" + ns_body + "}UwvZwMeldingInternBody")
         if rec.get("BSN"):
             b = etree.SubElement(m, "{" + ns_body + "}Burgerservicenr")

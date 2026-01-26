@@ -165,7 +165,8 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
 
     filedrop_locaties = cfg.get("filedrop_locaties", {})
 
-    # Optional override for filedrop base path (e.g., set XMLATOR_FILEDROP_BASE=/data/filedrop)
+    # Optional override for filedrop base path
+    # (e.g., set XMLATOR_FILEDROP_BASE=/data/filedrop)
     default_filedrop_base = r"D:\\GUP\\UZS\\filedrop"
     override_filedrop_base = os.environ.get("XMLATOR_FILEDROP_BASE")
 
@@ -460,7 +461,10 @@ def upload_excel():
         request.content_length
         and request.content_length > app.config["MAX_CONTENT_LENGTH"]
     ):
-        msg = f'Bestand te groot (max {app.config["MAX_CONTENT_LENGTH"] // (1024*1024)} MB).'
+        msg = (
+            f"Bestand te groot (max "
+            f'{app.config["MAX_CONTENT_LENGTH"] // (1024*1024)} MB).'
+        )
         if is_ajax:
             return jsonify({"success": False, "error": msg}), 400
         flash(msg, "danger")
@@ -540,7 +544,10 @@ def upload_excel():
             check=True,
         )
 
-        msg = f"Excel-bestand succesvol geüpload en {aanvraag_type} XML-bestanden gegenereerd."
+        msg = (
+            f"Excel-bestand succesvol geüpload en {aanvraag_type} "
+            f"XML-bestanden gegenereerd."
+        )
 
         if is_ajax:
             return jsonify({"success": True, "message": msg}), 200

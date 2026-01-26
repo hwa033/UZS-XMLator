@@ -24,10 +24,12 @@ from datetime import datetime, timezone
 try:
     # Prefer lxml if available for nicer serialization and namespace control
     from lxml import etree as ET  # type: ignore
+
     USING_LXML = True
 except Exception:
     # Fallback to stdlib ElementTree if lxml isn't installed
     import xml.etree.ElementTree as ET  # type: ignore
+
     USING_LXML = False
 
 try:
@@ -84,9 +86,11 @@ def _namespaces():
 def build_envelope_with_header_and_bodies(
     bodies: Iterable[ET.Element], sender: str = "Digipoort", tester_name: str = "tester"
 ) -> ET.Element:
-    """Create a SOAP Envelope with header information and append provided message bodies.
+    """Create a SOAP Envelope with header information and append provided
+    message bodies.
 
-    Header fields mimic the sample: RouteInformatie, BerichtIdentificatie and Transactie.
+    Header fields mimic the sample: RouteInformatie, BerichtIdentificatie
+    and Transactie.
     """
     ns_soap, ns_uwvh, ns_body = _namespaces()
 
@@ -157,7 +161,6 @@ def save_envelope(
     os.makedirs(out_dir, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-
     # Map CdBerichtType codes to friendly names for filename
     # Digipoort aanvraag will start with digipoort_, not otp3_
     type_mapping = {"OTP3": "digipoort", "ZBM": "zbm", "VM": "vm"}
@@ -168,11 +171,16 @@ def save_envelope(
 
     if USING_LXML:
         # Serialize with pretty print
-        xml_bytes = ET.tostring(envelope, pretty_print=True, xml_declaration=False, encoding="UTF-8")  # type: ignore[call-arg]
+        xml_bytes = ET.tostring(
+            envelope,
+            pretty_print=True,
+            xml_declaration=False,
+            encoding="UTF-8",
+        )  # type: ignore[call-arg]
         xml_str = xml_bytes.decode("UTF-8")
 
-        # Move xmlns:uwvh from Envelope to UwvMLHeader (user preference for example alignment)
-        # Remove it from Envelope tag (first occurrence only)
+        # Move xmlns:uwvh from Envelope to UwvMLHeader (user preference for
+        # example alignment). Remove it from Envelope tag (first occurrence only)
         xml_str = xml_str.replace(
             ' xmlns:uwvh="http://schemas.uwv.nl/UwvML/Header-v0202"', "", 1
         )
@@ -648,7 +656,8 @@ def main():
     parser.add_argument(
         "--data-only",
         action="store_true",
-        help="Open workbook with openpyxl data_only=True to prefer cached values over formulas",
+        help="Open workbook with openpyxl data_only=True to prefer cached "
+        "values over formulas",
     )
     args = parser.parse_args()
 
@@ -677,7 +686,8 @@ def main():
         bodies = [m for (_, m, _) in messages]
         # Use first message's type for bulk filename, or default to BULK
         bulk_type = messages[0][2] if messages else "BULK"
-        # Map aanvraag_type to sender application name (per docs: Digipoort sample uses Digipoort; otherwise use the aanvraag type)
+        # Map aanvraag_type to sender application name: Digipoort for
+        # OTP3, otherwise use the aanvraag_type
         sender = "Digipoort" if bulk_type == "OTP3" else bulk_type
         envelope = build_envelope_with_header_and_bodies(bodies, sender=sender)
         saved = save_envelope(envelope, out_dir, "bulk", bulk_type)
@@ -695,7 +705,8 @@ def main():
         # single mode: one envelope per message
         for idx, (rec, m, aanvraag_type) in enumerate(messages, start=1):
             try:
-                # Map aanvraag_type to sender application name (per docs: Digipoort sample uses Digipoort; otherwise use the aanvraag type)
+                # Map aanvraag_type to sender: Digipoort for OTP3,
+                # otherwise use the aanvraag_type
                 sender = "Digipoort" if aanvraag_type == "OTP3" else aanvraag_type
                 env = build_envelope_with_header_and_bodies([m], sender=sender)
                 bsn = rec.get("BSN") or f"row{idx}"
