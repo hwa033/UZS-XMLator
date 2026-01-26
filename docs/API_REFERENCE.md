@@ -7,7 +7,7 @@
 ## Generation (UI-backed endpoints)
 - `POST /upload_excel` (form-data):
   - `excel_file`: file (.xlsx/.xls)
-  - `validate`: "on" | "off" (optional, defaults to on)
+  - `validate`: "on" | "off" (default: "on")
   - Behavior: writes generated XML to filedrop based on `aanvraag_type` auto-detected from Excel content. Returns HTML response with result list.
 - `POST /genereer_xml_json/upload_json` (form-data):
   - `json_file`: file (.json) with request payload

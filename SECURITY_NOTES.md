@@ -21,7 +21,7 @@
 ### File Retention
 - Auto-cleanup runs on each file list operation.
 - Manual cleanup available in UI.
-- **Recommended**: Set `file_retention_days: 30` for compliance.
+- **Required**: Set `file_retention_days: 30` in instellingen.json for compliance with data retention policy.
 
 ---
 
@@ -67,8 +67,8 @@ In `web/app.py`, set `validate_flag=False` in `validate_normalized_rows_for_gene
 - Recommendation: 100 req/min per IP.
 
 ### Input Validation
-- Excel: `.xlsx`, `.xls` only; max 16 MB (configurable).
-- BSN: Empty check (not format validation; consider adding).
+- Excel: `.xlsx`, `.xls` only; max 16 MB (configurable via upload_max_size_mb).
+- BSN: Empty check enforced; add regex format validation if required by UWV compliance.
 - XML filenames: Sanitized (no `../`, etc.).
 
 ---
@@ -77,7 +77,7 @@ In `web/app.py`, set `validate_flag=False` in `validate_normalized_rows_for_gene
 
 ### Error Log
 - **Path**: `build/logs/xmlator_errors.jsonl` (one JSON per line).
-- **Retention**: No auto-cleanup; consider centralized logging (e.g., ELK, Datadog).
+- **Retention**: No auto-cleanup; implement centralized logging (ELK, Datadog, or syslog forwarder) for production.
 - **Fields**: `type`, `aanvraag_type`, `omgeving`, `stderr`, `filename`, `tijdstip`.
 
 ### Example integration:
@@ -90,8 +90,8 @@ tail -f build/logs/xmlator_errors.jsonl | jq -r '.tijdstip + " " + .type + " " +
 
 ## Compliance Notes
 
-- **Data Handling**: BSN (Dutch citizen ID) is PII; logs contain filenames (may include BSN).
-  - Recommendation: Rotate `file_retention_days` to ≤30; archive old logs separately.
+- **Data Handling**: BSN (Dutch citizen ID) is PII; logs contain filenames (which may include BSN).
+  - Action: Set `file_retention_days: 30` in instellingen.json; archive logs separately per UWV policy.
 - **Audit Trail**: Not implemented; add if required (e.g., Digipoort compliance).
 - **TLS**: Enforce in production; use `U_XMLATOR_COOKIE_SECURE=1` (default).
 
@@ -112,7 +112,7 @@ tail -f build/logs/xmlator_errors.jsonl | jq -r '.tijdstip + " " + .type + " " +
 
 ---
 
-## Further Hardening (Optional)
+## Further Hardening (Backlog for Phase 2)
 
 1. **Rate limiting**: Flask-Limiter + Redis.
 2. **CORS**: Flask-CORS with origin whitelist.

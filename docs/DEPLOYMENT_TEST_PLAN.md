@@ -19,7 +19,7 @@ Covers three deployment modes: Docker Compose (nginx + app), Minimal Docker (sin
 5) Verify output written to filedrop (OTP3/ZBM/VM) and visible in UI list
 6) Check logs: build/logs/xmlator_errors.jsonl empty or benign
 
-## Docker Compose (recommended)
+## Docker Compose (primary deployment path)
 - Build/Run: `docker-compose up -d`
 - Env: set in compose file
   - XMLATOR_FILEDROP_BASE=/app/filedrop
