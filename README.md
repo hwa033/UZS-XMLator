@@ -81,6 +81,22 @@ $env:FLASK_ENV = "production"
 python -m web.app
 ```
 
+### Lokale quickstart (met huidige repo)
+
+```powershell
+# vanuit de projectroot
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# start met auto-reload voor dev
+python run_app.py --reload --host 127.0.0.1 --port 5000
+
+# check
+Invoke-WebRequest -Uri "http://127.0.0.1:5000/health" -UseBasicParsing
+Invoke-WebRequest -Uri "http://127.0.0.1:5000/ready" -UseBasicParsing
+```
+
 Open vervolgens `http://localhost:5000` in uw browser.
 
 ## Secrets and session hardening

@@ -1,5 +1,5 @@
-import pytest
 from lxml import etree
+
 from web.utils import validate_normalized_rows_for_generator
 
 
@@ -58,4 +58,3 @@ def test_validate_rows_ok():
     )
     assert len(bodies) == 1
     assert errors == []
-*** End Patch
