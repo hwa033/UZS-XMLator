@@ -1,8 +1,10 @@
 [tool.ruff]
 line-length = 88
+exclude = [".venv", ".venv_dev", "build", "dist", ".git", "node_modules"]
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "C", "UP", "A"]
 extend-ignore = ["E203"]
-exclude = [".venv", ".venv_dev", "build", "dist", ".git", "node_modules"]
 
 [tool.black]
 line-length = 88

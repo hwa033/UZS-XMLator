@@ -64,9 +64,9 @@ CONFIG = _load_config()
 FLASK_ENV = os.environ.get("FLASK_ENV", "development")
 SECRET_KEY = os.environ.get("U_XMLATOR_SECRET")
 
-if FLASK_ENV == "production" and not SECRET_KEY:
+if FLASK_ENV.lower() != "development" and not SECRET_KEY:
     raise SystemExit(
-        "FOUT: Zet de U_XMLATOR_SECRET omgevingsvariabele als FLASK_ENV=production.\n"
+        "FOUT: Zet de U_XMLATOR_SECRET omgevingsvariabele (vereist buiten development).\n"
         'Voorbeeld (PowerShell): $env:U_XMLATOR_SECRET = "uw-geheim-hier"'
     )
 
