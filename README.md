@@ -99,6 +99,12 @@ Invoke-WebRequest -Uri "http://127.0.0.1:5000/ready" -UseBasicParsing
 
 Open vervolgens `http://localhost:5000` in uw browser.
 
+### Deployment (kort)
+
+- Docker compose: `docker-compose up -d` (nginx + app, zie `DEPLOY.md`).
+- Enkel container: `scripts/deploy_minimal_docker.sh` → http://<server-ip>:5000.
+- Windows EXE: bouw met `scripts/build_windows_exe.ps1`, pak met `scripts/package_for_transfer.ps1`, run `run-xmlator.ps1` op de target.
+
 ## Secrets and session hardening
 
 For production, set a strong `U_XMLATOR_SECRET` environment variable. The app will refuse to start when `FLASK_ENV=production` and `U_XMLATOR_SECRET` is not set. Recommended session cookie settings are enabled by default (HTTPOnly, Secure, SameSite=Lax). You can override these via environment variables:
