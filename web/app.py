@@ -95,6 +95,13 @@ def _error_log_path():
     return os.path.join(logdir, "xmlator_errors.jsonl")
 
 
+@app.route("/api/openapi.yaml")
+def openapi_spec():
+    """Serve OpenAPI spec (static YAML in docs/)."""
+    docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
+    return send_from_directory(docs_dir, "openapi.yaml", mimetype="application/yaml")
+
+
 def _append_error_log(entry: dict):
     try:
         p = _error_log_path()
