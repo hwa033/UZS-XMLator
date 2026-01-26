@@ -1,5 +1,6 @@
 import datetime
 import json
+import re
 from pathlib import Path
 from typing import Any, cast
 
@@ -345,6 +346,8 @@ def validate_normalized_rows_for_generator(
     errors = []
     bulk_aanvraag_type = None
 
+    bsn_regex = re.compile(r"^[0-9]{8,9}$")
+
     _KNOWN_CDBERICHT_TYPES = {
         "KCC",
         "OTP1",
@@ -383,8 +386,12 @@ def validate_normalized_rows_for_generator(
 
             # Basic validation
             errs = []
-            if not rec.get("BSN") or str(rec.get("BSN")).strip() == "":
+            bsn_raw = rec.get("BSN")
+            bsn = str(bsn_raw).strip() if bsn_raw is not None else ""
+            if not bsn:
                 errs.append("ontbrekende BSN")
+            elif not bsn_regex.match(bsn):
+                errs.append("ongeldig BSN-formaat (8-9 cijfers)")
             naam = rec.get("Naam")
             if not naam or str(naam).strip() == "":
                 first = (

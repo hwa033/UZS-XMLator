@@ -1,6 +1,8 @@
 # Cleaned runtime requirements (generated from source imports)
 # Minimal runtime packages detected as used by the app.
 Flask
+Flask-Cors
+Flask-Limiter
 lxml
 openpyxl
 PyYAML

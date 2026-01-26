@@ -50,6 +50,9 @@ Copy-Item $exePath $TargetDir -Force
 Write-Host "Copying docs (XSDs, examples)..." -ForegroundColor Cyan
 Copy-Item (Join-Path $repoRoot 'docs') $TargetDir -Recurse -Force
 
+Write-Host "Copying installation guide..." -ForegroundColor Cyan
+Copy-Item (Join-Path $repoRoot 'INSTALLATIE_TESTERS.md') (Join-Path $TargetDir 'README.txt') -Force
+
 if ($IncludeFiledrop.IsPresent) {
     Write-Host "Including uzs_filedrop samples..." -ForegroundColor Cyan
     if (Test-Path (Join-Path $repoRoot 'uzs_filedrop')) {
@@ -77,18 +80,30 @@ try {
 Write-Host "Creating run script for target server..." -ForegroundColor Cyan
 @"
 # Run this on the target server
-# Usage: .\run-xmlator.ps1 [secret]
-# If no secret provided, one will be generated
+# Usage: .\run-xmlator.ps1 [-Secret <value>] [-AdminToken <value>]
+# If values are omitted, secure randoms will be generated.
 
-param([string]`$Secret = "")
+param(
+    [string]`$Secret = "",
+    [string]`$AdminToken = ""
+)
+
+function New-HexToken([int]`$bytes = 32) {
+    return ([System.BitConverter]::ToString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(`$bytes)) -replace '-').ToLower()
+}
 
 if (-not `$Secret) {
-    `$Secret = ([System.BitConverter]::ToString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32)) -replace '-').ToLower()
-    Write-Host "Generated secret: `$Secret" -ForegroundColor Yellow
+    `$Secret = New-HexToken 32
+    Write-Host "Generated U_XMLATOR_SECRET: `$Secret" -ForegroundColor Yellow
+}
+if (-not `$AdminToken) {
+    `$AdminToken = `$Secret
+    Write-Host "Using same token for admin (U_XMLATOR_ADMIN_TOKEN)." -ForegroundColor Yellow
 }
 
 `$env:FLASK_ENV = 'production'
 `$env:U_XMLATOR_SECRET = `$Secret
+`$env:U_XMLATOR_ADMIN_TOKEN = `$AdminToken
 
 Write-Host "Starting XMLator on 0.0.0.0:5000..." -ForegroundColor Green
 Write-Host "Open: http://localhost:5000 (or server IP)" -ForegroundColor Cyan
@@ -100,10 +115,10 @@ Write-Host "Press Ctrl+C to stop." -ForegroundColor Yellow
 # Add quick health check script
 @"
 try {
-    `$r = Invoke-WebRequest -Uri 'http://127.0.0.1:5000/health' -UseBasicParsing -TimeoutSec 5
-    Write-Host "Health status: `$($r.StatusCode) `$($r.Content)" -ForegroundColor Green
+    `$r = Invoke-WebRequest -Uri 'http://127.0.0.1:5000/ready' -UseBasicParsing -TimeoutSec 5
+    Write-Host "Ready status: `$($r.StatusCode) `$($r.Content)" -ForegroundColor Green
 } catch {
-    Write-Host "Health check failed: `$($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Health/ready check failed: `$($_.Exception.Message)" -ForegroundColor Red
 }
 "@ | Out-File (Join-Path $TargetDir 'check-health.ps1') -Encoding UTF8
 

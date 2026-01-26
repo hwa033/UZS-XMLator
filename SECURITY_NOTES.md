@@ -68,8 +68,22 @@ In `web/app.py`, set `validate_flag=False` in `validate_normalized_rows_for_gene
 
 ### Input Validation
 - Excel: `.xlsx`, `.xls` only; max 16 MB (configurable via upload_max_size_mb).
-- BSN: Empty check enforced; add regex format validation if required by UWV compliance.
+- BSN: Must be 8-9 digits (regex enforced); empty not allowed.
 - XML filenames: Sanitized (no `../`, etc.).
+
+### Admin UI (/instellingen/*)
+- Dev: Open.
+- Non-dev: Require admin token (`X-Admin-Token` header, Bearer token, of `admin_token` query param).
+- Token source: `U_XMLATOR_ADMIN_TOKEN` (falls back op `U_XMLATOR_SECRET`).
+
+### CORS
+- Disabled by default.
+- Enable by setting `XMLATOR_CORS_ORIGINS` to comma-separated origins (e.g., `https://example.com,https://admin.example.com`). Applies to `/api/*`.
+
+### Rate Limiting
+- Default: 100 req/min per client IP (memory backend).
+- Upload endpoint `/upload_excel`: 20 req/min per IP.
+- Configure storage via `XMLATOR_LIMITER_STORAGE` (e.g., `redis://localhost:6379/0`).
 
 ---
 
@@ -79,6 +93,7 @@ In `web/app.py`, set `validate_flag=False` in `validate_normalized_rows_for_gene
 - **Path**: `build/logs/xmlator_errors.jsonl` (one JSON per line).
 - **Retention**: No auto-cleanup; implement centralized logging (ELK, Datadog, or syslog forwarder) for production.
 - **Fields**: `type`, `aanvraag_type`, `omgeving`, `stderr`, `filename`, `tijdstip`.
+- **Health**: `/ready` returns 503 if it cannot append to the error log or access the filedrop root.
 
 ### Example integration:
 ```bash

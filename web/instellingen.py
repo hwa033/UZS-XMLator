@@ -4,6 +4,7 @@ from pathlib import Path
 
 from flask import (
     Blueprint,
+    Response,
     flash,
     redirect,
     render_template,
@@ -14,6 +15,34 @@ from flask import (
 instellingen_bp = Blueprint("instellingen", __name__, template_folder="templates")
 
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "instellingen.json")
+FLASK_ENV = os.environ.get("FLASK_ENV", "development")
+
+
+def _admin_token() -> str | None:
+    return os.environ.get("U_XMLATOR_ADMIN_TOKEN") or os.environ.get("U_XMLATOR_SECRET")
+
+
+def _extract_request_token() -> str | None:
+    header_token = request.headers.get("X-Admin-Token")
+    if header_token:
+        return header_token
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header.replace("Bearer ", "", 1).strip()
+    return request.args.get("admin_token")
+
+
+@instellingen_bp.before_request
+def _protect_instellingen():
+    if FLASK_ENV.lower() == "development":
+        return None
+    configured = _admin_token()
+    if not configured:
+        return Response("Admin token niet ingesteld", status=503)
+    provided = _extract_request_token()
+    if not provided or provided != configured:
+        return Response("Admin token vereist", status=401)
+    return None
 
 
 @instellingen_bp.route("/logs")

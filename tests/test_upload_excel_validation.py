@@ -59,3 +59,24 @@ def test_validate_rows_ok():
     )
     assert len(bodies) == 1
     assert errors == []
+
+
+def test_validate_rows_invalid_bsn_format():
+    rows = [
+        {"Naam": "Jan Test", "DatEersteAoDag": "20250101", "BSN": "12A345"},
+    ]
+    excel_headers = ["BSN", "Naam", "DatEersteAoDag"]
+    gen = DummyGen()
+    bodies, errors, _ = validate_normalized_rows_for_generator(
+        rows,
+        excel_headers,
+        validate_flag=False,
+        form_aanvraag_type="ZBM",
+        aanvraag_map={"Digipoort": "OTP3"},
+        cd_bericht_default="ZBM",
+        gen_module=gen,
+        ns_body="http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428",
+        schema=None,
+    )
+    assert bodies == []
+    assert any("ongeldig BSN-formaat" in e for e in errors)

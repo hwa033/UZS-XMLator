@@ -18,11 +18,29 @@ from flask import (
     send_from_directory,
     url_for,
 )
+from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 
 from .instellingen import instellingen_bp
 
 app = Flask(__name__)
+
+# Optional CORS support (only if XMLATOR_CORS_ORIGINS is set)
+cors_origins = os.environ.get("XMLATOR_CORS_ORIGINS")
+if cors_origins:
+    origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+    if origins:
+        CORS(app, resources={r"/api/*": {"origins": origins}})
+
+# Basic rate limiting (memory backend by default). Override storage with XMLATOR_LIMITER_STORAGE.
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["100 per minute"],
+    storage_uri=os.environ.get("XMLATOR_LIMITER_STORAGE", "memory://"),
+)
 
 # Laad configuratie uit instellingen.json
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "instellingen.json")
@@ -426,6 +444,7 @@ def download_generated_zip():
 
 
 @app.route("/upload_excel", methods=["POST"])
+@limiter.limit("20 per minute")
 def upload_excel():
     import subprocess
     import tempfile
@@ -602,14 +621,37 @@ def health():
 
 @app.route("/ready")
 def ready():
+    status = {"status": "ready", "log_write": True, "filedrop_access": True}
+
+    # Check log write permission
+    try:
+        log_path = _error_log_path()
+        with open(log_path, "a", encoding="utf-8"):
+            pass
+    except Exception:
+        status["log_write"] = False
+
+    # Check filedrop access by resolving current environment output dir
+    try:
+        out_dir = get_output_directory()
+        os.makedirs(out_dir, exist_ok=True)
+    except Exception:
+        status["filedrop_access"] = False
+
+    # Basic static/downloads dir check (used by UI)
     try:
         downloads_dir = os.path.join(
             os.path.dirname(__file__), "..", "web", "static", "downloads"
         )
         os.makedirs(downloads_dir, exist_ok=True)
-        return jsonify({"status": "ready"}), 200
     except Exception:
-        return jsonify({"status": "not_ready"}), 503
+        status["status"] = "not_ready"
+
+    if not status["log_write"] or not status["filedrop_access"]:
+        status["status"] = "not_ready"
+        return jsonify(status), 503
+
+    return jsonify(status), 200
 
 
 @app.route("/favicon.ico")
