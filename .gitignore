@@ -1,5 +1,6 @@
 ﻿# Ignore build artifacts
 /build/
+/dist/
 /web/static/downloads/
 __pycache__/
 *.pyc
