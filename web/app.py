@@ -97,14 +97,14 @@ def _error_log_path():
 
 @app.route("/api/openapi.yaml")
 def openapi_spec():
-    """Serve OpenAPI spec (static YAML in docs/)."""
+    """OpenAPI-specificatie (statisch YAML-bestand in docs/)."""
     docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
     return send_from_directory(docs_dir, "openapi.yaml", mimetype="application/yaml")
 
 
 @app.route("/api/docs")
 def swagger_ui():
-    """Serve Swagger UI backed by /api/openapi.yaml."""
+    """Swagger UI gebaseerd op /api/openapi.yaml."""
     docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
     return send_from_directory(docs_dir, "swagger.html", mimetype="text/html")
 

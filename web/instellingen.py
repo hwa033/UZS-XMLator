@@ -45,13 +45,13 @@ def logs():
 
 @instellingen_bp.route("/")
 def dashboard():
-    """Main dashboard showing admin panel with all management options"""
+    """Dashboard voor beheer: alle instellingen-opties."""
     return render_template("instellingen.html")
 
 
 @instellingen_bp.route("/configuratie", methods=["GET", "POST"])
 def configuratie():
-    """System configuration settings"""
+    """Systeemconfiguratie aanpassen."""
     # Laad huidige instellingen
     if not os.path.exists(SETTINGS_FILE):
         settings = {
@@ -182,7 +182,7 @@ def configuratie():
 
 @instellingen_bp.route("/documentatie")
 def documentatie():
-    """Show user documentation and help"""
+    """Toon gebruikersdocumentatie en help."""
     # Check which documentation files exist
     docs_path = Path(__file__).parent.parent / "docs"
     available_docs = []
