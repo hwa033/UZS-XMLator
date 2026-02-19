@@ -6,6 +6,7 @@ from flask import (
     Blueprint,
     Response,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -35,6 +36,22 @@ def _extract_request_token() -> str | None:
 
 @instellingen_bp.before_request
 def _protect_instellingen():
+    # Allow API endpoints (JSON) with minimal protection
+    if request.endpoint and request.endpoint.startswith("instellingen.add_omgeving"):
+        if session.get("beheer_ingelogd"):
+            return None
+        if FLASK_ENV.lower() == "development":
+            return None
+        return jsonify({"error": "Unauthorized"}), 401
+
+    if request.endpoint and request.endpoint.startswith("instellingen.delete_omgeving"):
+        if session.get("beheer_ingelogd"):
+            return None
+        if FLASK_ENV.lower() == "development":
+            return None
+        return jsonify({"error": "Unauthorized"}), 401
+
+    # Standard protection for other routes
     if session.get("beheer_ingelogd"):
         return None
     if FLASK_ENV.lower() == "development":
@@ -46,6 +63,25 @@ def _protect_instellingen():
     if not provided or provided != configured:
         return Response("Admin token vereist", status=401)
     return None
+
+
+def _load_config():
+    """Load settings from JSON file."""
+    if not os.path.exists(SETTINGS_FILE):
+        return {
+            "upload_max_size_mb": 16,
+            "xsd_path": "docs/UwvZwMeldingInternBody-v0428-b01.xsd",
+            "log_level": "INFO",
+            "output_directory": "",
+            "auto_validate": True,
+            "default_test_indicator": "2",
+            "default_fiscaal_nr": "136910038",
+            "default_loonheffing_nr": "136910038L01",
+            "file_retention_days": 30,
+            "filedrop_locaties": {},
+        }
+    with open(SETTINGS_FILE, encoding="utf-8") as f:
+        return json.load(f)
 
 
 @instellingen_bp.route("/logs")
@@ -90,12 +126,13 @@ def configuratie():
             "upload_max_size_mb": 16,
             "xsd_path": "docs/UwvZwMeldingInternBody-v0428-b01.xsd",
             "log_level": "INFO",
-            "output_directory": "uzs_filedrop/UZI-GAP3/UZSx_ACC1/v0428",
+            "output_directory": "",
             "auto_validate": True,
             "default_test_indicator": "2",
             "default_fiscaal_nr": "136910038",
             "default_loonheffing_nr": "136910038L01",
             "file_retention_days": 30,
+            "filedrop_locaties": {},
         }
         with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
@@ -113,6 +150,7 @@ def configuratie():
     ]
 
     if request.method == "POST":
+        form_type = request.form.get("form_type", "config")
         errors = []
 
         def _as_int(field, default, min_value=1):
@@ -127,34 +165,40 @@ def configuratie():
             except ValueError:
                 return default, f"{field} moet een getal zijn"
 
-        upload_max_size_mb, err = _as_int(
-            "upload_max_size_mb", settings.get("upload_max_size_mb", 16)
-        )
-        if err:
-            errors.append(err)
+        # Alleen valideren als het de configuratie form is
+        if form_type == "config":
+            upload_max_size_mb, err = _as_int(
+                "upload_max_size_mb", settings.get("upload_max_size_mb", 16)
+            )
+            if err:
+                errors.append(err)
 
-        file_retention_days, err = _as_int(
-            "file_retention_days", settings.get("file_retention_days", 30)
-        )
-        if err:
-            errors.append(err)
+            file_retention_days, err = _as_int(
+                "file_retention_days", settings.get("file_retention_days", 30)
+            )
+            if err:
+                errors.append(err)
 
-        settings["upload_max_size_mb"] = upload_max_size_mb
-        settings["file_retention_days"] = file_retention_days
-        settings["omgeving"] = request.form.get(
-            "omgeving", settings.get("omgeving", "UZSTA_OMG")
-        )
-        settings["xsd_path"] = request.form.get(
-            "xsd_path", settings.get("xsd_path", "")
-        ).strip()
-        # Optional: update filedrop paths for selected environment
+            settings["upload_max_size_mb"] = upload_max_size_mb
+            settings["file_retention_days"] = file_retention_days
+            settings["omgeving"] = request.form.get(
+                "omgeving", settings.get("omgeving", "UZSTA_OMG")
+            )
+            settings["xsd_path"] = request.form.get(
+                "xsd_path", settings.get("xsd_path", "")
+            ).strip()
+
+        # Filedrop paden
         fp_otp3 = request.form.get("otp3_path", "").strip()
         fp_zbm = request.form.get("zbm_path", "").strip()
         fp_vm = request.form.get("vm_path", "").strip()
 
-        # Valideer paden (waarschuwing als niet bereikbaar, maar niet blokkeren)
-        for label, path in [("OTP3", fp_otp3), ("ZBM", fp_zbm), ("VM", fp_vm)]:
-            if path:
+        # Alleen filedrop paden opslaan als form_type="filedrop" of als er paden zijn gegeven
+        if form_type == "filedrop" or (fp_otp3 or fp_zbm or fp_vm):
+            # Valideer paden (waarschuwing als niet bereikbaar, maar niet blokkeren)
+            for label, path in [("OTP3", fp_otp3), ("ZBM", fp_zbm), ("VM", fp_vm)]:
+                if not path:
+                    continue
                 drive, _ = os.path.splitdrive(path)
                 if drive and not os.path.exists(drive + os.path.sep):
                     flash(
@@ -162,25 +206,40 @@ def configuratie():
                         f"pad wordt wel opgeslagen.",
                         "warning",
                     )
-                elif not os.path.exists(path):
+                    continue
+                try:
+                    os.makedirs(path, exist_ok=True)
+                except Exception as exc:
                     flash(
-                        f"Info: Pad voor {label} bestaat nog niet maar wordt opgeslagen"
-                        f" (kan later worden aangemaakt).",
-                        "info",
+                        f"Waarschuwing: pad voor {label} niet bereikbaar (rechten?): {exc}",
+                        "warning",
                     )
+                else:
+                    if not os.path.exists(path):
+                        flash(
+                            f"Info: Pad voor {label} bestaat nog niet maar wordt opgeslagen"
+                            f" (kan later worden aangemaakt).",
+                            "info",
+                        )
 
-        if settings.get("filedrop_locaties") is None or not isinstance(
-            settings.get("filedrop_locaties"), dict
-        ):
-            settings["filedrop_locaties"] = {}
-        env_map = settings["filedrop_locaties"].get(settings["omgeving"], {})
-        if fp_otp3:
-            env_map["OTP3"] = fp_otp3
-        if fp_zbm:
-            env_map["ZBM"] = fp_zbm
-        if fp_vm:
-            env_map["VM"] = fp_vm
-        settings["filedrop_locaties"][settings["omgeving"]] = env_map
+            if settings.get("filedrop_locaties") is None or not isinstance(
+                settings.get("filedrop_locaties"), dict
+            ):
+                settings["filedrop_locaties"] = {}
+            env_map = settings["filedrop_locaties"].get(settings["omgeving"], {})
+            if fp_otp3:
+                env_map["OTP3"] = fp_otp3
+            else:
+                env_map.pop("OTP3", None)
+            if fp_zbm:
+                env_map["ZBM"] = fp_zbm
+            else:
+                env_map.pop("ZBM", None)
+            if fp_vm:
+                env_map["VM"] = fp_vm
+            else:
+                env_map.pop("VM", None)
+            settings["filedrop_locaties"][settings["omgeving"]] = env_map
 
         if errors:
             for e in errors:
@@ -236,3 +295,75 @@ def documentatie():
             )
 
     return render_template("documentatie.html", available_docs=available_docs)
+
+
+@instellingen_bp.route("/add_omgeving", methods=["POST"])
+def add_omgeving():
+    """Voeg nieuwe omgeving toe."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "Geen JSON data ontvangen"}), 400
+
+        omg = data.get("omgeving", "").strip().upper()
+
+        if not omg or not all(c.isalnum() or c == "_" for c in omg):
+            return jsonify({"success": False, "error": "Ongeldige omgevingnaam"}), 400
+
+        settings = _load_config()
+        if settings.get("filedrop_locaties") is None:
+            settings["filedrop_locaties"] = {}
+
+        if omg in settings["filedrop_locaties"]:
+            return jsonify({"success": False, "error": "Omgeving bestaat al"}), 400
+
+        # Voeg lege omgeving toe
+        settings["filedrop_locaties"][omg] = {}
+
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+
+        return jsonify({"success": True, "omgeving": omg}), 200
+    except Exception as e:
+        import traceback
+
+        print(f"Error in add_omgeving: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@instellingen_bp.route("/delete_omgeving", methods=["POST"])
+def delete_omgeving():
+    """Verwijder omgeving."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "error": "Geen JSON data ontvangen"}), 400
+
+        omg = data.get("omgeving", "").strip()
+
+        settings = _load_config()
+        if omg not in settings.get("filedrop_locaties", {}):
+            return jsonify({"success": False, "error": "Omgeving niet gevonden"}), 400
+
+        # Prevent deleting current environment
+        if omg == settings.get("omgeving"):
+            return (
+                jsonify(
+                    {"success": False, "error": "Kan huidige omgeving niet verwijderen"}
+                ),
+                400,
+            )
+
+        del settings["filedrop_locaties"][omg]
+
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=2)
+
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        import traceback
+
+        print(f"Error in delete_omgeving: {e}")
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500

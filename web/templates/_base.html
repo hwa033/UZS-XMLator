@@ -34,12 +34,10 @@
                     </li>
                 </ul>
                 <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-clock text-white"></i>
-                    <span id="current-time" class="text-white"></span>
-                    <button id="theme-toggle" class="btn btn-sm btn-outline-light ms-2" title="Toggle Theme">
-                        <i class="bi bi-circle-half"></i>
+                    <button id="theme-toggle" class="btn btn-sm btn-outline-light" title="Toggle Dark Mode">
+                        <i class="bi bi-moon-fill"></i>
                     </button>
-                    <a href="/instellingen" class="btn btn-sm btn-outline-light ms-3">Instellingen</a>
+                    <a href="/instellingen" class="btn btn-sm btn-outline-light ms-2">Instellingen</a>
                     <a href="/faq" class="btn btn-sm btn-outline-light ms-2">FAQ</a>
                 </div>
             </div>
@@ -80,29 +78,50 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    // Theme toggle: toggles between 'theme-default' and 'theme-compact'
+    // Dark mode toggle
     (function(){
         try {
-            const key = 'uzs_theme';
+            const key = 'uzs_dark_mode';
             const btn = document.getElementById('theme-toggle');
-            function applyTheme(name){
-                document.body.classList.remove('theme-default','theme-compact');
-                if (name) document.body.classList.add(name);
-                try { localStorage.setItem(key, name); } catch(e){}
+            const icon = btn ? btn.querySelector('i') : null;
+            
+            function applyDarkMode(enabled){
+                if (enabled) {
+                    document.documentElement.setAttribute('data-bs-theme', 'dark');
+                    document.body.classList.add('theme-dark');
+                    if (icon) {
+                        icon.classList.remove('bi-moon-fill');
+                        icon.classList.add('bi-sun-fill');
+                    }
+                } else {
+                    document.documentElement.setAttribute('data-bs-theme', 'light');
+                    document.body.classList.remove('theme-dark');
+                    if (icon) {
+                        icon.classList.remove('bi-sun-fill');
+                        icon.classList.add('bi-moon-fill');
+                    }
+                }
+                try { localStorage.setItem(key, enabled ? 'true' : 'false'); } catch(e){}
             }
-            // initialize
-            let stored = null;
-            try { stored = localStorage.getItem(key); } catch(e){}
-            if (!stored) stored = 'theme-compact';
-            applyTheme(stored);
-            if (btn) btn.addEventListener('click', ()=>{
-                const current = document.body.classList.contains('theme-compact') ? 'theme-compact' : 'theme-default';
-                const next = current === 'theme-compact' ? 'theme-default' : 'theme-compact';
-                applyTheme(next);
-                // small visual feedback
-                btn.classList.add('active'); setTimeout(()=>btn.classList.remove('active'),180);
-            });
-        } catch(e){ console.debug('Theme toggle init failed', e); }
+            
+            // Initialize from localStorage
+            let isDark = false;
+            try { 
+                const stored = localStorage.getItem(key);
+                isDark = stored === 'true';
+            } catch(e){}
+            applyDarkMode(isDark);
+            
+            // Toggle on click
+            if (btn) {
+                btn.addEventListener('click', ()=>{
+                    const current = document.body.classList.contains('theme-dark');
+                    applyDarkMode(!current);
+                    btn.classList.add('active');
+                    setTimeout(()=>btn.classList.remove('active'),180);
+                });
+            }
+        } catch(e){ console.debug('Dark mode toggle failed', e); }
     })();
     </script>
     <!-- Chart.js (local only) - prefer local copy to avoid CDN blocking -->

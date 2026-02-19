@@ -1,33 +1,14 @@
 {
-  "omgeving": "UZSTA_OMG",
+  "omgeving": "UZSC_ACC1",
   "upload_max_size_mb": 16,
   "xsd_path": "docs/UwvZwMeldingInternBody-v0428-b01.xsd",
   "log_level": "INFO",
+  "file_retention_days": 30,
   "filedrop_locaties": {
-    "UZSTA_OMG": {
-      "OTP3": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSTA_OMG\\UwvZwMelding_MQ_V0428",
-      "ZBM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSTA_OMG\\v0428\\UwvZwMelding",
-      "VM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSTA_OMG\\v0428\\UwvZwMelding"
-    },
-    "UZSA_ACC1": {
-      "OTP3": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSA_ACC1\\UwvZwMelding_MQ_V0428",
-      "ZBM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSA_ACC1\\v0428\\UwvZwMelding",
-      "VM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSA_ACC1\\v0428\\UwvZwMelding"
-    },
-    "UZSC_ACC1": {
-      "OTP3": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSC_ACC1\\UwvZwMelding_MQ_V0428",
-      "ZBM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSC_ACC1\\v0428\\UwvZwMelding",
-      "VM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSC_ACC1\\v0428\\UwvZwMelding"
-    },
-    "UZSD_ACC1": {
-      "OTP3": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSD_ACC1\\UwvZwMelding_MQ_V0428",
-      "ZBM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSD_ACC1\\v0428\\UwvZwMelding",
-      "VM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSD_ACC1\\v0428\\UwvZwMelding"
-    },
-    "UZSP_ACC1": {
-      "OTP3": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSP_ACC1\\UwvZwMelding_MQ_V0428",
-      "ZBM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSP_ACC1\\v0428\\UwvZwMelding",
-      "VM": "D:\\GUP\\UZS\\filedrop\\UZI-GAP3\\UZSP_ACC1\\v0428\\UwvZwMelding"
-    }
+    "UZSTA_OMG": {},
+    "UZSA_ACC1": {},
+    "UZSC_ACC1": {},
+    "UZSD_ACC1": {},
+    "UZSP_ACC1": {}
   }
 }

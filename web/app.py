@@ -223,6 +223,7 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     """
     # Lokale fallback voor dev/test
     base = os.path.join(os.path.dirname(__file__), "..")
+    downloads_dir = os.path.join(base, "web", "static", "downloads")
     fallback_dir = os.path.join(base, "build", "excel_generated")
 
     # Laad actuele configuratie
@@ -232,6 +233,14 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
         omgeving = cfg.get("omgeving", "UZSTA_OMG")
 
     filedrop_locaties = cfg.get("filedrop_locaties", {})
+    env_paths = (
+        filedrop_locaties.get(omgeving, {})
+        if isinstance(filedrop_locaties, dict)
+        else {}
+    )
+    no_filedrop_paths = not env_paths and not cfg.get("output_directory")
+    if no_filedrop_paths:
+        fallback_dir = downloads_dir
 
     # Optional override for filedrop base path
     # (e.g., set XMLATOR_FILEDROP_BASE=/data/filedrop)
@@ -638,8 +647,34 @@ def upload_excel():
             f"XML-bestanden gegenereerd."
         )
 
+        # Check if files were generated in downloads folder (filedrop empty)
+        generated_files = []
+        if output_dir and os.path.exists(output_dir):
+            for fname in os.listdir(output_dir):
+                if fname.endswith(".xml"):
+                    generated_files.append(fname)
+
+        # If in downloads folder, provide download links
+        downloads_path = os.path.join(
+            os.path.dirname(__file__), "..", "web", "static", "downloads"
+        )
+        in_downloads = (
+            os.path.samefile(output_dir, downloads_path)
+            if os.path.exists(downloads_path)
+            else False
+        )
+
         if is_ajax:
-            return jsonify({"success": True, "message": msg}), 200
+            response_data = {"success": True, "message": msg}
+            if in_downloads and generated_files:
+                response_data["download_links"] = [
+                    {"filename": fname, "url": f"/static/downloads/{fname}"}
+                    for fname in generated_files
+                ]
+                response_data[
+                    "message"
+                ] += f" {len(generated_files)} bestand(en) beschikbaar voor download."
+            return jsonify(response_data), 200
         flash(msg, "success")
     except subprocess.CalledProcessError as e:
         _append_error_log(

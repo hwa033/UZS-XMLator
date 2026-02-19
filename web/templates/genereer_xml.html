@@ -79,6 +79,11 @@
                                         <i class="bi bi-info-circle text-muted small"></i>
                                     </span>
                                 </label>
+                                <div class="small mt-2">
+                                    <a href="#" class="link-primary" data-bs-toggle="collapse" data-bs-target="#excelFormatHelp">
+                                        Formaat voorbeeld
+                                    </a>
+                                </div>
                                             <!-- Flash/foutmeldingen -->
                                             {% with messages = get_flashed_messages(with_categories=true) %}
                                                 {% if messages %}
@@ -96,9 +101,6 @@
                         </div>
                         <div class="col-md-5 d-flex flex-column align-items-end">
                             <div class="d-flex gap-2 align-items-center">
-                                <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#excelFormatHelp">
-                                    <i class="bi bi-question-circle"></i> Formaat voorbeeld
-                                </button>
                                 <button type="submit" class="btn btn-outline-primary px-4" id="excel-upload-btn">
                                     Genereer XML
                                 </button>
@@ -150,6 +152,27 @@
                                                 const resp = JSON.parse(xhr.responseText);
                                                 if (resp.message) {
                                                     console.log(resp.message);
+                                                    
+                                                    // Show download links if available
+                                                    if (resp.download_links && resp.download_links.length > 0) {
+                                                        let msg = resp.message + '\n\nDownload bestanden:\n';
+                                                        resp.download_links.forEach(link => {
+                                                            msg += `\n• ${link.filename}`;
+                                                        });
+                                                        alert(msg);
+                                                        
+                                                        // Auto-download first file
+                                                        if (resp.download_links[0]) {
+                                                            const a = document.createElement('a');
+                                                            a.href = resp.download_links[0].url;
+                                                            a.download = resp.download_links[0].filename;
+                                                            document.body.appendChild(a);
+                                                            a.click();
+                                                            document.body.removeChild(a);
+                                                        }
+                                                    } else {
+                                                        alert(resp.message);
+                                                    }
                                                 }
                                             } catch (e) {
                                                 console.log('Response is geen JSON, waarschijnlijk een redirect');

@@ -78,6 +78,17 @@ python -m web.app
 # Production (met environment variables)
 $env:U_XMLATOR_SECRET = "your_secret_key_here"
 $env:FLASK_ENV = "production"
+
+---
+
+## Voor testers (makkelijk)
+
+Pak het zipbestand uit via de Verkenner, bijvoorbeeld naar E:\xmlator
+Open de map en start de app door run-xmlator.ps1 te openen
+De browser opent vanzelf
+Log in met admin admin
+Instellingen zitten op http://localhost:5000/instellingen
+XML bestanden komen standaard in E:\xmlator\build\excel_generated
 python -m web.app
 ```
 
