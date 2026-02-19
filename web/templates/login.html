@@ -1,0 +1,27 @@
+{% extends "_base.html" %}
+
+{% block title %}Inloggen | UWV XMLator{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+                <h4 class="mb-3">Inloggen</h4>
+                <p class="text-muted">Gebruik de admin-gegevens om door te gaan.</p>
+                <form method="post">
+                    <div class="mb-3">
+                        <label class="form-label" for="username">Gebruikersnaam</label>
+                        <input id="username" name="username" class="form-control" type="text" placeholder="admin" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="password">Wachtwoord</label>
+                        <input id="password" name="password" class="form-control" type="password" required>
+                    </div>
+                    <button class="btn btn-primary w-100" type="submit">Inloggen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

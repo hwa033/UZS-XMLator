@@ -16,6 +16,7 @@ from flask import (
     render_template,
     request,
     send_from_directory,
+    session,
     url_for,
 )
 from flask_cors import CORS
@@ -78,6 +79,9 @@ def _load_config():
 
 CONFIG = _load_config()
 
+ADMIN_USER = os.environ.get("U_XMLATOR_ADMIN_USER", "admin")
+ADMIN_PASS = os.environ.get("U_XMLATOR_ADMIN_PASS", "admin")
+
 # Beveiligingsinstellingen
 FLASK_ENV = os.environ.get("FLASK_ENV", "development")
 SECRET_KEY = os.environ.get("U_XMLATOR_SECRET")
@@ -101,6 +105,52 @@ ALLOWED_EXTENSIONS = {".xlsx", ".xls"}
 
 # Register blueprints
 app.register_blueprint(instellingen_bp, url_prefix="/instellingen")
+
+
+def _login_required() -> bool:
+    return FLASK_ENV.lower() != "development"
+
+
+@app.before_request
+def _require_login():
+    if not _login_required():
+        return None
+    if session.get("beheer_ingelogd"):
+        return None
+    path = request.path or ""
+    if path.startswith("/static/"):
+        return None
+    if path in {
+        "/login",
+        "/logout",
+        "/health",
+        "/ready",
+        "/api/openapi.yaml",
+        "/api/docs",
+        "/favicon.ico",
+        "/logo.png",
+    }:
+        return None
+    return redirect(url_for("login", next=path))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        if username == ADMIN_USER and password == ADMIN_PASS:
+            session["beheer_ingelogd"] = True
+            next_url = request.args.get("next") or url_for("home")
+            return redirect(next_url)
+        flash("Ongeldige inloggegevens", "danger")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.pop("beheer_ingelogd", None)
+    return redirect(url_for("login"))
 
 
 def _error_log_path():
@@ -545,23 +595,43 @@ def upload_excel():
     output_dir = get_output_directory(aanvraag_type)
     os.makedirs(output_dir, exist_ok=True)
     python_exe = os.environ.get("PYTHON_EXE", sys.executable)
+    log_path = os.path.join(
+        os.path.dirname(__file__), "..", "build", "logs", "generator_excel.log"
+    )
+
+    use_internal_generator = (
+        getattr(sys, "frozen", False)
+        or os.path.basename(str(sys.executable)).lower() == "xmlator.exe"
+        or os.path.basename(str(python_exe)).lower() == "xmlator.exe"
+        or not os.path.exists(generator_path)
+    )
 
     try:
-        subprocess.run(
-            [
-                python_exe,
-                generator_path,
-                "--input",
+        if use_internal_generator:
+            from tools import generate_from_excel as gen
+
+            gen.generate_from_excel_file(
                 patched_excel_path,
-                "--outdir",
                 output_dir,
-                "--mode",
-                "single",
-            ],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
+                mode="single",
+                log_path=log_path,
+            )
+        else:
+            subprocess.run(
+                [
+                    python_exe,
+                    generator_path,
+                    "--input",
+                    patched_excel_path,
+                    "--outdir",
+                    output_dir,
+                    "--mode",
+                    "single",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
 
         msg = (
             f"Excel-bestand succesvol geüpload en {aanvraag_type} "

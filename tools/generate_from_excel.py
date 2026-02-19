@@ -229,6 +229,74 @@ def append_log(log_path: str, entry: str) -> None:
         fh.write(entry + "\n")
 
 
+def generate_from_excel_file(
+    src: str,
+    out_dir: str,
+    mode: str = "single",
+    log_path: str = r"build/logs/generator_excel.log",
+    data_only: bool = False,
+) -> int:
+    """Generate XML files from an Excel source without using argparse.
+
+    Returns number of processed rows.
+    """
+    src = os.path.abspath(src)
+    out_dir = os.path.abspath(out_dir)
+    log_path = os.path.abspath(log_path)
+
+    messages = []
+    rows, formula_count = read_excel_rows(src, data_only=data_only)
+    for rec in rows:
+        try:
+            _, _, ns_body = _namespaces()
+            msg, aanvraag_type = build_message_element(rec, ns_body)
+            messages.append((rec, msg, aanvraag_type))
+        except Exception as exc:
+            append_log(
+                log_path,
+                f"{datetime.now(timezone.utc).isoformat()}\tERROR_BUILD_MSG\t{exc}",
+            )
+
+    processed = 0
+    if mode == "bulk":
+        bodies = [m for (_, m, _) in messages]
+        bulk_type = messages[0][2] if messages else "BULK"
+        sender = "Digipoort" if bulk_type == "OTP3" else bulk_type
+        envelope = build_envelope_with_header_and_bodies(bodies, sender=sender)
+        saved = save_envelope(envelope, out_dir, "bulk", bulk_type)
+        append_log(
+            log_path,
+            f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS\t{len(bodies)}",
+        )
+        processed = len(bodies)
+    else:
+        for idx, (rec, m, aanvraag_type) in enumerate(messages, start=1):
+            try:
+                sender = "Digipoort" if aanvraag_type == "OTP3" else aanvraag_type
+                env = build_envelope_with_header_and_bodies([m], sender=sender)
+                bsn = rec.get("BSN") or f"row{idx}"
+                safe_bsn = str(bsn).replace(" ", "_")
+                saved = save_envelope(env, out_dir, safe_bsn, aanvraag_type)
+                append_log(
+                    log_path,
+                    f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS",
+                )
+                processed += 1
+            except Exception as exc:
+                append_log(
+                    log_path,
+                    f"{datetime.now(timezone.utc).isoformat()}Z\tERROR_SAVE\t{exc}",
+                )
+
+    if formula_count:
+        append_log(
+            log_path,
+            f"{datetime.now(timezone.utc).isoformat()}Z\tSANITIZED_FORMULAS\t{formula_count}",
+        )
+
+    return processed
+
+
 def _normalize_ind_jn(value: str) -> str:
     """Normalize IndJN values to 1 (J/Ja/Yes) or 2 (N/Nee/No)."""
     if value is None:

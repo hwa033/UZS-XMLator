@@ -9,6 +9,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
 
@@ -34,6 +35,8 @@ def _extract_request_token() -> str | None:
 
 @instellingen_bp.before_request
 def _protect_instellingen():
+    if session.get("beheer_ingelogd"):
+        return None
     if FLASK_ENV.lower() == "development":
         return None
     configured = _admin_token()

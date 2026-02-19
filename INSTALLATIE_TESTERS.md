@@ -13,11 +13,21 @@ cd E:\xmlator
 .\run-xmlator.ps1
 ```
 Het script maakt zelf een wachtwoord aan en start de app.
+Wil je een andere URL openen? Gebruik: `-OpenUrl http://<adres>:<poort>`
 
 ### 3. Browser openen
 ```
 http://localhost:5000
 ```
+
+## Inloggen
+Gebruik de standaardgegevens:
+- Gebruikersnaam: `admin`
+- Wachtwoord: `admin`
+
+Wil je dit aanpassen? Zet omgevingvariabelen:
+- `U_XMLATOR_ADMIN_USER`
+- `U_XMLATOR_ADMIN_PASS`
 
 ## Werkt het?
 Draai dit om te checken:
@@ -40,6 +50,9 @@ Twee manieren om in te loggen:
 - **Poort bezet?** Pas in `run-xmlator.ps1` aan naar `--port 5001`
 - **Wachtwoord kwijt?** Start opnieuw, er komt een nieuw wachtwoord
 - **Health check werkt niet?** Check Windows Firewall voor poort 5000
+- **PowerShell fout bij token-generatie?** Start handmatig met:
+	`.
+un-xmlator.ps1 -Secret <wachtwoord> -AdminToken <wachtwoord>`
 
 ## Wat zit er in de map
 - `xmlator.exe` - de applicatie

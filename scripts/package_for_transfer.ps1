@@ -80,16 +80,21 @@ try {
 Write-Host "Creating run script for target server..." -ForegroundColor Cyan
 @"
 # Run this on the target server
-# Usage: .\run-xmlator.ps1 [-Secret <value>] [-AdminToken <value>]
+# Usage: .\run-xmlator.ps1 [-Secret <value>] [-AdminToken <value>] [-OpenUrl <value>]
 # If values are omitted, secure randoms will be generated.
 
 param(
     [string]`$Secret = "",
-    [string]`$AdminToken = ""
+    [string]`$AdminToken = "",
+    [string]`$OpenUrl = ""
 )
 
 function New-HexToken([int]`$bytes = 32) {
-    return ([System.BitConverter]::ToString([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(`$bytes)) -replace '-').ToLower()
+    `$buf = New-Object byte[] `$bytes
+    `$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    `$rng.GetBytes(`$buf)
+    `$rng.Dispose()
+    return ([System.BitConverter]::ToString(`$buf) -replace '-').ToLower()
 }
 
 if (-not `$Secret) {
@@ -104,12 +109,18 @@ if (-not `$AdminToken) {
 `$env:FLASK_ENV = 'production'
 `$env:U_XMLATOR_SECRET = `$Secret
 `$env:U_XMLATOR_ADMIN_TOKEN = `$AdminToken
+`$env:XMLATOR_OPEN_BROWSER = '1'
+if (`$OpenUrl) { `$env:XMLATOR_OPEN_URL = `$OpenUrl }
 
 Write-Host "Starting XMLator on 0.0.0.0:5000..." -ForegroundColor Green
-Write-Host "Open: http://localhost:5000 (or server IP)" -ForegroundColor Cyan
+if (`$OpenUrl) {
+    Write-Host "Open: `$OpenUrl" -ForegroundColor Cyan
+} else {
+    Write-Host "Open: http://localhost:5000 (or server IP)" -ForegroundColor Cyan
+}
 Write-Host "Press Ctrl+C to stop." -ForegroundColor Yellow
 
-.\xmlator.exe --host 0.0.0.0 --port 5000
+.\xmlator.exe --host 0.0.0.0 --port 5000 --open-browser
 "@ | Out-File (Join-Path $TargetDir 'run-xmlator.ps1') -Encoding UTF8
 
 # Add quick health check script
