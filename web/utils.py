@@ -196,8 +196,13 @@ def fill_xml_template(
     np = etree.SubElement(uwb, "NatuurlijkPersoon")
     if data.get("BSN"):
         etree.SubElement(np, "Burgerservicenr").text = str(data.get("BSN"))
-    if data.get("Geb_datum"):
-        geb = data.get("Geb_datum")
+    geb = (
+        data.get("Geb_datum")
+        or data.get("Geboortedatum")
+        or data.get("Geboortedat")
+        or data.get("geboortedatum")
+    )
+    if geb:
         if isinstance(geb, str) and geb.isdigit() and len(geb) == 8:
             etree.SubElement(np, "Geboortedat").text = geb
         else:
@@ -392,6 +397,14 @@ def validate_normalized_rows_for_generator(
                 errs.append("ontbrekende BSN")
             elif not bsn_regex.match(bsn):
                 errs.append("ongeldig BSN-formaat (8-9 cijfers)")
+            geb_raw = (
+                rec.get("Geboortedatum")
+                or rec.get("Geb_datum")
+                or rec.get("Geboortedat")
+                or rec.get("geboortedatum")
+            )
+            if geb_raw is None or str(geb_raw).strip() == "":
+                errs.append("ontbrekende Geboortedatum")
             naam = rec.get("Naam")
             if not naam or str(naam).strip() == "":
                 first = (

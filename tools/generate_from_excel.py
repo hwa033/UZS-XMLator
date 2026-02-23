@@ -359,9 +359,19 @@ def build_message_element(
             return
         ET.SubElement(parent, qname(tag)).text = s
 
+    def first_non_empty(*keys):
+        for key in keys:
+            v = record.get(key)
+            if v is None:
+                continue
+            if str(v).strip() == "":
+                continue
+            return v
+        return None
+
     def set_date_if(parent, tag, value, date_only=True):
         if value is None:
-            return
+            return False
         # normalize common date/datetime representations to ISO
         try:
             if isinstance(value, datetime):
@@ -370,10 +380,30 @@ def build_message_element(
                 else:
                     out = value.strftime("%Y%m%d%H%M%S")
                 ET.SubElement(parent, qname(tag)).text = out
-                return
+                return True
+            if isinstance(value, int | float):
+                s_num = str(int(value))
+                if len(s_num) == 8 and s_num.isdigit():
+                    out = s_num if date_only else f"{s_num}000000"
+                    ET.SubElement(parent, qname(tag)).text = out
+                    return True
+                # Excel serial date fallback
+                try:
+                    from openpyxl.utils.datetime import from_excel
+
+                    dt_num = from_excel(value)
+                    out = (
+                        dt_num.strftime("%Y%m%d")
+                        if date_only
+                        else dt_num.strftime("%Y%m%d%H%M%S")
+                    )
+                    ET.SubElement(parent, qname(tag)).text = out
+                    return True
+                except Exception:
+                    return False
             s = str(value).strip()
             if s == "":
-                return
+                return False
             # if value is compact numeric YYYYMMDD, keep as-is for date-only
             if len(s) == 8 and s.isdigit():
                 if date_only:
@@ -381,7 +411,20 @@ def build_message_element(
                 else:
                     out = f"{s}000000" if len(s) == 8 else s
                 ET.SubElement(parent, qname(tag)).text = out
-                return
+                return True
+            # common Dutch/user-entered date formats
+            for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d"):
+                try:
+                    dt = datetime.strptime(s, fmt)
+                    out = (
+                        dt.strftime("%Y%m%d")
+                        if date_only
+                        else dt.strftime("%Y%m%d%H%M%S")
+                    )
+                    ET.SubElement(parent, qname(tag)).text = out
+                    return True
+                except Exception:
+                    pass
             # try ISO parse
             try:
                 dt = datetime.fromisoformat(s)
@@ -390,12 +433,12 @@ def build_message_element(
                 else:
                     out = dt.strftime("%Y%m%d%H%M%S")
                 ET.SubElement(parent, qname(tag)).text = out
-                return
+                return True
             except Exception:
                 # fallback: do not write if unclear
-                return
+                return False
         except Exception:
-            return
+            return False
 
     # CdBerichtType: REQUIRED by XSD. Must be one of the enumerated values.
     # Only use OTP3 for Digipoort messages; for ZBM, VM, etc., use their actual code.
@@ -467,8 +510,17 @@ def build_message_element(
     bsn = record.get("BSN")
     if bsn is not None:
         set_if(np, "Burgerservicenr", bsn)
-    geb = record.get("Geboortedatum")
-    set_date_if(np, "Geboortedat", geb, date_only=True)
+    geb = first_non_empty(
+        "Geboortedatum",
+        "Geboortedat",
+        "Geb_datum",
+        "GeboorteDatum",
+        "geboortedatum",
+    )
+    if not set_date_if(np, "Geboortedat", geb, date_only=True):
+        raise ValueError(
+            "Ontbrekende of ongeldige geboortedatum (verwacht kolom 'Geboortedatum' of alias zoals 'Geb_datum')."
+        )
     # optional flags
     set_if(np, "IndOverlijden", record.get("IndOverlijden", None))
     set_if(np, "Geslacht", record.get("Geslacht", None))

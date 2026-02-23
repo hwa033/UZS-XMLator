@@ -42,9 +42,14 @@ def test_validate_rows_missing_bsn():
 
 def test_validate_rows_ok():
     rows = [
-        {"Naam": "Jan Test", "DatEersteAoDag": "20250101", "BSN": "12345"},
+        {
+            "Naam": "Jan Test",
+            "DatEersteAoDag": "20250101",
+            "BSN": "123456789",
+            "Geboortedatum": "19900115",
+        },
     ]
-    excel_headers = ["BSN", "Naam", "DatEersteAoDag"]
+    excel_headers = ["BSN", "Naam", "Geboortedatum", "DatEersteAoDag"]
     gen = DummyGen()
     bodies, errors, bulk = validate_normalized_rows_for_generator(
         rows,
