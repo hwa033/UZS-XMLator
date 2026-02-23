@@ -243,7 +243,11 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     )
     no_filedrop_paths = not env_paths and not cfg.get("output_directory")
     if no_filedrop_paths:
-        fallback_dir = downloads_dir
+        user_downloads = os.path.join(os.path.expanduser("~"), "Downloads")
+        if os.path.isdir(user_downloads):
+            fallback_dir = user_downloads
+        else:
+            fallback_dir = downloads_dir
 
     # Optional override for filedrop base path
     # (e.g., set XMLATOR_FILEDROP_BASE=/data/filedrop)
@@ -535,6 +539,7 @@ def upload_json():
         return redirect(request.referrer or url_for("genereer_xml"))
 
     aanvraag_type = request.form.get("aanvraag_type", "ZBM").strip().upper()
+    cd_override = "OTP3" if aanvraag_type == "DIGIPOORT" else aanvraag_type
     if aanvraag_type in {"DIGIPOORT", "OTP3"}:
         cd_bericht = "OTP3"
         sender = "Digipoort"
@@ -626,8 +631,6 @@ def upload_json():
 @limiter.limit("20 per minute")
 def upload_excel():
     import subprocess
-    import tempfile
-    import warnings
 
     import openpyxl
 
@@ -676,6 +679,7 @@ def upload_excel():
     file.save(file_path)
 
     aanvraag_type = request.form.get("aanvraag_type", "ZBM").strip().upper()
+    cd_override = "OTP3" if aanvraag_type == "DIGIPOORT" else aanvraag_type
 
     try:
         wb = openpyxl.load_workbook(file_path)
@@ -687,30 +691,10 @@ def upload_excel():
             flash(msg, "danger")
             return redirect(request.referrer or url_for("genereer_xml"))
 
-        header_row = next(ws.iter_rows(min_row=1, max_row=1, values_only=False))
-        header_names = [cell.value for cell in header_row]
-        type_col = None
-        for idx, name in enumerate(header_names):
-            if name and str(name).strip().lower() in [
-                "cdberichttype",
-                "aanvraag_type",
-                "type",
-            ]:
-                type_col = idx
-                break
-
-        if type_col is None:
-            ws.cell(row=1, column=len(header_names) + 1, value="CdBerichtType")
-            type_col = len(header_names)
-
-        for i, row in enumerate(ws.iter_rows(min_row=2, max_row=ws.max_row), start=2):
-            ws.cell(row=i, column=type_col + 1, value=aanvraag_type)
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-            patched_excel_path = tmp.name
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            wb.save(patched_excel_path)
+        # Gebruik het originele bestand zodat formules (zoals Geboortedatum)
+        # hun cached values behouden. CdBerichtType wordt later overschreven
+        # in de generator op basis van het gekozen aanvraagtype.
+        patched_excel_path = file_path
     except Exception as exc:
         msg = f"Fout bij verwerken van het Excel-bestand: {exc}"
         if is_ajax:
@@ -744,6 +728,8 @@ def upload_excel():
                 output_dir,
                 mode="single",
                 log_path=log_path,
+                data_only=True,
+                cd_bericht_override=cd_override,
             )
         else:
             subprocess.run(
@@ -756,6 +742,9 @@ def upload_excel():
                     output_dir,
                     "--mode",
                     "single",
+                    "--data-only",
+                    "--cd-bericht",
+                    cd_override,
                 ],
                 capture_output=True,
                 text=True,
@@ -829,7 +818,7 @@ def upload_excel():
             return jsonify({"success": False, "error": msg}), 400
         flash(msg, "danger")
     finally:
-        for path in (patched_excel_path, file_path):
+        for path in (file_path,):
             try:
                 if path and os.path.exists(path):
                     os.remove(path)

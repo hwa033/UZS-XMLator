@@ -7,7 +7,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from web.app import app
+from web.app import app, get_output_directory
 
 
 def test_digipoort_generates_file():
@@ -31,7 +31,7 @@ def test_digipoort_generates_file():
     body = resp.get_json() or {}
     assert body.get("success") is True
 
-    out_dir = ROOT / "build" / "excel_generated"
+    out_dir = Path(get_output_directory("Digipoort"))
     recent_files = []
     for fname in os.listdir(out_dir) if out_dir.exists() else []:
         if fname.endswith(".xml"):

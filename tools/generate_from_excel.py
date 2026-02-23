@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import uuid
 from collections.abc import Iterable
 from datetime import datetime, timezone
@@ -40,6 +41,27 @@ except Exception:
     )
 
 
+def _build_natuurlijk_persoon_map(wb) -> dict[str, object]:
+    """Build lookup map for BSN -> Geboortedatum from the NatuurlijkPersoon sheet."""
+    sheet = None
+    for name in wb.sheetnames:
+        if "NatuurlijkPersoon" in name:
+            sheet = wb[name]
+            break
+    if sheet is None:
+        return {}
+    mapping: dict[str, object] = {}
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        if not row or len(row) < 10:
+            continue
+        key = row[1]
+        value = row[9]
+        if key is None:
+            continue
+        mapping[str(key).strip()] = value
+    return mapping
+
+
 def read_excel_rows(path: str, data_only: bool = False):
     """Read all rows from the workbook and return a tuple (rows_list, formula_count).
 
@@ -51,15 +73,28 @@ def read_excel_rows(path: str, data_only: bool = False):
     """
     wb = openpyxl.load_workbook(path, read_only=True, data_only=data_only)
     ws = wb.active
+    wb_formula = None
+    ws_formula = None
+    lookup_map = {}
+    if data_only:
+        wb_formula = openpyxl.load_workbook(path, read_only=True, data_only=False)
+        ws_formula = wb_formula.active if wb_formula is not None else None
+        if wb_formula is not None:
+            lookup_map = _build_natuurlijk_persoon_map(wb_formula)
     if ws is not None:
         rows_iter = ws.iter_rows(values_only=True)
     else:
         raise ValueError("Worksheet is None")
     headers = [h if h is not None else "" for h in next(rows_iter)]
+    formula_iter = None
+    if ws_formula is not None:
+        formula_iter = ws_formula.iter_rows(values_only=False)
+        next(formula_iter, None)
     out_rows = []
     formula_count = 0
     for row in rows_iter:
         rec = {}
+        formula_row = next(formula_iter, None) if formula_iter else None
         for i in range(len(headers)):
             raw = row[i] if i < len(row) else None
             # sanitize formula-like strings to avoid embedding formulas in XML
@@ -68,6 +103,23 @@ def read_excel_rows(path: str, data_only: bool = False):
                 value = ""
             else:
                 value = raw
+            if (
+                data_only
+                and value is None
+                and formula_row is not None
+                and i < len(formula_row)
+            ):
+                cell = formula_row[i]
+                formula = cell.value if cell is not None else None
+                if (
+                    isinstance(formula, str)
+                    and "XLOOKUP" in formula
+                    and "NatuurlijkPersoon" in formula
+                ):
+                    bsn_cell = formula_row[0] if len(formula_row) > 0 else None
+                    bsn_value = bsn_cell.value if bsn_cell is not None else None
+                    if bsn_value is not None:
+                        value = lookup_map.get(str(bsn_value).strip())
             rec[headers[i]] = value
         out_rows.append(rec)
     return out_rows, formula_count
@@ -235,6 +287,7 @@ def generate_from_excel_file(
     mode: str = "single",
     log_path: str = r"build/logs/generator_excel.log",
     data_only: bool = False,
+    cd_bericht_override: str | None = None,
 ) -> int:
     """Generate XML files from an Excel source without using argparse.
 
@@ -248,6 +301,8 @@ def generate_from_excel_file(
     rows, formula_count = read_excel_rows(src, data_only=data_only)
     for rec in rows:
         try:
+            if cd_bericht_override:
+                rec["CdBerichtType"] = cd_bericht_override
             _, _, ns_body = _namespaces()
             msg, aanvraag_type = build_message_element(rec, ns_body)
             messages.append((rec, msg, aanvraag_type))
@@ -351,6 +406,21 @@ def build_message_element(
         # serialization will not show prefixes
         return "{" + ns_body + "}" + tag
 
+    def _normalize_key(key: str) -> str:
+        return re.sub(r"[^0-9a-zA-Z]", "", key or "").lower()
+
+    normalized_record = {
+        _normalize_key(str(k)): v
+        for k, v in record.items()
+        if k is not None and str(k).strip() != ""
+    }
+
+    def get_value(key: str):
+        direct = record.get(key)
+        if direct is not None and str(direct).strip() != "":
+            return direct
+        return normalized_record.get(_normalize_key(key))
+
     def set_if(parent, tag, value):
         if value is None:
             return
@@ -361,7 +431,7 @@ def build_message_element(
 
     def first_non_empty(*keys):
         for key in keys:
-            v = record.get(key)
+            v = get_value(key)
             if v is None:
                 continue
             if str(v).strip() == "":
@@ -448,7 +518,7 @@ def build_message_element(
         excel_cd_names = ["CdBerichtType", "aanvraag_type", "Type"]
         excel_cd = None
         for n in excel_cd_names:
-            v = record.get(n)
+            v = get_value(n)
             if v is not None and str(v).strip() != "":
                 excel_cd = str(v).strip()
                 break
@@ -475,9 +545,9 @@ def build_message_element(
     # Ketenpartij
     kp = ET.SubElement(msg, qname("Ketenpartij"))
     lhn = (
-        record.get("Loonheffingennummer")
-        or record.get("Loonheffingennr")
-        or record.get("Loonheffingennr")
+        get_value("Loonheffingennummer")
+        or get_value("Loonheffingennr")
+        or get_value("Loonheffingennr")
     )
     if lhn:
         set_if(kp, "FiscaalNr", str(lhn)[:9])
@@ -507,7 +577,7 @@ def build_message_element(
 
     # NatuurlijkPersoon
     np = ET.SubElement(msg, qname("NatuurlijkPersoon"))
-    bsn = record.get("BSN")
+    bsn = get_value("BSN")
     if bsn is not None:
         set_if(np, "Burgerservicenr", bsn)
     geb = first_non_empty(
@@ -515,6 +585,7 @@ def build_message_element(
         "Geboortedat",
         "Geb_datum",
         "GeboorteDatum",
+        "Geboorte datum",
         "geboortedatum",
     )
     if not set_date_if(np, "Geboortedat", geb, date_only=True):
@@ -719,8 +790,6 @@ def build_message_element(
         "IndArbeidsgehandicapt",
     }
 
-    import re
-
     def _sanitize_tag(name: str) -> str:
         # Remove leading/trailing whitespace
         t = name.strip()
@@ -779,6 +848,12 @@ def main():
         help="Open workbook with openpyxl data_only=True to prefer cached "
         "values over formulas",
     )
+    parser.add_argument(
+        "--cd-bericht",
+        dest="cd_bericht",
+        default=None,
+        help="Override CdBerichtType for all rows (e.g. ZBM/VM/OTP3)",
+    )
     args = parser.parse_args()
 
     src = os.path.abspath(args.input)
@@ -790,6 +865,8 @@ def main():
     rows, formula_count = read_excel_rows(src, data_only=args.data_only)
     for rec in rows:
         try:
+            if args.cd_bericht:
+                rec["CdBerichtType"] = args.cd_bericht
             # build per-row message element (namespaced)
             _, _, ns_body = _namespaces()
             msg, aanvraag_type = build_message_element(rec, ns_body)
