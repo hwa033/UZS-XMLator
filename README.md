@@ -88,7 +88,7 @@ Open de map en start de app door run-xmlator.ps1 te openen
 De browser opent vanzelf
 Log in met admin admin
 Instellingen zitten op http://localhost:5000/instellingen
-XML bestanden komen standaard in E:\xmlator\build\excel_generated
+XML bestanden komen standaard in E:\xmlator\build\excel_generated (als er geen filedrop paden zijn ingesteld).
 python -m web.app
 ```
 
@@ -157,6 +157,9 @@ Bestandspaden die gebruikt worden (standaard):
 
 - ZBM / VM: `uzs_filedrop/UZI-GAP3/UZSx_ACC1/v0428`
 - Digipoort (OTP3): `uzs_filedrop/UZI-GAP3/UZSx_ACC1/UwvZwMelding_MQ_V0428`
+
+Als `filedrop_locaties` leeg is, gebruikt de app een lokale fallback:
+`web/static/downloads` voor downloadlinks en `build/excel_generated` als outputmap.
 
 De mapping staat in `web/app.py` in `OUTPUT_MAP`.
 

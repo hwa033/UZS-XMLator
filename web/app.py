@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import zipfile
+import uuid
 from typing import Any
 
 from flask import (
@@ -23,6 +24,8 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
+
+from .utils import fill_xml_template
 
 from .instellingen import instellingen_bp
 
@@ -500,6 +503,123 @@ def download_generated_zip():
         return Response(zip_bytes, headers=headers)
     except Exception as e:
         return jsonify({"error": f"Fout bij maken van ZIP: {e}"}), 500
+
+
+@app.route("/genereer_xml_json/upload_json", methods=["POST"])
+@limiter.limit("20 per minute")
+def upload_json():
+    file = request.files.get("json_file")
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+    if not file:
+        msg = "Geen JSON-bestand geüpload."
+        if is_ajax:
+            return jsonify({"success": False, "error": msg}), 400
+        flash(msg, "danger")
+        return redirect(request.referrer or url_for("genereer_xml"))
+
+    try:
+        payload = json.load(file)
+    except Exception as exc:
+        msg = f"Ongeldig JSON-bestand: {exc}"
+        if is_ajax:
+            return jsonify({"success": False, "error": msg}), 400
+        flash(msg, "danger")
+        return redirect(request.referrer or url_for("genereer_xml"))
+
+    if not isinstance(payload, dict):
+        msg = "JSON payload moet een object zijn."
+        if is_ajax:
+            return jsonify({"success": False, "error": msg}), 400
+        flash(msg, "danger")
+        return redirect(request.referrer or url_for("genereer_xml"))
+
+    aanvraag_type = request.form.get("aanvraag_type", "ZBM").strip().upper()
+    if aanvraag_type in {"DIGIPOORT", "OTP3"}:
+        cd_bericht = "OTP3"
+        sender = "Digipoort"
+    else:
+        cd_bericht = aanvraag_type
+        sender = aanvraag_type
+
+    payload.setdefault("CdBerichtType", cd_bericht)
+    payload.setdefault("BronApplicatie", sender)
+
+    bsn_value = payload.get("BSN")
+    geb_value = (
+        payload.get("Geboortedatum")
+        or payload.get("Geb_datum")
+        or payload.get("Geboortedat")
+        or payload.get("geboortedatum")
+    )
+    if bsn_value is None or str(bsn_value).strip() == "":
+        msg = "Ontbrekende BSN in JSON payload."
+        if is_ajax:
+            return jsonify({"success": False, "error": msg}), 400
+        flash(msg, "danger")
+        return redirect(request.referrer or url_for("genereer_xml"))
+    if geb_value is None or str(geb_value).strip() == "":
+        msg = "Ontbrekende geboortedatum in JSON payload."
+        if is_ajax:
+            return jsonify({"success": False, "error": msg}), 400
+        flash(msg, "danger")
+        return redirect(request.referrer or url_for("genereer_xml"))
+
+    unique_suffix = uuid.uuid4().hex[:8]
+    try:
+        tree = fill_xml_template(None, payload, unique_suffix)
+    except Exception as exc:
+        msg = f"Fout bij opbouwen van XML: {exc}"
+        if is_ajax:
+            return jsonify({"success": False, "error": msg}), 400
+        flash(msg, "danger")
+        return redirect(request.referrer or url_for("genereer_xml"))
+
+    validate_flag = str(request.form.get("validate", "on")).lower() != "off"
+    if validate_flag:
+        try:
+            from lxml import etree
+
+            cfg = _load_config()
+            xsd_path = cfg.get("xsd_path", "docs/UwvZwMeldingInternBody-v0428-b01.xsd")
+            xsd_full = os.path.join(os.path.dirname(__file__), "..", xsd_path)
+            if os.path.exists(xsd_full):
+                schema = etree.XMLSchema(file=xsd_full)
+                ns_body = "http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"
+                uwb = tree.getroot().find(f".//{{{ns_body}}}UwvZwMeldingInternBody")
+                if uwb is None:
+                    raise ValueError("UwvZwMeldingInternBody ontbreekt in XML.")
+                if not schema.validate(uwb):
+                    errs = "; ".join(str(e.message) for e in schema.error_log)
+                    raise ValueError(f"XSD validatie faalde: {errs}")
+        except Exception as exc:
+            msg = f"XSD validatie fout: {exc}"
+            if is_ajax:
+                return jsonify({"success": False, "error": msg}), 400
+            flash(msg, "danger")
+            return redirect(request.referrer or url_for("genereer_xml"))
+
+    output_dir = get_output_directory(aanvraag_type)
+    os.makedirs(output_dir, exist_ok=True)
+    safe_bsn = "".join(ch for ch in str(bsn_value) if ch.isalnum()) or "row"
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    prefix = "digipoort" if cd_bericht == "OTP3" else cd_bericht.lower()
+    filename = f"{prefix}_{safe_bsn}_{ts}.xml"
+    file_path = os.path.join(output_dir, filename)
+    try:
+        tree.write(file_path, encoding="utf-8", xml_declaration=True)
+    except Exception as exc:
+        msg = f"Kon XML niet opslaan: {exc}"
+        if is_ajax:
+            return jsonify({"success": False, "error": msg}), 500
+        flash(msg, "danger")
+        return redirect(request.referrer or url_for("genereer_xml"))
+
+    msg = f"JSON succesvol verwerkt en {aanvraag_type} XML-bestand gegenereerd."
+    if is_ajax:
+        return jsonify({"success": True, "message": msg, "filename": filename}), 200
+    flash(msg, "success")
+    return redirect(url_for("genereer_xml"))
 
 
 @app.route("/upload_excel", methods=["POST"])

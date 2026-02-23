@@ -74,6 +74,15 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     
     if aanvraag_type and omgeving in filedrop_locaties:
         # Kijk voor exact match en return D:\GUP\UZS\filedrop\...
+
+  ### Fallback gedrag (zonder filedrop paden)
+  Wanneer `filedrop_locaties` leeg is of geen paden bevat voor de geselecteerde omgeving,
+  valt de applicatie terug op een lokale downloadmap zodat testers alsnog bestanden
+  kunnen ophalen:
+
+  - `web/static/downloads` (wordt gebruikt voor directe downloadlinks in de UI)
+
+  Dit is alleen bedoeld voor dev/test en vervangt de productie filedrop niet.
 ```
 
 ### Upload Flow
