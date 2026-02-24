@@ -92,36 +92,54 @@ def read_excel_rows(path: str, data_only: bool = False):
         next(formula_iter, None)
     out_rows = []
     formula_count = 0
-    for row in rows_iter:
-        rec = {}
-        formula_row = next(formula_iter, None) if formula_iter else None
-        for i in range(len(headers)):
-            raw = row[i] if i < len(row) else None
-            # sanitize formula-like strings to avoid embedding formulas in XML
-            if isinstance(raw, str) and raw.strip().startswith("="):
-                formula_count += 1
-                value = ""
-            else:
-                value = raw
-            if (
-                data_only
-                and value is None
-                and formula_row is not None
-                and i < len(formula_row)
-            ):
-                cell = formula_row[i]
-                formula = cell.value if cell is not None else None
+    try:
+        for row in rows_iter:
+            rec = {}
+            formula_row = next(formula_iter, None) if formula_iter else None
+            for i in range(len(headers)):
+                raw = row[i] if i < len(row) else None
+                # sanitize formula-like strings to avoid embedding formulas in XML
+                if isinstance(raw, str) and raw.strip().startswith("="):
+                    formula_count += 1
+                    value = ""
+                else:
+                    value = raw
                 if (
-                    isinstance(formula, str)
-                    and "XLOOKUP" in formula
-                    and "NatuurlijkPersoon" in formula
+                    data_only
+                    and value is None
+                    and formula_row is not None
+                    and i < len(formula_row)
                 ):
-                    bsn_cell = formula_row[0] if len(formula_row) > 0 else None
-                    bsn_value = bsn_cell.value if bsn_cell is not None else None
-                    if bsn_value is not None:
-                        value = lookup_map.get(str(bsn_value).strip())
-            rec[headers[i]] = value
-        out_rows.append(rec)
+                    cell = formula_row[i]
+                    formula = cell.value if cell is not None else None
+                    if (
+                        isinstance(formula, str)
+                        and "XLOOKUP" in formula
+                        and "NatuurlijkPersoon" in formula
+                    ):
+                        bsn_cell = formula_row[0] if len(formula_row) > 0 else None
+                        bsn_value = bsn_cell.value if bsn_cell is not None else None
+                        if bsn_value is not None:
+                            value = lookup_map.get(str(bsn_value).strip())
+                rec[headers[i]] = value
+
+            # Skip empty rows (all values are None/empty)
+            if not all(
+                v is None or (isinstance(v, str) and v.strip() == "")
+                for v in rec.values()
+            ):
+                out_rows.append(rec)
+    finally:
+        # Clean up workbooks to prevent memory leaks
+        try:
+            wb.close()
+        except Exception:
+            pass
+        if wb_formula is not None:
+            try:
+                wb_formula.close()
+            except Exception:
+                pass
     return out_rows, formula_count
 
 
@@ -578,8 +596,15 @@ def build_message_element(
     # NatuurlijkPersoon
     np = ET.SubElement(msg, qname("NatuurlijkPersoon"))
     bsn = get_value("BSN")
-    if bsn is not None:
-        set_if(np, "Burgerservicenr", bsn)
+    if bsn is None or str(bsn).strip() == "":
+        raise ValueError("Ontbrekende BSN (verwacht kolom 'BSN').")
+    # Validate BSN format: 8-9 digits
+    bsn_clean = str(bsn).strip().replace(" ", "")  # Remove spaces
+    if not bsn_clean.isdigit() or len(bsn_clean) < 8 or len(bsn_clean) > 9:
+        raise ValueError(
+            f"Ongeldige BSN-indeling: '{bsn_clean}' (verwacht 8-9 cijfers)."
+        )
+    set_if(np, "Burgerservicenr", bsn_clean)
     geb = first_non_empty(
         "Geboortedatum",
         "Geboortedat",

@@ -3,8 +3,8 @@ import io
 import json
 import os
 import sys
-import zipfile
 import uuid
+import zipfile
 from typing import Any
 
 from flask import (
@@ -25,9 +25,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 
-from .utils import fill_xml_template
-
 from .instellingen import instellingen_bp
+from .utils import fill_xml_template
 
 app = Flask(__name__)
 
@@ -320,8 +319,13 @@ def list_generated_files(limit=25, prune=False):
         get_output_directory("Digipoort"),
         get_output_directory(),
     ]
+    # Verwijder duplicaten: dezelfde directory mag maar 1x gescand worden
+    unique_dirs = list(
+        dict.fromkeys(directories)
+    )  # Behoud volgorde, verwijder duplicaten
+
     files_with_time = []
-    for out_dir in directories:
+    for out_dir in unique_dirs:
         if os.path.exists(out_dir):
             for fname in os.listdir(out_dir):
                 if fname.endswith(".xml"):
@@ -424,10 +428,12 @@ def delete_selected_files():
             get_output_directory("Digipoort"),
             get_output_directory(),
         ]
+        # Verwijder duplicaten (dezelfde directory mag maar 1x gescand worden)
+        unique_dirs = list(dict.fromkeys(directories))
 
         # Bouw een mapping van bestandsnaam → volledig pad door alle dirs te scannen
         file_map = {}
-        for out_dir in directories:
+        for out_dir in unique_dirs:
             if os.path.exists(out_dir):
                 for fname in os.listdir(out_dir):
                     if fname.endswith(".xml"):
@@ -539,7 +545,6 @@ def upload_json():
         return redirect(request.referrer or url_for("genereer_xml"))
 
     aanvraag_type = request.form.get("aanvraag_type", "ZBM").strip().upper()
-    cd_override = "OTP3" if aanvraag_type == "DIGIPOORT" else aanvraag_type
     if aanvraag_type in {"DIGIPOORT", "OTP3"}:
         cd_bericht = "OTP3"
         sender = "Digipoort"
@@ -590,7 +595,9 @@ def upload_json():
             xsd_full = os.path.join(os.path.dirname(__file__), "..", xsd_path)
             if os.path.exists(xsd_full):
                 schema = etree.XMLSchema(file=xsd_full)
-                ns_body = "http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"
+                ns_body = (
+                    "http://schemas.uwv.nl/UwvML/Berichten/UwvZwMeldingInternBody-v0428"
+                )
                 uwb = tree.getroot().find(f".//{{{ns_body}}}UwvZwMeldingInternBody")
                 if uwb is None:
                     raise ValueError("UwvZwMeldingInternBody ontbreekt in XML.")
@@ -762,6 +769,24 @@ def upload_excel():
             for fname in os.listdir(output_dir):
                 if fname.endswith(".xml"):
                     generated_files.append(fname)
+
+        # If NO files were generated, this is a failure
+        if not generated_files:
+            # Check error log to see what went wrong
+            error_log = _read_error_log(max_items=5)
+            recent_errors = [
+                e.get("message") or e.get("error") or str(e) for e in error_log if e
+            ]
+            error_msg = "Geen XML-bestanden gegenereerd. "
+            if recent_errors:
+                error_msg += f"Validatiefout: {recent_errors[0]}"
+            else:
+                error_msg += "Controleer of alle verplichte velden aanwezig zijn (BSN, Geboortedatum)."
+
+            if is_ajax:
+                return jsonify({"success": False, "error": error_msg}), 400
+            flash(error_msg, "danger")
+            return redirect(request.referrer or url_for("genereer_xml"))
 
         # If in downloads folder, provide download links
         downloads_path = os.path.join(
