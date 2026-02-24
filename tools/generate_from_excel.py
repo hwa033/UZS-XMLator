@@ -40,6 +40,13 @@ except Exception:
         "openpyxl is required to run this script. Install it in your environment."
     )
 
+try:
+    import win32com.client  # type: ignore
+
+    HAS_EXCEL_COM = True
+except Exception:
+    HAS_EXCEL_COM = False
+
 
 def _build_natuurlijk_persoon_map(wb) -> dict[str, object]:
     """Build lookup map for BSN -> Geboortedatum from the NatuurlijkPersoon sheet."""
@@ -62,6 +69,119 @@ def _build_natuurlijk_persoon_map(wb) -> dict[str, object]:
     return mapping
 
 
+def _use_excel_com() -> bool:
+    return os.environ.get("XMLATOR_USE_EXCEL_COM", "").lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _normalize_2d(value):
+    if value is None:
+        return []
+    if isinstance(value, tuple):
+        if len(value) == 0:
+            return []
+        if not isinstance(value[0], tuple):
+            return [value]
+        return list(value)
+    return [[value]]
+
+
+def _build_natuurlijk_persoon_map_com(wb) -> dict[str, object]:
+    mapping: dict[str, object] = {}
+    try:
+        for sheet in wb.Worksheets:
+            name = str(sheet.Name)
+            if "NatuurlijkPersoon" in name:
+                used = sheet.UsedRange
+                values = _normalize_2d(used.Value2)
+                for row in values[1:]:
+                    if not row or len(row) < 10:
+                        continue
+                    key = row[1]
+                    value = row[9]
+                    if key is None:
+                        continue
+                    mapping[str(key).strip()] = value
+                break
+    except Exception:
+        return mapping
+    return mapping
+
+
+def read_excel_rows_com(path: str, data_only: bool = False):
+    if not HAS_EXCEL_COM:
+        raise RuntimeError(
+            "Excel COM is niet beschikbaar. Installeer pywin32 en zorg dat Microsoft Excel geïnstalleerd is."
+        )
+
+    excel = None
+    wb = None
+    formula_count = 0
+    try:
+        excel = win32com.client.DispatchEx("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        wb = excel.Workbooks.Open(os.path.abspath(path), ReadOnly=True)
+        ws = wb.Worksheets(1)
+
+        used = ws.UsedRange
+        values = _normalize_2d(used.Value2)
+        formulas = _normalize_2d(used.Formula)
+
+        if not values:
+            return [], 0
+
+        headers = [h if h is not None else "" for h in values[0]]
+        lookup_map = _build_natuurlijk_persoon_map_com(wb) if data_only else {}
+
+        out_rows = []
+        for r_idx, row in enumerate(values[1:], start=1):
+            rec = {}
+            formula_row = formulas[r_idx] if r_idx < len(formulas) else []
+            for i in range(len(headers)):
+                raw = row[i] if i < len(row) else None
+                formula = formula_row[i] if i < len(formula_row) else None
+                if isinstance(formula, str) and formula.strip().startswith("="):
+                    formula_count += 1
+
+                value = raw
+                if (
+                    data_only
+                    and value is None
+                    and isinstance(formula, str)
+                    and "XLOOKUP" in formula
+                    and "NatuurlijkPersoon" in formula
+                ):
+                    bsn_value = row[0] if len(row) > 0 else None
+                    if bsn_value is not None:
+                        value = lookup_map.get(str(bsn_value).strip())
+
+                rec[headers[i]] = value
+
+            if not all(
+                v is None or (isinstance(v, str) and v.strip() == "")
+                for v in rec.values()
+            ):
+                out_rows.append(rec)
+
+        return out_rows, formula_count
+    finally:
+        try:
+            if wb is not None:
+                wb.Close(False)
+        except Exception:
+            pass
+        try:
+            if excel is not None:
+                excel.Quit()
+        except Exception:
+            pass
+
+
 def read_excel_rows(path: str, data_only: bool = False):
     """Read all rows from the workbook and return a tuple (rows_list, formula_count).
 
@@ -71,6 +191,8 @@ def read_excel_rows(path: str, data_only: bool = False):
     to an empty string; such occurrences are counted and returned so callers
     can log or warn about them.
     """
+    if _use_excel_com():
+        return read_excel_rows_com(path, data_only=data_only)
     wb = openpyxl.load_workbook(path, read_only=True, data_only=data_only)
     ws = wb.active
     wb_formula = None
@@ -103,7 +225,7 @@ def read_excel_rows(path: str, data_only: bool = False):
                     formula_count += 1
                     value = ""
                 else:
-                    value = raw
+                    value = raw  # type: ignore
                 if (
                     data_only
                     and value is None
@@ -111,7 +233,7 @@ def read_excel_rows(path: str, data_only: bool = False):
                     and i < len(formula_row)
                 ):
                     cell = formula_row[i]
-                    formula = cell.value if cell is not None else None
+                    formula = cell.value if cell is not None else None  # type: ignore
                     if (
                         isinstance(formula, str)
                         and "XLOOKUP" in formula

@@ -101,9 +101,10 @@ def main():
         except ImportError:
             serve = None
 
-        if serve:
+        if serve is not None:
             print(f"Starten met waitress op http://{args.host}:{args.port}")
-            serve(app, host=args.host, port=args.port)
+            threads = int(os.environ.get("XMLATOR_WAITRESS_THREADS", "8"))
+            serve(app, host=args.host, port=args.port, threads=threads)
         else:
             print(
                 "waitress niet geïnstalleerd; fallback naar Flask dev-server "

@@ -5,6 +5,7 @@ Flask-Cors
 Flask-Limiter
 lxml
 openpyxl
+pywin32
 PyYAML
 waitress
 

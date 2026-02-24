@@ -88,6 +88,17 @@
         const oldResults = document.getElementById('results-panel');
         if (newResults && oldResults) {
           oldResults.innerHTML = newResults.innerHTML;
+          if (newResults.dataset) {
+            oldResults.dataset.shown = newResults.dataset.shown || '0';
+            oldResults.dataset.total = newResults.dataset.total || '0';
+          }
+
+          const availableCount = document.getElementById('available-count');
+          const totalCount = newResults.dataset ? newResults.dataset.total : null;
+          if (availableCount && totalCount !== null) {
+            availableCount.textContent = `${totalCount} bestand(en) beschikbaar voor download`;
+          }
+
           initResultsPanelHandlers();
         }
       })

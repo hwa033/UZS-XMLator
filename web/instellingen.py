@@ -74,6 +74,7 @@ def _load_config():
             "log_level": "INFO",
             "output_directory": "",
             "auto_validate": True,
+            "excel_com_enabled": False,
             "default_test_indicator": "2",
             "default_fiscaal_nr": "136910038",
             "default_loonheffing_nr": "136910038L01",
@@ -128,6 +129,7 @@ def configuratie():
             "log_level": "INFO",
             "output_directory": "",
             "auto_validate": True,
+            "excel_com_enabled": False,
             "default_test_indicator": "2",
             "default_fiscaal_nr": "136910038",
             "default_loonheffing_nr": "136910038L01",
@@ -187,6 +189,9 @@ def configuratie():
             settings["xsd_path"] = request.form.get(
                 "xsd_path", settings.get("xsd_path", "")
             ).strip()
+            settings["excel_com_enabled"] = (
+                request.form.get("excel_com_enabled") == "on"
+            )
 
         # Filedrop paden
         fp_otp3 = request.form.get("otp3_path", "").strip()

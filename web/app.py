@@ -58,6 +58,7 @@ def _load_config():
         "log_level": "INFO",
         "output_directory": "",
         "auto_validate": False,
+        "excel_com_enabled": False,
         "default_test_indicator": "2",
         "default_fiscaal_nr": "",
         "default_loonheffing_nr": "",
@@ -227,6 +228,14 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     base = os.path.join(os.path.dirname(__file__), "..")
     downloads_dir = os.path.join(base, "web", "static", "downloads")
     fallback_dir = os.path.join(base, "build", "excel_generated")
+    public_root = os.environ.get("PUBLIC") or r"C:\\Users\\Public"
+    public_downloads = os.path.join(public_root, "Downloads")
+    user_downloads = os.path.join(os.path.expanduser("~"), "Downloads")
+    local_downloads = (
+        public_downloads
+        if os.path.isdir(public_downloads)
+        else (user_downloads if os.path.isdir(user_downloads) else downloads_dir)
+    )
 
     # Laad actuele configuratie
     cfg = _load_config()
@@ -234,19 +243,32 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     if omgeving is None:
         omgeving = cfg.get("omgeving", "UZSTA_OMG")
 
+    output_override = (
+        cfg.get("output_directory") or os.environ.get("XMLATOR_OUTPUT_DIR")
+    )
+
+    if output_override:
+        chosen = None
+        try:
+            chosen = os.path.expanduser(os.path.expandvars(output_override))
+        except Exception:
+            chosen = output_override
+        if chosen:
+            try:
+                os.makedirs(chosen, exist_ok=True)
+                return os.path.normpath(chosen)
+            except Exception:
+                pass
+
     filedrop_locaties = cfg.get("filedrop_locaties", {})
     env_paths = (
         filedrop_locaties.get(omgeving, {})
         if isinstance(filedrop_locaties, dict)
         else {}
     )
-    no_filedrop_paths = not env_paths and not cfg.get("output_directory")
+    no_filedrop_paths = not env_paths
     if no_filedrop_paths:
-        user_downloads = os.path.join(os.path.expanduser("~"), "Downloads")
-        if os.path.isdir(user_downloads):
-            fallback_dir = user_downloads
-        else:
-            fallback_dir = downloads_dir
+        fallback_dir = local_downloads
 
     # Optional override for filedrop base path
     # (e.g., set XMLATOR_FILEDROP_BASE=/data/filedrop)
@@ -308,8 +330,8 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
                         return chosen
 
     # 4) Fallback naar lokale directory (voor dev/test)
-    os.makedirs(fallback_dir, exist_ok=True)
-    return fallback_dir
+    os.makedirs(local_downloads, exist_ok=True)
+    return local_downloads
 
 
 def list_generated_files(limit=25, prune=False):
@@ -639,8 +661,6 @@ def upload_json():
 def upload_excel():
     import subprocess
 
-    import openpyxl
-
     file = request.files.get("excel_file")
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
@@ -661,6 +681,10 @@ def upload_excel():
 
     # Herlaad settings voor runtime wijzigingen
     cfg = _load_config()
+    use_excel_com = bool(cfg.get("excel_com_enabled")) or (
+        os.environ.get("XMLATOR_USE_EXCEL_COM", "").lower()
+        in {"1", "true", "yes", "on"}
+    )
     app.config["MAX_CONTENT_LENGTH"] = (
         max(1, int(cfg.get("upload_max_size_mb", 10))) * 1024 * 1024
     )
@@ -689,14 +713,52 @@ def upload_excel():
     cd_override = "OTP3" if aanvraag_type == "DIGIPOORT" else aanvraag_type
 
     try:
-        wb = openpyxl.load_workbook(file_path)
-        ws = wb.active
-        if ws is None:
-            msg = "Het geüploade Excel-bestand bevat geen werkblad of is ongeldig."
-            if is_ajax:
-                return jsonify({"success": False, "error": msg}), 400
-            flash(msg, "danger")
-            return redirect(request.referrer or url_for("genereer_xml"))
+        if use_excel_com:
+            try:
+                import win32com.client  # type: ignore
+            except Exception as exc:
+                msg = (
+                    "Excel COM niet beschikbaar. Installeer pywin32 en zorg dat "
+                    "Microsoft Excel is geïnstalleerd."
+                )
+                if is_ajax:
+                    return jsonify({"success": False, "error": msg}), 400
+                flash(msg, "danger")
+                return redirect(request.referrer or url_for("genereer_xml"))
+
+            excel = None
+            wb = None
+            try:
+                excel = win32com.client.DispatchEx("Excel.Application")
+                excel.Visible = False
+                excel.DisplayAlerts = False
+                wb = excel.Workbooks.Open(file_path, ReadOnly=True)
+                if wb.Worksheets.Count < 1:
+                    raise ValueError(
+                        "Het geüploade Excel-bestand bevat geen werkblad of is ongeldig."
+                    )
+            finally:
+                try:
+                    if wb is not None:
+                        wb.Close(False)
+                except Exception:
+                    pass
+                try:
+                    if excel is not None:
+                        excel.Quit()
+                except Exception:
+                    pass
+        else:
+            import openpyxl
+
+            wb = openpyxl.load_workbook(file_path)
+            ws = wb.active
+            if ws is None:
+                msg = "Het geüploade Excel-bestand bevat geen werkblad of is ongeldig."
+                if is_ajax:
+                    return jsonify({"success": False, "error": msg}), 400
+                flash(msg, "danger")
+                return redirect(request.referrer or url_for("genereer_xml"))
 
         # Gebruik het originele bestand zodat formules (zoals Geboortedatum)
         # hun cached values behouden. CdBerichtType wordt later overschreven
@@ -714,6 +776,14 @@ def upload_excel():
     )
     output_dir = get_output_directory(aanvraag_type)
     os.makedirs(output_dir, exist_ok=True)
+    existing_files = set()
+    if output_dir and os.path.exists(output_dir):
+        try:
+            existing_files = {
+                f for f in os.listdir(output_dir) if f.endswith(".xml")
+            }
+        except Exception:
+            existing_files = set()
     python_exe = os.environ.get("PYTHON_EXE", sys.executable)
     log_path = os.path.join(
         os.path.dirname(__file__), "..", "build", "logs", "generator_excel.log"
@@ -727,6 +797,9 @@ def upload_excel():
     )
 
     try:
+        if use_excel_com:
+            os.environ["XMLATOR_USE_EXCEL_COM"] = "1"
+
         if use_internal_generator:
             from tools import generate_from_excel as gen
 
@@ -739,6 +812,9 @@ def upload_excel():
                 cd_bericht_override=cd_override,
             )
         else:
+            env = os.environ.copy()
+            if use_excel_com:
+                env["XMLATOR_USE_EXCEL_COM"] = "1"
             subprocess.run(
                 [
                     python_exe,
@@ -756,6 +832,7 @@ def upload_excel():
                 capture_output=True,
                 text=True,
                 check=True,
+                env=env,
             )
 
         msg = (
@@ -763,12 +840,22 @@ def upload_excel():
             f"XML-bestanden gegenereerd."
         )
 
-        # Check if files were generated in downloads folder (filedrop empty)
+        # Check which files were generated in this run
         generated_files = []
         if output_dir and os.path.exists(output_dir):
-            for fname in os.listdir(output_dir):
-                if fname.endswith(".xml"):
-                    generated_files.append(fname)
+            try:
+                current_files = [
+                    f for f in os.listdir(output_dir) if f.endswith(".xml")
+                ]
+                new_files = [f for f in current_files if f not in existing_files]
+                if new_files:
+                    new_files.sort(
+                        key=lambda f: os.path.getmtime(os.path.join(output_dir, f)),
+                        reverse=True,
+                    )
+                    generated_files = new_files
+            except Exception:
+                generated_files = []
 
         # If NO files were generated, this is a failure
         if not generated_files:
@@ -788,21 +875,11 @@ def upload_excel():
             flash(error_msg, "danger")
             return redirect(request.referrer or url_for("genereer_xml"))
 
-        # If in downloads folder, provide download links
-        downloads_path = os.path.join(
-            os.path.dirname(__file__), "..", "web", "static", "downloads"
-        )
-        in_downloads = (
-            os.path.samefile(output_dir, downloads_path)
-            if os.path.exists(downloads_path)
-            else False
-        )
-
         if is_ajax:
             response_data = {"success": True, "message": msg}
-            if in_downloads and generated_files:
+            if generated_files:
                 response_data["download_links"] = [
-                    {"filename": fname, "url": f"/static/downloads/{fname}"}
+                    {"filename": fname, "url": f"/resultaten/download/{fname}"}
                     for fname in generated_files
                 ]
                 response_data[

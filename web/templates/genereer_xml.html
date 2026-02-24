@@ -115,6 +115,26 @@
                     <script>
                     // Upload voortgangsbalk voor Excel upload
                     document.addEventListener('DOMContentLoaded', function () {
+                        const notify = window.flashMessage || function (msg) {
+                            const el = document.createElement('div');
+                            el.textContent = msg;
+                            el.style.position = 'fixed';
+                            el.style.right = '12px';
+                            el.style.bottom = '12px';
+                            el.style.background = '#0b1220';
+                            el.style.color = '#fff';
+                            el.style.padding = '8px 12px';
+                            el.style.borderRadius = '6px';
+                            el.style.zIndex = 9999;
+                            el.style.opacity = '0';
+                            el.style.transition = 'opacity 0.18s';
+                            document.body.appendChild(el);
+                            requestAnimationFrame(() => (el.style.opacity = '1'));
+                            setTimeout(() => {
+                                el.style.opacity = '0';
+                                setTimeout(() => el.remove(), 200);
+                            }, 2200);
+                        };
                         const form = document.getElementById('excel-upload-form');
                         const btn = document.getElementById('excel-upload-btn');
                         const progressWrap = document.getElementById('excel-upload-progress-wrap');
@@ -152,15 +172,11 @@
                                                 const resp = JSON.parse(xhr.responseText);
                                                 if (resp.message) {
                                                     console.log(resp.message);
-                                                    
-                                                    // Show download links if available
+
+                                                    let toastMsg = resp.message;
                                                     if (resp.download_links && resp.download_links.length > 0) {
-                                                        let msg = resp.message + '\n\nDownload bestanden:\n';
-                                                        resp.download_links.forEach(link => {
-                                                            msg += `\n• ${link.filename}`;
-                                                        });
-                                                        alert(msg);
-                                                        
+                                                        toastMsg = `${resp.message} ${resp.download_links.length} bestand(en) klaar voor download.`;
+
                                                         // Auto-download first file
                                                         if (resp.download_links[0]) {
                                                             const a = document.createElement('a');
@@ -170,9 +186,9 @@
                                                             a.click();
                                                             document.body.removeChild(a);
                                                         }
-                                                    } else {
-                                                        alert(resp.message);
                                                     }
+
+                                                    notify(toastMsg);
                                                 }
                                             } catch (e) {
                                                 console.log('Response is geen JSON, waarschijnlijk een redirect');
@@ -202,7 +218,13 @@
         <section class="hero mb-3">
             <div>
                 <h2 class="mb-0">Gegenereerde XML-bestanden</h2>
-                <p class="page-subtitle mb-0">{{ generated|length }} bestand(en) beschikbaar voor download</p>
+                <p class="page-subtitle mb-0" id="available-count">
+                    {% if total_count is defined %}
+                        {{ total_count }} bestand(en) beschikbaar voor download
+                    {% else %}
+                        {{ generated|length }} bestand(en) beschikbaar voor download
+                    {% endif %}
+                </p>
             </div>
         </section>
 
