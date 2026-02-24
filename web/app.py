@@ -227,7 +227,7 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     # Lokale fallback voor dev/test
     base = os.path.join(os.path.dirname(__file__), "..")
     downloads_dir = os.path.join(base, "web", "static", "downloads")
-    fallback_dir = os.path.join(base, "build", "excel_generated")
+    os.path.join(base, "build", "excel_generated")
     public_root = os.environ.get("PUBLIC") or r"C:\\Users\\Public"
     public_downloads = os.path.join(public_root, "Downloads")
     user_downloads = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -243,8 +243,8 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     if omgeving is None:
         omgeving = cfg.get("omgeving", "UZSTA_OMG")
 
-    output_override = (
-        cfg.get("output_directory") or os.environ.get("XMLATOR_OUTPUT_DIR")
+    output_override = cfg.get("output_directory") or os.environ.get(
+        "XMLATOR_OUTPUT_DIR"
     )
 
     if output_override:
@@ -268,7 +268,7 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     )
     no_filedrop_paths = not env_paths
     if no_filedrop_paths:
-        fallback_dir = local_downloads
+        pass
 
     # Optional override for filedrop base path
     # (e.g., set XMLATOR_FILEDROP_BASE=/data/filedrop)
@@ -716,7 +716,7 @@ def upload_excel():
         if use_excel_com:
             try:
                 import win32com.client  # type: ignore
-            except Exception as exc:
+            except Exception:
                 msg = (
                     "Excel COM niet beschikbaar. Installeer pywin32 en zorg dat "
                     "Microsoft Excel is geïnstalleerd."
@@ -779,9 +779,7 @@ def upload_excel():
     existing_files = set()
     if output_dir and os.path.exists(output_dir):
         try:
-            existing_files = {
-                f for f in os.listdir(output_dir) if f.endswith(".xml")
-            }
+            existing_files = {f for f in os.listdir(output_dir) if f.endswith(".xml")}
         except Exception:
             existing_files = set()
     python_exe = os.environ.get("PYTHON_EXE", sys.executable)

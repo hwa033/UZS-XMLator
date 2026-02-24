@@ -53,5 +53,6 @@
     "**/*.pyz": true
   },
   "search.followSymlinks": false,
-  "files.maxMemoryForLargeFilesMB": 4096
+  "files.maxMemoryForLargeFilesMB": 4096,
+  "python-envs.defaultEnvManager": "ms-python.python:system"
 }
