@@ -114,7 +114,7 @@ def fill_xml_template(
         etree.SubElement(bron, "DatTijdVersturenBericht").text = dt_send
     else:
         etree.SubElement(bron, "DatTijdVersturenBericht").text = (
-            datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z")
+            datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%S%z")
         )
     bestemming = etree.SubElement(route, "Bestemming")
     etree.SubElement(bestemming, "ApplicatieNaam").text = data.get(
@@ -144,7 +144,7 @@ def fill_xml_template(
         )
         etree.SubElement(bericht, "DatTijdAanmaakBericht").text = dt_create
     else:
-        now_str = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z")
+        now_str = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%S%z")
         etree.SubElement(bericht, "DatTijdAanmaakBericht").text = now_str
     etree.SubElement(bericht, "IndTestbericht").text = str(
         data.get("IndTestbericht", "2")

@@ -3,6 +3,7 @@
 Flask
 Flask-Cors
 Flask-Limiter
+pydantic
 lxml
 openpyxl
 pywin32

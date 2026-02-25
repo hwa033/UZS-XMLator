@@ -53,6 +53,8 @@ python -m venv .venv; .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
 
+Dit installeert ook `pydantic`, vereist voor API-validatie (JSON/Excel uploads).
+
 3. Optioneel (development):
 
 ```powershell

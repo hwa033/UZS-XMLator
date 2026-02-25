@@ -1,0 +1,179 @@
+# Excel Column Schema for UZS XMLator
+# This is the single source of truth for Excel data structure
+# Used by: validators, documentation, tests
+
+SCHEMA_VERSION: "0428"
+LAST_UPDATED: "2026-02-24"
+
+REQUIRED_COLUMNS:
+  BSN:
+    type: string
+    format: "8-9 digits"
+    example: "123456789"
+    description: "Burgerservicenummer (Dutch social security number)"
+    min_length: 8
+    max_length: 9
+    pattern: "^[0-9]{8,9}$"
+
+  Voornaam:
+    type: string
+    description: "First name"
+    min_length: 1
+    max_length: 40
+    example: "Jan"
+
+  Achternaam:
+    type: string
+    description: "Last name"
+    min_length: 1
+    max_length: 40
+    example: "Jansen"
+
+  Geboortedatum:
+    type: string
+    format: "YYYYMMDD"
+    example: "19800105"
+    description: "Date of birth in YYYYMMDD format"
+    min_length: 8
+    max_length: 8
+    pattern: "^[0-9]{8}$"
+
+OPTIONAL_COLUMNS:
+  Loonheffingennummer:
+    type: string
+    format: "12 digits"
+    example: "123456789012"
+    description: "Tax authority number (Loonheffingennummer)"
+    min_length: 12
+    max_length: 12
+    pattern: "^[0-9]{12}$"
+
+  Loonheffingennr:
+    type: string
+    description: "Alternative name for Loonheffingennummer"
+    min_length: 12
+    max_length: 12
+
+  IndienerNaam:
+    type: string
+    description: "Name of the submitter"
+    max_length: 50
+    example: "UWV Bedrijven"
+
+  CdRolKetenpartij:
+    type: string
+    description: "Role code in chain (default: '01')"
+    example: "01"
+
+  CdSrtIndiener:
+    type: string
+    description: "Type code of submitter (default: 'WG')"
+    example: "WG"
+
+  NaamSoftwarePakket:
+    type: string
+    description: "Name of software package (default: 'Generated')"
+    example: "UZS XMLator"
+
+  VersieSoftwarePakket:
+    type: string
+    description: "Software package version (default: '1.0')"
+    example: "1.0"
+
+  BerichtkenmerkIndiener:
+    type: string
+    description: "Message identifier from submitter"
+    max_length: 50
+
+  VolgNr:
+    type: string
+    description: "Sequence number (default: '1')"
+    example: "1"
+
+  IndArbeidsgehandicapt:
+    type: string
+    description: "Indicator for disabled worker"
+    example: "N"
+
+  CdBerichtType:
+    type: string
+    description: "Message type (ZBM, VM, OTP3)"
+    example: "ZBM"
+    allowed_values:
+      - "ZBM"
+      - "VM"
+      - "OTP3"
+      - "Digipoort"  # Will be converted to OTP3
+
+ENVIRONMENT_TYPES:
+  UZSTA_OMG:
+    description: "Test environment"
+    output_path_zbm_vm: "path/to/UZSTA_OMG/v0428"
+    output_path_otp3: "path/to/UZSTA_OMG/UwvZwMelding_MQ_V0428"
+
+  UZSA_ACC1:
+    description: "Acceptance environment A"
+    output_path_zbm_vm: "path/to/UZSA_ACC1/v0428"
+    output_path_otp3: "path/to/UZSA_ACC1/UwvZwMelding_MQ_V0428"
+
+MESSAGE_TYPES:
+  ZBM:
+    description: "Ziekteverzuimbericht Medewerker (Employee sick leave message)"
+    default_indicator: "2"
+    filedrop_suffix: "v0428/UwvZwMelding"
+
+  VM:
+    description: "Verzuimmelding (Absence notification)"
+    default_indicator: "2"
+    filedrop_suffix: "v0428/UwvZwMelding"
+
+  OTP3:
+    description: "Digipoort digital notification (over Digipoort)"
+    default_indicator: "2"
+    filedrop_suffix: "UwvZwMelding_MQ_V0428"
+
+VALIDATION_RULES:
+  BSN:
+    - "Must not be empty"
+    - "Must be 8-9 digits only"
+    - "No spaces or special characters"
+
+  Geboortedatum:
+    - "Must not be empty"
+    - "Format: YYYYMMDD (8 digits)"
+    - "Must be valid date (e.g., 19800105 is valid, 19801301 is not)"
+
+  Names:
+    - "Must not be empty"
+    - "Max 40 characters each"
+    - "Special characters allowed (hyphens, apostrophes, etc.)"
+
+  Loonheffingennummer:
+    - "If provided, must be exactly 12 digits"
+    - "No formatting needed (no hyphens or spaces)"
+
+ERROR_EXAMPLES:
+  InvalidBSN:
+    value: "ABC123456"
+    error: "Invalid BSN: must be 8-9 digits"
+    fix: "Use only numbers: 123456789"
+
+  InvalidDate:
+    value: "1980-01-05"
+    error: "Invalid Geboortedatum: must be YYYYMMDD format"
+    fix: "Use format: 19800105"
+
+  InvalidDate2:
+    value: "19801301"
+    error: "Invalid date: day is out of range for month"
+    fix: "Use valid date: 19800105"
+
+  TooShortBSN:
+    value: "1234567"
+    error: "Invalid BSN: must be 8-9 digits"
+    fix: "Use 8 or 9 digits: 12345678"
+
+  MissingBSN:
+    value: ""
+    error: "BSN field is required"
+    fix: "Provide BSN value"
