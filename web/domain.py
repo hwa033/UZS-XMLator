@@ -410,11 +410,12 @@ class FileManager:
                 except Exception as e:
                     logger_file.warning("list_generated_files_prune_failed", filename=fname, error=str(e))
 
-            files_with_time = files_with_time[:limit]
+        # Limit results
+        files_with_time = files_with_time[:limit]
 
         # Build result
         result = []
-        for fname, fpath, mtime in files_with_time[:limit]:
+        for fname, fpath, mtime in files_with_time:
             try:
                 tijdstip = datetime.datetime.fromtimestamp(mtime).isoformat()
                 size = fpath.stat().st_size
