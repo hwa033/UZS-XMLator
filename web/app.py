@@ -88,7 +88,7 @@ app.config["MAX_CONTENT_LENGTH"] = (
     max(1, int(CONFIG.get("upload_max_size_mb", 10))) * 1024 * 1024
 )
 
-app.register_blueprint(instellingen_bp)
+app.register_blueprint(instellingen_bp, url_prefix="/instellingen")
 
 # ============================================================================
 # ROUTES - PAGES
@@ -154,9 +154,16 @@ def download_generated(filename):
         if output_dir.exists():
             file_path = output_dir / filename
             if file_path.exists():
-                from flask import send_from_directory
+                from flask import send_file
 
-                return send_from_directory(output_dir, filename, as_attachment=True)
+                response = send_file(
+                    file_path,
+                    as_attachment=True,
+                    download_name=filename,
+                    mimetype="application/xml",
+                )
+                response.headers["X-Content-Type-Options"] = "nosniff"
+                return response
 
     flash("File not found.", "danger")
     return redirect(request.referrer or url_for("genereer_xml"))
