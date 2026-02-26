@@ -240,17 +240,19 @@ def download_generated_zip():
 # ============================================================================
 
 
-def _format_pydantic_errors(errors: list[dict]) -> list[str]:
+def _format_pydantic_errors(errors) -> list[str]:  # type: ignore
+    """Format Pydantic validation errors to readable strings"""
     formatted = []
     for err in errors:
-        loc = err.get("loc")
+        loc = err.get("loc") if isinstance(err, dict) else getattr(err, "loc", None)
         if isinstance(loc, (list, tuple)):
             loc_str = ".".join(str(p) for p in loc)
         elif loc:
             loc_str = str(loc)
         else:
             loc_str = "field"
-        msg = err.get("msg", "Invalid input")
+        msg = err.get("msg") if isinstance(err, dict) else getattr(err, "msg", "Invalid input")
+        msg = msg or "Invalid input"
         formatted.append(f"{loc_str}: {msg}" if loc_str else msg)
     return formatted
 
@@ -288,7 +290,7 @@ def upload_json():
     try:
         req_model = JsonUploadRequest(
             aanvraag_type=request.form.get("aanvraag_type", "ZBM"),
-            validate=str(request.form.get("validate", "on")).lower() != "off",
+            validate_request=str(request.form.get("validate", "on")).lower() != "off",
             BSN=payload.get("BSN"),
             Geboortedatum=payload.get("Geboortedatum") or payload.get("geboortedatum"),
         )
@@ -339,7 +341,7 @@ def upload_json():
         return redirect(request.referrer or url_for("genereer_xml"))
 
     # Validation
-    if req_model.validate_request:
+    if req_model.validate_request is True:
         try:
             from lxml import etree  # type: ignore[import-not-found]
 
@@ -421,7 +423,7 @@ def upload_excel():
     try:
         req_model = ExcelUploadRequest(
             aanvraag_type=request.form.get("aanvraag_type", "ZBM"),
-            validate=str(request.form.get("validate", "on")).lower() != "off",
+            validate_request=str(request.form.get("validate", "on")).lower() != "off",
         )
     except ValidationError as exc:
         formatted = _format_pydantic_errors(exc.errors())
@@ -503,6 +505,7 @@ def upload_excel():
                     else:
                         JsonUploadRequest(
                             aanvraag_type=req_model.aanvraag_type,
+                            validate_request=False,
                             BSN=row_dict.get("BSN"),
                             Geboortedatum=row_dict.get("Geboortedatum"),
                         )

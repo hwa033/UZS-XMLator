@@ -87,7 +87,7 @@ class ValidationResult:
 
     success: bool
     message: str = ""
-    error_messages: list[str] = None
+    error_messages: list = None  # type: ignore[assignment]
 
     def __post_init__(self):
         if self.error_messages is None:
@@ -503,7 +503,7 @@ class ExcelValidator:
             ValidationResult with success status and any errors
         """
         if required_fields is None:
-            required_fields = Configuration.REQUIRED_EXCEL_FIELDS
+            required_fields = list(Configuration.REQUIRED_EXCEL_FIELDS)  # type: ignore
 
         if not rows:
             logger_domain.warning("validate_rows_empty")
