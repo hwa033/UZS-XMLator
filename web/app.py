@@ -42,7 +42,25 @@ from .utils import fill_xml_template
 # FLASK APP SETUP
 # ============================================================================
 
-app = Flask(__name__)
+_MEIPASS = getattr(sys, "_MEIPASS", None)
+if getattr(sys, "frozen", False) and _MEIPASS:
+    _candidates = [Path(_MEIPASS) / "web", Path(_MEIPASS)]
+    _WEB_ROOT = next(
+        (
+            p
+            for p in _candidates
+            if (p / "templates").exists() and (p / "static").exists()
+        ),
+        Path(_MEIPASS) / "web",
+    )
+else:
+    _WEB_ROOT = Path(__file__).parent
+
+app = Flask(
+    __name__,
+    template_folder=str(_WEB_ROOT / "templates"),
+    static_folder=str(_WEB_ROOT / "static"),
+)
 
 # Optional CORS
 cors_origins = os.environ.get("XMLATOR_CORS_ORIGINS")
