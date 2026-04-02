@@ -276,7 +276,10 @@ def _namespaces():
 
 
 def build_envelope_with_header_and_bodies(
-    bodies: Iterable[ET.Element], sender: str = "Digipoort", tester_name: str = "tester"
+    bodies: Iterable[ET.Element],
+    sender: str = "Digipoort",
+    tester_name: str = "tester",
+    ref_prefix: str = "",
 ) -> ET.Element:
     """Create a SOAP Envelope with header information and append provided
     message bodies.
@@ -285,6 +288,8 @@ def build_envelope_with_header_and_bodies(
     and Transactie.
     """
     ns_soap, ns_uwvh, ns_body = _namespaces()
+    clean_ref_prefix = re.sub(r"[^A-Za-z0-9_-]", "", str(ref_prefix or "").strip())
+    ref_uuid = uuid.uuid4().hex[:8]
 
     if USING_LXML:
         # With lxml, declare ALL namespaces at the Envelope level with desired prefixes
@@ -313,7 +318,9 @@ def build_envelope_with_header_and_bodies(
     dst = ET.SubElement(route, "Bestemming")
     ET.SubElement(dst, "ApplicatieNaam").text = "UZS"
     ET.SubElement(route, "GegevensUitwisselingsnr").text = (
-        f"GegUitNr-{uuid.uuid4().hex[:8]}"
+        f"GUN-{clean_ref_prefix}-{ref_uuid}"
+        if clean_ref_prefix
+        else f"GegUitNr-{ref_uuid}"
     )
     ET.SubElement(route, "RefnrGegevensUitwisselingsExtern").text = "NOCOREFLEX"
 
@@ -321,7 +328,11 @@ def build_envelope_with_header_and_bodies(
     bi = ET.SubElement(uwvh, "BerichtIdentificatie")
     ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     safe_name = tester_name.replace(" ", "")[:30]  # sanitize and limit name
-    ET.SubElement(bi, "BerichtReferentienr").text = f"{safe_name}_{ts}"[:50]
+    ET.SubElement(bi, "BerichtReferentienr").text = (
+        f"BR-{clean_ref_prefix}-{ref_uuid}"[:50]
+        if clean_ref_prefix
+        else f"{safe_name}_{ts}"[:50]
+    )
     bt = ET.SubElement(bi, "BerichtType")
     ET.SubElement(bt, "BerichtNaam").text = "UwvZwMeldingInternBody"
     ET.SubElement(bt, "VersieMajor").text = "04"
@@ -336,7 +347,11 @@ def build_envelope_with_header_and_bodies(
 
     # Transactie
     tr = ET.SubElement(uwvh, "Transactie")
-    ET.SubElement(tr, "TransactieReferentienr").text = f"TraRef-{uuid.uuid4().hex[:8]}"
+    ET.SubElement(tr, "TransactieReferentienr").text = (
+        f"TR-{clean_ref_prefix}-{ref_uuid}"
+        if clean_ref_prefix
+        else f"TraRef-{ref_uuid}"
+    )
     ET.SubElement(tr, "Volgordenr").text = "1"
     ET.SubElement(tr, "IndLaatsteBericht").text = "1"
 
@@ -428,6 +443,7 @@ def generate_from_excel_file(
     log_path: str = r"build/logs/generator_excel.log",
     data_only: bool = False,
     cd_bericht_override: str | None = None,
+    ref_prefix: str = "",
 ) -> int:
     """Generate XML files from an Excel source without using argparse.
 
@@ -457,7 +473,11 @@ def generate_from_excel_file(
         bodies = [m for (_, m, _) in messages]
         bulk_type = messages[0][2] if messages else "BULK"
         sender = "Digipoort" if bulk_type == "OTP3" else bulk_type
-        envelope = build_envelope_with_header_and_bodies(bodies, sender=sender)
+        envelope = build_envelope_with_header_and_bodies(
+            bodies,
+            sender=sender,
+            ref_prefix=ref_prefix,
+        )
         saved = save_envelope(envelope, out_dir, "bulk", bulk_type)
         append_log(
             log_path,
@@ -468,7 +488,11 @@ def generate_from_excel_file(
         for idx, (rec, m, aanvraag_type) in enumerate(messages, start=1):
             try:
                 sender = "Digipoort" if aanvraag_type == "OTP3" else aanvraag_type
-                env = build_envelope_with_header_and_bodies([m], sender=sender)
+                env = build_envelope_with_header_and_bodies(
+                    [m],
+                    sender=sender,
+                    ref_prefix=ref_prefix,
+                )
                 bsn = rec.get("BSN") or f"row{idx}"
                 safe_bsn = str(bsn).replace(" ", "_")
                 saved = save_envelope(env, out_dir, safe_bsn, aanvraag_type)
@@ -1001,6 +1025,12 @@ def main():
         default=None,
         help="Override CdBerichtType for all rows (e.g. ZBM/VM/OTP3)",
     )
+    parser.add_argument(
+        "--ref-prefix",
+        dest="ref_prefix",
+        default="",
+        help="Optional reference prefix (e.g. MJ01) for GUN/BR/TR header values",
+    )
     args = parser.parse_args()
 
     src = os.path.abspath(args.input)
@@ -1033,7 +1063,11 @@ def main():
         # Map aanvraag_type to sender application name: Digipoort for
         # OTP3, otherwise use the aanvraag_type
         sender = "Digipoort" if bulk_type == "OTP3" else bulk_type
-        envelope = build_envelope_with_header_and_bodies(bodies, sender=sender)
+        envelope = build_envelope_with_header_and_bodies(
+            bodies,
+            sender=sender,
+            ref_prefix=args.ref_prefix,
+        )
         saved = save_envelope(envelope, out_dir, "bulk", bulk_type)
         append_log(
             log_path,
@@ -1052,7 +1086,11 @@ def main():
                 # Map aanvraag_type to sender: Digipoort for OTP3,
                 # otherwise use the aanvraag_type
                 sender = "Digipoort" if aanvraag_type == "OTP3" else aanvraag_type
-                env = build_envelope_with_header_and_bodies([m], sender=sender)
+                env = build_envelope_with_header_and_bodies(
+                    [m],
+                    sender=sender,
+                    ref_prefix=args.ref_prefix,
+                )
                 bsn = rec.get("BSN") or f"row{idx}"
                 safe_bsn = str(bsn).replace(" ", "_")
                 saved = save_envelope(env, out_dir, safe_bsn, aanvraag_type)

@@ -89,7 +89,10 @@ def excel_serial_to_yyyymmdd(serial, date1904: bool = False) -> str:
 
 
 def fill_xml_template(
-    template_path: Path | None, data: dict, unique_suffix: str
+    template_path: Path | None,
+    data: dict,
+    unique_suffix: str,
+    ref_prefix: str = "",
 ) -> etree._ElementTree:
     NS_SOAP = "http://schemas.xmlsoap.org/soap/envelope/"
     NS_UWVH = "http://schemas.uwv.nl/UwvML/Header-v0202"
@@ -120,14 +123,24 @@ def fill_xml_template(
     etree.SubElement(bestemming, "ApplicatieNaam").text = data.get(
         "BestemmingApplicatie", "UZS"
     )
-    gu_nr = data.get("GegevensUitwisselingsnr") or f"GegUitNr_{unique_suffix}"
+    clean_ref_prefix = re.sub(r"[^A-Za-z0-9_-]", "", str(ref_prefix or "").strip())
+    ref_uuid = unique_suffix
+    if clean_ref_prefix:
+        gu_default = f"GUN-{clean_ref_prefix}-{ref_uuid}"
+    else:
+        gu_default = f"GegUitNr_{unique_suffix}"
+    gu_nr = data.get("GegevensUitwisselingsnr") or gu_default
     etree.SubElement(route, "GegevensUitwisselingsnr").text = gu_nr
     if data.get("RefnrGegevensUitwisselingsExtern"):
         ref_nr = str(data.get("RefnrGegevensUitwisselingsExtern"))
         etree.SubElement(route, "RefnrGegevensUitwisselingsExtern").text = ref_nr
 
     bericht = etree.SubElement(uwv_header, "BerichtIdentificatie")
-    ber_ref = data.get("BerichtReferentienr") or f"BerRefNr_{unique_suffix}"
+    if clean_ref_prefix:
+        ber_default = f"BR-{clean_ref_prefix}-{ref_uuid}"
+    else:
+        ber_default = f"BerRefNr_{unique_suffix}"
+    ber_ref = data.get("BerichtReferentienr") or ber_default
     etree.SubElement(bericht, "BerichtReferentienr").text = ber_ref
     bericht_type = etree.SubElement(bericht, "BerichtType")
     etree.SubElement(bericht_type, "BerichtNaam").text = "UwvZwMeldingInternBody"
@@ -151,7 +164,11 @@ def fill_xml_template(
     )
 
     trans = etree.SubElement(uwv_header, "Transactie")
-    tr_ref = data.get("TransactieReferentienr") or f"TraRefNr_{unique_suffix}"
+    if clean_ref_prefix:
+        tr_default = f"TR-{clean_ref_prefix}-{ref_uuid}"
+    else:
+        tr_default = f"TraRefNr_{unique_suffix}"
+    tr_ref = data.get("TransactieReferentienr") or tr_default
     etree.SubElement(trans, "TransactieReferentienr").text = tr_ref
     etree.SubElement(trans, "Volgordenr").text = "1"
     etree.SubElement(trans, "IndLaatsteBericht").text = "1"

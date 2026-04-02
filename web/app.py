@@ -115,6 +115,11 @@ app.register_blueprint(instellingen_bp, url_prefix="/instellingen")
 
 @app.route("/")
 def home():
+    return redirect(url_for("genereer_xml"))
+
+
+@app.route("/dashboard")
+def dashboard():
     return render_template("dashboard.html")
 
 
@@ -237,7 +242,11 @@ def download_generated_zip():
             for fn in filenames:
                 if fn in file_map:
                     fpath = file_map[fn]
-                    zf.write(fpath, arcname=fn)
+                    if fn.startswith("digipoort_"):
+                        subfolder = "UwvZwMelding_MQ_V0428"
+                    else:
+                        subfolder = "v0428"
+                    zf.write(fpath, arcname=f"{subfolder}/{fn}")
 
         zip_buffer.seek(0)
         from flask import send_file
@@ -349,8 +358,9 @@ def upload_json():
         return redirect(request.referrer or url_for("genereer_xml"))
 
     unique_suffix = uuid.uuid4().hex[:8]
+    ref_prefix = str(payload.get("referentie_prefix") or payload.get("ReferentiePrefix") or "").strip()
     try:
-        tree = fill_xml_template(None, payload, unique_suffix)
+        tree = fill_xml_template(None, payload, unique_suffix, ref_prefix=ref_prefix)
     except Exception as exc:
         msg = f"Error building XML: {exc}"
         if is_ajax:
@@ -550,6 +560,7 @@ def upload_excel():
             return redirect(request.referrer or url_for("genereer_xml"))
 
     aanvraag_type = req_model.aanvraag_type
+    ref_prefix = str(request.form.get("referentie_prefix", "")).strip()
     cd_override = ExcelValidator.normalize_berichttype(aanvraag_type)
 
     try:
@@ -642,6 +653,7 @@ def upload_excel():
                 log_path=str(log_path),
                 data_only=True,
                 cd_bericht_override=cd_override,
+                ref_prefix=ref_prefix,
             )
         else:
             env = os.environ.copy()
@@ -660,6 +672,8 @@ def upload_excel():
                     "--data-only",
                     "--cd-bericht",
                     cd_override,
+                    "--ref-prefix",
+                    ref_prefix,
                 ],
                 capture_output=True,
                 text=True,

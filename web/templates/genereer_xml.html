@@ -1,4 +1,4 @@
-{% extends '_base.html' %}
+﻿{% extends '_base.html' %}
 
 {% block title %}Excel XMLator{% endblock %}
 
@@ -64,9 +64,16 @@
                             <label for="aanvraag_type_excel" class="form-label">Type aanvraag</label>
                             <select name="aanvraag_type" id="aanvraag_type_excel" class="form-select">
                                 <option value="ZBM">ZBM - Ziekmelding</option>
-                                <option value="VM">VM - Voortzetting</option>
+                                <option value="VM">VM - Verzuimmelder</option>
                                 <option value="Digipoort">Digipoort (OTP3)</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-1">
+                        <div class="col-md-6">
+                            <label for="referentie_prefix" class="form-label">Referentie prefix (optioneel)</label>
+                            <input type="text" name="referentie_prefix" id="referentie_prefix" class="form-control" placeholder="Bijv. MJ01" maxlength="20" pattern="[A-Za-z0-9_\-]*" title="Alleen letters, cijfers, koppelstreepjes en underscores">
+                            <div class="form-text small">Gebruikt in referenties als GUN-&lt;prefix&gt;-, BR-&lt;prefix&gt;- en TR-&lt;prefix&gt;-</div>
                         </div>
                     </div>
                     <div class="row g-3 mt-2">
