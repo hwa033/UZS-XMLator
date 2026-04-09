@@ -6,7 +6,7 @@ Behavior (minimal):
 - Read the first worksheet, expect a header row with columns.
 - For each data row, produce a SOAP-Envelope XML with a single
   `UwvZwMeldingInternBody` containing mapped fields.
-- Save each XML to `build/excel_generated/generated_<BSN>_<timestamp>.xml`.
+- Save each XML with a non-PII pseudonymous filename.
 - Append a line to `build/logs/generator_excel.log` with status.
 
 This is intentionally minimal and uses only `openpyxl` for reading
@@ -481,7 +481,7 @@ def generate_from_excel_file(
         saved = save_envelope(envelope, out_dir, "bulk", bulk_type)
         append_log(
             log_path,
-            f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS\t{len(bodies)}",
+            f"{datetime.now(timezone.utc).isoformat()}Z\t{os.path.basename(saved)}\tSUCCESS\t{len(bodies)}",
         )
         processed = len(bodies)
     else:
@@ -493,12 +493,11 @@ def generate_from_excel_file(
                     sender=sender,
                     ref_prefix=ref_prefix,
                 )
-                bsn = rec.get("BSN") or f"row{idx}"
-                safe_bsn = str(bsn).replace(" ", "_")
-                saved = save_envelope(env, out_dir, safe_bsn, aanvraag_type)
+                safe_id = f"msg{idx:05d}_{uuid.uuid4().hex[:6]}"
+                saved = save_envelope(env, out_dir, safe_id, aanvraag_type)
                 append_log(
                     log_path,
-                    f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS",
+                    f"{datetime.now(timezone.utc).isoformat()}Z\t{os.path.basename(saved)}\tSUCCESS",
                 )
                 processed += 1
             except Exception as exc:
@@ -1071,7 +1070,7 @@ def main():
         saved = save_envelope(envelope, out_dir, "bulk", bulk_type)
         append_log(
             log_path,
-            f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS\t{len(bodies)}",
+            f"{datetime.now(timezone.utc).isoformat()}Z\t{os.path.basename(saved)}\tSUCCESS\t{len(bodies)}",
         )
         processed = len(bodies)
         if formula_count:
@@ -1091,12 +1090,11 @@ def main():
                     sender=sender,
                     ref_prefix=args.ref_prefix,
                 )
-                bsn = rec.get("BSN") or f"row{idx}"
-                safe_bsn = str(bsn).replace(" ", "_")
-                saved = save_envelope(env, out_dir, safe_bsn, aanvraag_type)
+                safe_id = f"msg{idx:05d}_{uuid.uuid4().hex[:6]}"
+                saved = save_envelope(env, out_dir, safe_id, aanvraag_type)
                 append_log(
                     log_path,
-                    f"{datetime.now(timezone.utc).isoformat()}Z\t{saved}\tSUCCESS",
+                    f"{datetime.now(timezone.utc).isoformat()}Z\t{os.path.basename(saved)}\tSUCCESS",
                 )
                 processed += 1
             except Exception as exc:

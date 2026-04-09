@@ -386,13 +386,35 @@ class FileManager:
         ]
         unique_dirs = list(dict.fromkeys(directories))  # Remove duplicates
 
+        retention_days = int(
+            self.router.config.get("file_retention_days", Configuration.FILE_RETENTION_DAYS)
+        )
+        cutoff_ts = None
+        if retention_days > 0:
+            cutoff_ts = (
+                datetime.datetime.now(datetime.UTC)
+                - datetime.timedelta(days=retention_days)
+            ).timestamp()
+
         files_with_time = []
+        retention_pruned_count = 0
         for out_dir in unique_dirs:
             if out_dir.exists():
                 for fname in out_dir.iterdir():
                     if fname.suffix == ".xml":
                         try:
                             mtime = fname.stat().st_mtime
+                            if cutoff_ts is not None and mtime < cutoff_ts:
+                                try:
+                                    fname.unlink()
+                                    retention_pruned_count += 1
+                                except Exception as e:
+                                    logger_file.warning(
+                                        "retention_prune_failed",
+                                        filename=fname.name,
+                                        error=str(e),
+                                    )
+                                continue
                             files_with_time.append((fname.name, fname, mtime))
                         except Exception:
                             continue
@@ -423,7 +445,13 @@ class FileManager:
             except Exception:
                 continue
 
-        logger_file.info("list_generated_files_complete", returned=len(result), total=total_count, pruned=pruned_count)
+        logger_file.info(
+            "list_generated_files_complete",
+            returned=len(result),
+            total=total_count,
+            pruned=pruned_count,
+            retention_pruned=retention_pruned_count,
+        )
         return result, total_count
 
     def delete_files(self, filenames: list[str]) -> tuple[int, list[str]]:

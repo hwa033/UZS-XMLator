@@ -7,6 +7,7 @@ import datetime
 import io
 import json
 import os
+import secrets
 import sys
 import uuid
 from pathlib import Path
@@ -163,6 +164,10 @@ def resultaten_fragment():
 @app.route("/resultaten/download/<filename>")
 def download_generated(filename):
     """Download a generated XML file"""
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
     if not filename.endswith(".xml") or "/" in filename or ".." in filename:
         flash("Invalid filename.", "danger")
         return redirect(request.referrer or url_for("genereer_xml"))
@@ -186,6 +191,7 @@ def download_generated(filename):
                     mimetype="application/xml",
                 )
                 response.headers["X-Content-Type-Options"] = "nosniff"
+                response.headers["Cache-Control"] = "no-store"
                 return response
 
     flash("File not found.", "danger")
@@ -195,6 +201,10 @@ def download_generated(filename):
 @app.route("/resultaten/delete-selected", methods=["POST"])
 def delete_selected_files():
     """Delete selected files"""
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
     try:
         data = request.get_json(silent=True) or {}
         filenames = data.get("filenames") or []
@@ -212,6 +222,10 @@ def delete_selected_files():
 @app.route("/resultaten/download-zip", methods=["POST"])
 def download_generated_zip():
     """Download selected files as ZIP"""
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
     try:
         import zipfile
 
@@ -251,12 +265,14 @@ def download_generated_zip():
         zip_buffer.seek(0)
         from flask import send_file
 
-        return send_file(
+        response = send_file(
             zip_buffer,
             mimetype="application/zip",
             as_attachment=True,
             download_name="results.zip",
         )
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -284,10 +300,35 @@ def _format_pydantic_errors(errors) -> list[str]:  # type: ignore
     return formatted
 
 
+def _require_api_key():
+    """Optional API key protection for sensitive endpoints.
+
+    If XMLATOR_API_KEY is not set, access is allowed.
+    """
+    configured_key = str(os.environ.get("XMLATOR_API_KEY", "")).strip()
+    if not configured_key:
+        return None
+
+    provided_key = (
+        str(request.headers.get("X-API-Key", "")).strip()
+        or str(request.args.get("api_key", "")).strip()
+    )
+    if provided_key and secrets.compare_digest(provided_key, configured_key):
+        return None
+
+    if request.method == "POST" or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+    return make_response("Unauthorized", 401)
+
+
 @app.route("/genereer_xml_json/upload_json", methods=["POST"])
 @limiter.limit("20 per minute")
 def upload_json():
     """Upload JSON and generate XML"""
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
+
     file = request.files.get("json_file")
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
@@ -399,10 +440,10 @@ def upload_json():
     output_dir = ROUTER.get_output_directory(aanvraag_type)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    safe_bsn = "".join(ch for ch in str(bsn_value) if ch.isalnum()) or "row"
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     prefix = "digipoort" if cd_bericht == "OTP3" else cd_bericht.lower()
-    filename = f"{prefix}_{safe_bsn}_{ts}.xml"
+    pseudonym = uuid.uuid4().hex[:12]
+    filename = f"{prefix}_{pseudonym}_{ts}.xml"
     file_path = output_dir / filename
 
     try:
@@ -429,6 +470,10 @@ def upload_json():
 def upload_excel():
     """Upload Excel and generate XML"""
     import subprocess
+
+    auth_error = _require_api_key()
+    if auth_error:
+        return auth_error
 
     file = request.files.get("excel_file")
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
@@ -720,8 +765,8 @@ def upload_excel():
 
         flash(msg, "success")
 
-    except subprocess.CalledProcessError as e:
-        msg = f"Fout bij genereren van XML: {e.stderr or e.stdout}"
+    except subprocess.CalledProcessError:
+        msg = "Fout bij genereren van XML. Controleer de serverlogs voor details."
         if is_ajax:
             return jsonify({"success": False, "error": msg}), 400
         flash(msg, "danger")

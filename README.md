@@ -133,6 +133,29 @@ $env:U_XMLATOR_SECRET = 'replace-with-a-strong-random-secret'
 python -m web.app
 ```
 
+## AVG & security (operationeel)
+
+Voor productie (zeker met BSN/medische verzuimdata) gelden minimaal deze maatregelen:
+
+- **Transportbeveiliging:** publiceer de app alleen achter TLS (HTTPS), bij voorkeur via reverse proxy.
+- **Endpoint-toegang:** zet een API key op gevoelige endpoints:
+  - `XMLATOR_API_KEY` configureren op serverniveau.
+  - client stuurt key via header `X-API-Key`.
+- **Dataminimalisatie:** bestandsnamen voor JSON/Excel output zijn gepseudonimiseerd (geen BSN in bestandsnaam).
+- **Cachebeheersing:** download-responses sturen `Cache-Control: no-store`.
+- **Bewaartermijn:** stel `file_retention_days` in (in `web/instellingen.json`) en hanteer een formeel bewaarbeleid.
+- **Toegangsbeheer:** beperk NTFS/share-rechten op output/fallback folders en logs (least privilege).
+- **Logging:** deel logs alleen met beheerders; vermijd export van logs buiten beheeromgeving.
+
+### Korte DPIA-checklist
+
+1. Doelbinding en rechtsgrond vastgelegd (test/doelomgeving).
+2. Verwerkersrollen en verantwoordelijken benoemd.
+3. Bewaartermijn en verwijderproces vastgesteld.
+4. Toegangsmodel (wie mag uploaden/downloaden/verwijderen) gedocumenteerd.
+5. Incidentprocedure en datalekmelding proces beschikbaar.
+6. Periodieke review op configuratie (`XMLATOR_API_KEY`, TLS, logging, retention).
+
 De webinterface bevat:
 - Dashboard: KPI-tegels, grafieken en snelle acties
 - Genereer XML: formulier voor het aanmaken van testberichten
