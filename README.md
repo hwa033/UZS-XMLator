@@ -135,6 +135,8 @@ python -m web.app
 
 ## AVG & security (operationeel)
 
+Openstaande, bewust uitgestelde hardening-punten staan in [docs/OPEN_PUNTEN_SECURITY_AVG.md](docs/OPEN_PUNTEN_SECURITY_AVG.md).
+
 Voor productie (zeker met BSN/medische verzuimdata) gelden minimaal deze maatregelen:
 
 - **Transportbeveiliging:** publiceer de app alleen achter TLS (HTTPS), bij voorkeur via reverse proxy.

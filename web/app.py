@@ -126,14 +126,12 @@ def dashboard():
 
 @app.route("/genereer_xml")
 def genereer_xml():
-    zip_limits = {"max_files": 50, "max_size_mb": 100}
-    files, total_count = FILE_MANAGER.list_generated_files(limit=25, prune=True)
+    files, total_count = FILE_MANAGER.list_generated_files(limit=None, prune=False)
     generated = [
         {"filename": f.filename, "tijdstip": f.tijdstip, "size": f.size} for f in files
     ]
     return render_template(
         "genereer_xml.html",
-        zip_limits=zip_limits,
         generated=generated,
         total_count=total_count,
     )
@@ -141,15 +139,13 @@ def genereer_xml():
 
 @app.route("/resultaten/fragment")
 def resultaten_fragment():
-    zip_limits = {"max_files": 50, "max_size_mb": 100}
-    files, total_count = FILE_MANAGER.list_generated_files(limit=25, prune=True)
+    files, total_count = FILE_MANAGER.list_generated_files(limit=None, prune=False)
     generated = [
         {"filename": f.filename, "tijdstip": f.tijdstip, "size": f.size} for f in files
     ]
     return make_response(
         render_template(
             "_results_panel.html",
-            zip_limits=zip_limits,
             generated=generated,
             total_count=total_count,
         )
@@ -826,7 +822,7 @@ def get_output_directory(aanvraag_type=None, omgeving=None):
     return ROUTER.get_output_directory(aanvraag_type, omgeving)
 
 
-def list_generated_files(limit=25, prune=False):
+def list_generated_files(limit=None, prune=False):
     """Legacy compatibility wrapper - use FILE_MANAGER instead"""
     files, total = FILE_MANAGER.list_generated_files(limit, prune)
     return (

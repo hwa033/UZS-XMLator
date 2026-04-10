@@ -366,12 +366,12 @@ class FileManager:
     def __init__(self, router: FiledropRouter):
         self.router = router
 
-    def list_generated_files(self, limit: int = 25, prune: bool = False) -> tuple[list[GeneratedFile], int]:
+    def list_generated_files(self, limit: Optional[int] = None, prune: bool = False) -> tuple[list[GeneratedFile], int]:
         """
         List generated XML files sorted by date (newest first).
 
         Args:
-            limit: Maximum files to return
+            limit: Maximum files to return (None = no limit)
             prune: If True, delete oldest files beyond limit
 
         Returns:
@@ -424,7 +424,7 @@ class FileManager:
 
         # Prune if needed
         pruned_count = 0
-        if prune and total_count > limit:
+        if prune and isinstance(limit, int) and limit >= 0 and total_count > limit:
             for fname, fpath, _ in files_with_time[limit:]:
                 try:
                     fpath.unlink()
@@ -433,7 +433,8 @@ class FileManager:
                     logger_file.warning("list_generated_files_prune_failed", filename=fname, error=str(e))
 
         # Limit results
-        files_with_time = files_with_time[:limit]
+        if isinstance(limit, int) and limit >= 0:
+            files_with_time = files_with_time[:limit]
 
         # Build result
         result = []
