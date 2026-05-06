@@ -7,6 +7,7 @@ import datetime
 import io
 import json
 import os
+import re
 import secrets
 import sys
 import uuid
@@ -87,6 +88,7 @@ CONFIG = Configuration.load_from_file(CONFIG_PATH)
 
 ROUTER = FiledropRouter(CONFIG)
 FILE_MANAGER = FileManager(ROUTER)
+RESULTS_PANEL_LIMIT = 100
 
 ALLOWED_EXTENSIONS = {"xlsx", "xls", "xlsm"}
 
@@ -126,7 +128,9 @@ def dashboard():
 
 @app.route("/genereer_xml")
 def genereer_xml():
-    files, total_count = FILE_MANAGER.list_generated_files(limit=None, prune=False)
+    files, total_count = FILE_MANAGER.list_generated_files(
+        limit=RESULTS_PANEL_LIMIT, prune=False
+    )
     generated = [
         {"filename": f.filename, "tijdstip": f.tijdstip, "size": f.size} for f in files
     ]
@@ -139,7 +143,9 @@ def genereer_xml():
 
 @app.route("/resultaten/fragment")
 def resultaten_fragment():
-    files, total_count = FILE_MANAGER.list_generated_files(limit=None, prune=False)
+    files, total_count = FILE_MANAGER.list_generated_files(
+        limit=RESULTS_PANEL_LIMIT, prune=False
+    )
     generated = [
         {"filename": f.filename, "tijdstip": f.tijdstip, "size": f.size} for f in files
     ]
@@ -395,7 +401,9 @@ def upload_json():
         return redirect(request.referrer or url_for("genereer_xml"))
 
     unique_suffix = uuid.uuid4().hex[:8]
-    ref_prefix = str(payload.get("referentie_prefix") or payload.get("ReferentiePrefix") or "").strip()
+    ref_prefix = str(
+        payload.get("referentie_prefix") or payload.get("ReferentiePrefix") or ""
+    ).strip()
     try:
         tree = fill_xml_template(None, payload, unique_suffix, ref_prefix=ref_prefix)
     except Exception as exc:
@@ -439,7 +447,9 @@ def upload_json():
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     prefix = "digipoort" if cd_bericht == "OTP3" else cd_bericht.lower()
     pseudonym = uuid.uuid4().hex[:12]
-    filename = f"{prefix}_{pseudonym}_{ts}.xml"
+    clean_ref_prefix = re.sub(r"[^A-Za-z0-9_-]", "", ref_prefix)[:20]
+    identifier_part = f"{clean_ref_prefix}_" if clean_ref_prefix else ""
+    filename = f"{prefix}_{identifier_part}{pseudonym}_{ts}.xml"
     file_path = output_dir / filename
 
     try:
@@ -751,6 +761,7 @@ def upload_excel():
             response_data = {
                 "success": True,
                 "message": msg,
+                "generated_filenames": generated_files,
                 "download_links": [
                     {"filename": fname, "url": f"/resultaten/download/{fname}"}
                     for fname in generated_files

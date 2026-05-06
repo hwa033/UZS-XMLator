@@ -175,24 +175,16 @@
                                         if (xhr.status >= 200 && xhr.status < 400) {
                                             // Succesvol, ververs alleen de resultatenlijst
                                             console.log('Upload succesvol, status:', xhr.status);
+                                            let parsedResp = null;
                                             try {
                                                 const resp = JSON.parse(xhr.responseText);
+                                                parsedResp = resp;
                                                 if (resp.message) {
                                                     console.log(resp.message);
 
                                                     let toastMsg = resp.message;
                                                     if (resp.download_links && resp.download_links.length > 0) {
                                                         toastMsg = `${resp.message} ${resp.download_links.length} bestand(en) klaar voor download.`;
-
-                                                        // Auto-download first file
-                                                        if (resp.download_links[0]) {
-                                                            const a = document.createElement('a');
-                                                            a.href = resp.download_links[0].url;
-                                                            a.download = resp.download_links[0].filename;
-                                                            document.body.appendChild(a);
-                                                            a.click();
-                                                            document.body.removeChild(a);
-                                                        }
                                                     }
 
                                                     notify(toastMsg);
@@ -200,7 +192,9 @@
                                             } catch (e) {
                                                 console.log('Response is geen JSON, waarschijnlijk een redirect');
                                             }
-                                            if (window.refreshResultsList) window.refreshResultsList();
+                                            if (window.refreshResultsList) {
+                                                window.refreshResultsList((parsedResp && parsedResp.generated_filenames) || []);
+                                            }
                                         } else {
                                             console.error('Upload gefaald:', xhr.status, xhr.responseText);
                                             try {

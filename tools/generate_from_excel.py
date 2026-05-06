@@ -493,7 +493,15 @@ def generate_from_excel_file(
                     sender=sender,
                     ref_prefix=ref_prefix,
                 )
-                safe_id = f"msg{idx:05d}_{uuid.uuid4().hex[:6]}"
+                clean_ref_prefix = re.sub(
+                    r"[^A-Za-z0-9_-]", "", str(ref_prefix or "").strip()
+                )[:20]
+                if clean_ref_prefix:
+                    safe_id = (
+                        f"{clean_ref_prefix}_msg{idx:05d}_{uuid.uuid4().hex[:6]}"
+                    )
+                else:
+                    safe_id = f"msg{idx:05d}_{uuid.uuid4().hex[:6]}"
                 saved = save_envelope(env, out_dir, safe_id, aanvraag_type)
                 append_log(
                     log_path,

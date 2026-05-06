@@ -1,5 +1,20 @@
 // Shared Results Panel handlers and refresh
 (function() {
+  function selectGeneratedFiles(filenames) {
+    if (!Array.isArray(filenames) || filenames.length === 0) return;
+    const wanted = new Set(filenames);
+    const checkboxes = Array.from(document.querySelectorAll('.generated-select'));
+    checkboxes.forEach(cb => {
+      const file = cb.getAttribute('data-file');
+      cb.checked = !!file && wanted.has(file);
+    });
+    const selectAll = document.getElementById('select-all-generated');
+    if (selectAll) {
+      const allChecked = checkboxes.length > 0 && checkboxes.every(cb => cb.checked);
+      selectAll.checked = allChecked;
+    }
+  }
+
   function freshElement(id) {
     const el = document.getElementById(id);
     if (!el) return null;
@@ -78,8 +93,8 @@
     }
   }
 
-  window.refreshResultsList = function refreshResultsList() {
-    fetch('/resultaten/fragment')
+  window.refreshResultsList = function refreshResultsList(selectFilenames = []) {
+    return fetch('/resultaten/fragment')
       .then(resp => resp.text())
       .then(html => {
         const parser = new DOMParser();
@@ -100,6 +115,8 @@
           }
 
           initResultsPanelHandlers();
+          selectGeneratedFiles(selectFilenames);
+          updateSelectionState();
         }
       })
       .catch(err => console.error('Error refreshing results:', err));
