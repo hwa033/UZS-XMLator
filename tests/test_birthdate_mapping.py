@@ -52,3 +52,42 @@ def test_build_message_requires_birthdate():
         assert False, "Expected ValueError for missing geboortedatum"
     except ValueError as exc:
         assert "geboortedatum" in str(exc).lower()
+
+
+def test_build_message_omits_arbeidsverhouding_when_empty():
+    rec = {
+        "CdBerichtType": "ZBM",
+        "BSN": "123456789",
+        "Geboortedatum": "19900115",
+        "DatEersteAoDag": "2025-01-01",
+        "CdRedenAangifteAo": "03",
+    }
+
+    msg, _ = build_message_element(rec, NS_BODY)
+    ae = msg.find("{" + NS_BODY + "}AdministratieveEenheid")
+    assert ae is not None
+    arb = ae.find("{" + NS_BODY + "}Arbeidsverhouding")
+    assert arb is None
+
+
+def test_build_message_includes_arbeidsverhouding_with_datb_date():
+    rec = {
+        "CdBerichtType": "ZBM",
+        "BSN": "123456789",
+        "Geboortedatum": "19900115",
+        "DatEersteAoDag": "2025-01-01",
+        "CdRedenAangifteAo": "03",
+        "DatB": "2000-01-01",
+        "DatE": "2026-04-15",
+    }
+
+    msg, _ = build_message_element(rec, NS_BODY)
+    ae = msg.find("{" + NS_BODY + "}AdministratieveEenheid")
+    assert ae is not None
+    arb = ae.find("{" + NS_BODY + "}Arbeidsverhouding")
+    assert arb is not None
+
+    dat_b = arb.find("{" + NS_BODY + "}DatB")
+    dat_e = arb.find("{" + NS_BODY + "}DatE")
+    assert dat_b is not None and dat_b.text == "20000101"
+    assert dat_e is not None and dat_e.text == "20260415"

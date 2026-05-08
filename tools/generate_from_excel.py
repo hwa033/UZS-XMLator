@@ -880,21 +880,40 @@ def build_message_element(
     sr = ET.SubElement(ae, qname("SectorRisicogroep"))
     set_if(sr, "CdRisicopremiegroep", record.get("CdRisicopremiegroep", None))
     set_if(sr, "CdSectorOsv", record.get("CdSectorOsv", None))
-    arb = ET.SubElement(ae, qname("Arbeidsverhouding"))
-    set_if(arb, "Volgnr", record.get("Volgnr", None))
-    set_if(arb, "IndLoonheffingskorting", record.get("IndLoonheffingskorting", None))
-    set_if(arb, "Personeelsnr", record.get("Personeelsnr", None))
-    set_if(arb, "NaamBeroepOngecodeerd", record.get("NaamBeroepOngecodeerd", None))
-    set_if(arb, "CdAardArbv", record.get("CdAardArbv", None))
-    set_if(arb, "CdLbtabel", record.get("CdLbtabel", None))
-    set_date_if(arb, "DatB", record.get("DatB", None), date_only=True)
-    set_if(arb, "AantLoonwachtdagen", record.get("AantLoonwachtdagen", None))
-    set_if(
-        arb,
-        "PercLoondoorbetalingTijdensAo",
+    arb_fields = (
+        record.get("Volgnr", None),
+        record.get("IndLoonheffingskorting", None),
+        record.get("Personeelsnr", None),
+        record.get("NaamBeroepOngecodeerd", None),
+        record.get("CdAardArbv", None),
+        record.get("CdLbtabel", None),
+        record.get("DatB", None),
+        record.get("DatE", None),
+        record.get("AantLoonwachtdagen", None),
         record.get("PercLoondoorbetalingTijdensAo", None),
+        record.get("IndArbeidsgehandicapt", None),
     )
-    set_if(arb, "IndArbeidsgehandicapt", record.get("IndArbeidsgehandicapt", None))
+    has_arbeidsverhouding_data = any(
+        value is not None and str(value).strip() != "" for value in arb_fields
+    )
+
+    if has_arbeidsverhouding_data:
+        arb = ET.SubElement(ae, qname("Arbeidsverhouding"))
+        set_if(arb, "Volgnr", record.get("Volgnr", None))
+        set_if(arb, "IndLoonheffingskorting", record.get("IndLoonheffingskorting", None))
+        set_if(arb, "Personeelsnr", record.get("Personeelsnr", None))
+        set_if(arb, "NaamBeroepOngecodeerd", record.get("NaamBeroepOngecodeerd", None))
+        set_if(arb, "CdAardArbv", record.get("CdAardArbv", None))
+        set_if(arb, "CdLbtabel", record.get("CdLbtabel", None))
+        set_date_if(arb, "DatB", record.get("DatB", None), date_only=True)
+        set_date_if(arb, "DatE", record.get("DatE", None), date_only=True)
+        set_if(arb, "AantLoonwachtdagen", record.get("AantLoonwachtdagen", None))
+        set_if(
+            arb,
+            "PercLoondoorbetalingTijdensAo",
+            record.get("PercLoondoorbetalingTijdensAo", None),
+        )
+        set_if(arb, "IndArbeidsgehandicapt", record.get("IndArbeidsgehandicapt", None))
 
     return msg, aanvraag_type
     # Add any remaining columns from the Excel that were not explicitly
