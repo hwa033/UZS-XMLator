@@ -8,7 +8,6 @@ import io
 import json
 import os
 import re
-import secrets
 import sys
 import uuid
 from pathlib import Path
@@ -23,9 +22,6 @@ from flask import (
     request,
     url_for,
 )
-from flask_cors import CORS
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from pydantic import ValidationError
 from werkzeug.utils import secure_filename
 
@@ -34,9 +30,7 @@ from .domain import (
     ExcelValidator,
     FileManager,
     FiledropRouter,
-    GeneratedFile,
 )
-from .instellingen import instellingen_bp
 from .models import ExcelRow, ExcelUploadRequest, JsonUploadRequest
 from .utils import fill_xml_template
 
@@ -64,21 +58,6 @@ app = Flask(
     static_folder=str(_WEB_ROOT / "static"),
 )
 
-# Optional CORS
-cors_origins = os.environ.get("XMLATOR_CORS_ORIGINS")
-if cors_origins:
-    origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
-    if origins:
-        CORS(app, resources={r"/api/*": {"origins": origins}})
-
-# Rate limiting
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["100 per minute"],
-    storage_uri=os.environ.get("XMLATOR_LIMITER_STORAGE", "memory://"),
-)
-
 # ============================================================================
 # CONFIGURATION & DEPENDENCY INJECTION
 # ============================================================================
@@ -92,24 +71,11 @@ RESULTS_PANEL_LIMIT = 100
 
 ALLOWED_EXTENSIONS = {"xlsx", "xls", "xlsm"}
 
-# Security
-FLASK_ENV = os.environ.get("FLASK_ENV", "development")
-SECRET_KEY = os.environ.get("U_XMLATOR_SECRET")
-
-if FLASK_ENV.lower() != "development" and not SECRET_KEY:
-    raise SystemExit(
-        "ERROR: Set U_XMLATOR_SECRET environment variable (required outside development)."
-    )
-
-app.secret_key = SECRET_KEY or "change-this-to-a-long-secret-1234"
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SECURE"] = FLASK_ENV.lower() != "development"
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+# Minimal app config
+app.secret_key = os.environ.get("U_XMLATOR_SECRET", "xmlator-dev-secret")
 app.config["MAX_CONTENT_LENGTH"] = (
     max(1, int(CONFIG.get("upload_max_size_mb", 10))) * 1024 * 1024
 )
-
-app.register_blueprint(instellingen_bp, url_prefix="/instellingen")
 
 # ============================================================================
 # ROUTES - PAGES
@@ -119,11 +85,6 @@ app.register_blueprint(instellingen_bp, url_prefix="/instellingen")
 @app.route("/")
 def home():
     return redirect(url_for("genereer_xml"))
-
-
-@app.route("/dashboard")
-def dashboard():
-    return render_template("dashboard.html")
 
 
 @app.route("/genereer_xml")
@@ -166,10 +127,6 @@ def resultaten_fragment():
 @app.route("/resultaten/download/<filename>")
 def download_generated(filename):
     """Download a generated XML file"""
-    auth_error = _require_api_key()
-    if auth_error:
-        return auth_error
-
     if not filename.endswith(".xml") or "/" in filename or ".." in filename:
         flash("Invalid filename.", "danger")
         return redirect(request.referrer or url_for("genereer_xml"))
@@ -203,10 +160,6 @@ def download_generated(filename):
 @app.route("/resultaten/delete-selected", methods=["POST"])
 def delete_selected_files():
     """Delete selected files"""
-    auth_error = _require_api_key()
-    if auth_error:
-        return auth_error
-
     try:
         data = request.get_json(silent=True) or {}
         filenames = data.get("filenames") or []
@@ -224,10 +177,6 @@ def delete_selected_files():
 @app.route("/resultaten/download-zip", methods=["POST"])
 def download_generated_zip():
     """Download selected files as ZIP"""
-    auth_error = _require_api_key()
-    if auth_error:
-        return auth_error
-
     try:
         import zipfile
 
@@ -302,35 +251,9 @@ def _format_pydantic_errors(errors) -> list[str]:  # type: ignore
     return formatted
 
 
-def _require_api_key():
-    """Optional API key protection for sensitive endpoints.
-
-    If XMLATOR_API_KEY is not set, access is allowed.
-    """
-    configured_key = str(os.environ.get("XMLATOR_API_KEY", "")).strip()
-    if not configured_key:
-        return None
-
-    provided_key = (
-        str(request.headers.get("X-API-Key", "")).strip()
-        or str(request.args.get("api_key", "")).strip()
-    )
-    if provided_key and secrets.compare_digest(provided_key, configured_key):
-        return None
-
-    if request.method == "POST" or request.headers.get("X-Requested-With") == "XMLHttpRequest":
-        return jsonify({"success": False, "error": "Unauthorized"}), 401
-    return make_response("Unauthorized", 401)
-
-
 @app.route("/genereer_xml_json/upload_json", methods=["POST"])
-@limiter.limit("20 per minute")
 def upload_json():
     """Upload JSON and generate XML"""
-    auth_error = _require_api_key()
-    if auth_error:
-        return auth_error
-
     file = request.files.get("json_file")
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
@@ -472,15 +395,8 @@ def upload_json():
 
 
 @app.route("/upload_excel", methods=["POST"])
-@limiter.limit("20 per minute")
 def upload_excel():
     """Upload Excel and generate XML"""
-    import subprocess
-
-    auth_error = _require_api_key()
-    if auth_error:
-        return auth_error
-
     file = request.files.get("excel_file")
     is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
@@ -511,14 +427,6 @@ def upload_excel():
             return jsonify({"success": False, "error": msg, "errors": formatted}), 400
         flash(msg, "danger")
         return redirect(request.referrer or url_for("genereer_xml"))
-
-    cfg = Configuration.load_from_file(CONFIG_PATH)
-    use_excel_com = bool(cfg.get("excel_com_enabled")) or (
-        os.environ.get("XMLATOR_USE_EXCEL_COM", "").lower() in {"1", "true", "yes", "on"}
-    )
-    app.config["MAX_CONTENT_LENGTH"] = (
-        max(1, int(cfg.get("upload_max_size_mb", 10))) * 1024 * 1024
-    )
 
     if (
         request.content_length
@@ -615,147 +523,38 @@ def upload_excel():
     cd_override = ExcelValidator.normalize_berichttype(aanvraag_type)
 
     try:
-        if use_excel_com:
-            try:
-                import win32com.client  # type: ignore
-            except Exception:
-                msg = (
-                    "Excel COM niet beschikbaar. Installeer pywin32 en zorg dat "
-                    "Microsoft Excel is geïnstalleerd."
-                )
-                if is_ajax:
-                    return jsonify({"success": False, "error": msg}), 400
-                flash(msg, "danger")
-                return redirect(request.referrer or url_for("genereer_xml"))
+        from tools.generate_from_excel import generate_from_excel_file
 
-            excel = None
-            wb = None
-            try:
-                excel = win32com.client.DispatchEx("Excel.Application")
-                excel.Visible = False
-                excel.DisplayAlerts = False
-                wb = excel.Workbooks.Open(str(file_path), ReadOnly=True)
-                if wb.Worksheets.Count < 1:
-                    raise ValueError(
-                        "Het geüploade Excel-bestand bevat geen werkblad of is ongeldig."
-                    )
-            finally:
-                try:
-                    if wb is not None:
-                        wb.Close(False)
-                except Exception:
-                    pass
-                try:
-                    if excel is not None:
-                        excel.Quit()
-                except Exception:
-                    pass
-        else:
-            import openpyxl
+        output_dir = ROUTER.get_output_directory(aanvraag_type)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        log_path = Path(__file__).parent.parent / "build" / "logs" / "generator_excel.log"
 
-            wb = openpyxl.load_workbook(str(file_path))
-            ws = wb.active
-            if ws is None:
-                msg = "Het geüploade Excel-bestand bevat geen werkblad of is ongeldig."
-                if is_ajax:
-                    return jsonify({"success": False, "error": msg}), 400
-                flash(msg, "danger")
-                return redirect(request.referrer or url_for("genereer_xml"))
+        generated_paths = generate_from_excel_file(
+            str(file_path),
+            str(output_dir),
+            mode="single",
+            log_path=str(log_path),
+            data_only=True,
+            cd_bericht_override=cd_override,
+            ref_prefix=ref_prefix,
+        )
 
-        patched_excel_path = str(file_path)
+        generated_files = [Path(p).name for p in generated_paths]
+        if not generated_files:
+            raise ValueError(
+                "Geen XML-bestanden gegenereerd. Controleer of alle verplichte velden aanwezig zijn (BSN, Geboortedatum)."
+            )
     except Exception as exc:
-        msg = f"Fout bij verwerken van het Excel-bestand: {exc}"
+        msg = f"Fout bij genereren van XML uit Excel: {exc}"
         if is_ajax:
             return jsonify({"success": False, "error": msg}), 400
         flash(msg, "danger")
         return redirect(request.referrer or url_for("genereer_xml"))
 
-    generator_path = Path(__file__).parent.parent / "tools" / "generate_from_excel.py"
-    output_dir = ROUTER.get_output_directory(aanvraag_type)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    existing_files = set()
-    if output_dir.exists():
-        try:
-            existing_files = {f.name for f in output_dir.glob("*.xml")}
-        except Exception:
-            pass
-
-    python_exe = os.environ.get("PYTHON_EXE", sys.executable)
-    log_path = Path(__file__).parent.parent / "build" / "logs" / "generator_excel.log"
-
-    use_internal_generator = (
-        getattr(sys, "frozen", False)
-        or os.path.basename(str(sys.executable)).lower() == "xmlator.exe"
-        or os.path.basename(str(python_exe)).lower() == "xmlator.exe"
-        or not generator_path.exists()
-    )
-
-    try:
-        if use_excel_com:
-            os.environ["XMLATOR_USE_EXCEL_COM"] = "1"
-
-        if use_internal_generator:
-            from tools import generate_from_excel as gen
-
-            gen.generate_from_excel_file(
-                patched_excel_path,
-                str(output_dir),
-                mode="single",
-                log_path=str(log_path),
-                data_only=True,
-                cd_bericht_override=cd_override,
-                ref_prefix=ref_prefix,
-            )
-        else:
-            env = os.environ.copy()
-            if use_excel_com:
-                env["XMLATOR_USE_EXCEL_COM"] = "1"
-            subprocess.run(
-                [
-                    python_exe,
-                    str(generator_path),
-                    "--input",
-                    patched_excel_path,
-                    "--outdir",
-                    str(output_dir),
-                    "--mode",
-                    "single",
-                    "--data-only",
-                    "--cd-bericht",
-                    cd_override,
-                    "--ref-prefix",
-                    ref_prefix,
-                ],
-                capture_output=True,
-                text=True,
-                check=True,
-                env=env,
-            )
-
         msg = (
             f"Excel-bestand succesvol geüpload en {aanvraag_type} "
             f"XML-bestanden gegenereerd."
         )
-
-        generated_files = []
-        if output_dir.exists():
-            try:
-                current_files = {f.name for f in output_dir.glob("*.xml")}
-                new_files = sorted(
-                    [f for f in current_files if f not in existing_files],
-                    key=lambda f: (output_dir / f).stat().st_mtime,
-                    reverse=True,
-                )
-                generated_files = new_files
-            except Exception:
-                pass
-
-        if not generated_files:
-            error_msg = "Geen XML-bestanden gegenereerd. Controleer of alle verplichte velden aanwezig zijn (BSN, Geboortedatum)."
-            if is_ajax:
-                return jsonify({"success": False, "error": error_msg}), 400
-            flash(error_msg, "danger")
-            return redirect(request.referrer or url_for("genereer_xml"))
 
         if is_ajax:
             response_data = {
@@ -771,18 +570,6 @@ def upload_excel():
             return jsonify(response_data), 200
 
         flash(msg, "success")
-
-    except subprocess.CalledProcessError:
-        msg = "Fout bij genereren van XML. Controleer de serverlogs voor details."
-        if is_ajax:
-            return jsonify({"success": False, "error": msg}), 400
-        flash(msg, "danger")
-
-    except Exception as e:
-        msg = f"Fout bij genereren van XML: {e}"
-        if is_ajax:
-            return jsonify({"success": False, "error": msg}), 400
-        flash(msg, "danger")
 
     finally:
         try:
@@ -800,13 +587,11 @@ def upload_excel():
 
 
 @app.route("/health")
-@limiter.exempt
 def health():
     return jsonify({"status": "healthy"}), 200
 
 
 @app.route("/ready")
-@limiter.exempt
 def ready():
     status = {"status": "ready"}
     try:
@@ -821,25 +606,6 @@ def ready():
 @app.route("/favicon.ico")
 def favicon():
     return "", 204
-
-
-# ============================================================================
-# BACKWARDS COMPATIBILITY - Legacy function exports
-# ============================================================================
-
-
-def get_output_directory(aanvraag_type=None, omgeving=None):
-    """Legacy compatibility wrapper - use ROUTER instead"""
-    return ROUTER.get_output_directory(aanvraag_type, omgeving)
-
-
-def list_generated_files(limit=None, prune=False):
-    """Legacy compatibility wrapper - use FILE_MANAGER instead"""
-    files, total = FILE_MANAGER.list_generated_files(limit, prune)
-    return (
-        [{"filename": f.filename, "tijdstip": f.tijdstip, "size": f.size} for f in files],
-        total,
-    )
 
 
 if __name__ == "__main__":

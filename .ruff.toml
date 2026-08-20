@@ -1,5 +1,0 @@
-extend-exclude = [".venv", ".venv_dev", ".venv_minimal", "build", "dist", ".git", "node_modules"]
-
-line-length = 88
-
-select = ["E", "F", "W", "I", "C", "UP", "A"]

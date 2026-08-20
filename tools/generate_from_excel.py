@@ -444,10 +444,10 @@ def generate_from_excel_file(
     data_only: bool = False,
     cd_bericht_override: str | None = None,
     ref_prefix: str = "",
-) -> int:
+) -> list[str]:
     """Generate XML files from an Excel source without using argparse.
 
-    Returns number of processed rows.
+    Returns the list of generated XML file paths.
     """
     src = os.path.abspath(src)
     out_dir = os.path.abspath(out_dir)
@@ -468,7 +468,7 @@ def generate_from_excel_file(
                 f"{datetime.now(timezone.utc).isoformat()}\tERROR_BUILD_MSG\t{exc}",
             )
 
-    processed = 0
+    generated_paths: list[str] = []
     if mode == "bulk":
         bodies = [m for (_, m, _) in messages]
         bulk_type = messages[0][2] if messages else "BULK"
@@ -483,7 +483,7 @@ def generate_from_excel_file(
             log_path,
             f"{datetime.now(timezone.utc).isoformat()}Z\t{os.path.basename(saved)}\tSUCCESS\t{len(bodies)}",
         )
-        processed = len(bodies)
+        generated_paths.append(saved)
     else:
         for idx, (rec, m, aanvraag_type) in enumerate(messages, start=1):
             try:
@@ -507,7 +507,7 @@ def generate_from_excel_file(
                     log_path,
                     f"{datetime.now(timezone.utc).isoformat()}Z\t{os.path.basename(saved)}\tSUCCESS",
                 )
-                processed += 1
+                generated_paths.append(saved)
             except Exception as exc:
                 append_log(
                     log_path,
@@ -520,7 +520,7 @@ def generate_from_excel_file(
             f"{datetime.now(timezone.utc).isoformat()}Z\tSANITIZED_FORMULAS\t{formula_count}",
         )
 
-    return processed
+    return generated_paths
 
 
 def _normalize_ind_jn(value: str) -> str:
